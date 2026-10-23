@@ -25,15 +25,6 @@ export function StatsScreen({ navigation }: Props) {
   const [taskStats, setTaskStats] = useState<TaskStat[]>([]);
 
   useEffect(() => {
-    parentSessionStore.touch();
-    const interval = setInterval(() => {
-      parentSessionStore.touch();
-    }, 60_000);
-    interval.unref?.();
-    return () => clearInterval(interval);
-  }, []);
-
-  useEffect(() => {
     let isMounted = true;
     async function loadStats() {
       try {

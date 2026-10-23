@@ -45,6 +45,7 @@ export function ParentHomeScreen({ navigation }: Props) {
 
     updateLockout();
     const interval = setInterval(updateLockout, 500);
+    interval.unref?.();
     return () => clearInterval(interval);
   }, [authService]);
 
