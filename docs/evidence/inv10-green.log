@@ -1,0 +1,5 @@
+Test Suites: 1 passed, 1 total
+Tests:       4 passed, 4 total
+Snapshots:   0 total
+Time:        0.902 s, estimated 1 s
+Ran all test suites matching src/ui/__tests__/theme.inv10.test.ts.

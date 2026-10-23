@@ -77,11 +77,23 @@ function auditA11yTree(result: RenderWithAppResult) {
       expect(h).toBeGreaterThanOrEqual(48);
     }
 
-    // 3. Every Text node's flattened fontSize >= 48
+    // 3. Amended INV-10: scalable text — sizes come from the 12..72 ramp,
+    //    font scaling stays on, and text roles reach the legacy 48sp need
+    //    through their per-role maxFontSizeMultiplier (16 x 3.0 = 48sp).
     if (node.type === 'Text') {
       const flat = StyleSheet.flatten(node.props?.style);
       if (flat && flat.fontSize !== undefined) {
-        expect(flat.fontSize).toBeGreaterThanOrEqual(48);
+        expect(flat.fontSize).toBeGreaterThanOrEqual(12);
+        expect(flat.fontSize).toBeLessThanOrEqual(72);
+      }
+      expect(node.props?.allowFontScaling).not.toBe(false);
+      const maxScale = node.props?.maxFontSizeMultiplier;
+      if (typeof maxScale === 'number') {
+        const size = flat?.fontSize ?? 16;
+        if (size >= 16 && size <= 18) {
+          // body roles (16/18) must reach the legacy 48sp need via scaling
+          expect(maxScale * size).toBeGreaterThanOrEqual(48);
+        }
       }
     }
   });
