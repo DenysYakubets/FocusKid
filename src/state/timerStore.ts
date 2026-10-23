@@ -12,6 +12,8 @@ export interface TimerStoreState {
   addTime: (ms?: number) => Promise<boolean>;
   tick: () => Promise<void>;
   requestComplete: () => Promise<boolean>;
+  verify: (sessionId: number, token?: unknown) => Promise<boolean>;
+  abandon: (sessionId: number, token?: unknown) => Promise<boolean>;
   hydrate: (serviceOverride?: TimerService) => Promise<TimerSnapshot>;
 }
 
@@ -90,6 +92,28 @@ export const useTimerStore = create<TimerStoreState>((set, get) => ({
     return res.ok;
   },
 
+  verify: async (sessionId: number, token?: unknown) => {
+    const service = get().service;
+    if (!service) throw new Error('TimerService not attached to timerStore');
+    const res = await service.verify(sessionId, token);
+    set({
+      snapshot: service.getSnapshot(),
+      lastError: res.ok ? null : res.error,
+    });
+    return res.ok;
+  },
+
+  abandon: async (sessionId: number, token?: unknown) => {
+    const service = get().service;
+    if (!service) throw new Error('TimerService not attached to timerStore');
+    const res = await service.abandon(sessionId, token);
+    set({
+      snapshot: service.getSnapshot(),
+      lastError: res.ok ? null : res.error,
+    });
+    return res.ok;
+  },
+
   hydrate: async (serviceOverride?: TimerService) => {
     const service = serviceOverride ?? get().service;
     if (!service) throw new Error('TimerService not attached to timerStore');
@@ -110,6 +134,10 @@ export const timerStore = Object.assign(useTimerStore, {
   addTime: (ms?: number) => useTimerStore.getState().addTime(ms),
   tick: () => useTimerStore.getState().tick(),
   requestComplete: () => useTimerStore.getState().requestComplete(),
+  verify: (sessionId: number, token?: unknown) =>
+    useTimerStore.getState().verify(sessionId, token),
+  abandon: (sessionId: number, token?: unknown) =>
+    useTimerStore.getState().abandon(sessionId, token),
   setService: (service: TimerService) => useTimerStore.getState().setService(service),
   getSnapshot: () => useTimerStore.getState().snapshot,
 });

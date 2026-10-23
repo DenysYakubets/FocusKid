@@ -11,6 +11,7 @@ import { systemWallClock } from './src/services/clock/wallClock';
 import { AppServices, createAppServices, AppServicesProvider } from './src/state/appServices';
 import { timerStore } from './src/state/timerStore';
 import { tasksStore } from './src/state/tasksStore';
+import { parentSessionStore } from './src/state/parentSessionStore';
 import { RootNavigator } from './src/navigation/RootNavigator';
 import { AppText } from './src/ui/components/AppText';
 import { uk } from './src/i18n/uk';
@@ -37,6 +38,7 @@ export default function App() {
         await timerStore.hydrate();
         tasksStore.setServices(svc);
         await tasksStore.refreshToday();
+        parentSessionStore.setService(svc.authService);
 
         if (mounted) {
           setServices(svc);

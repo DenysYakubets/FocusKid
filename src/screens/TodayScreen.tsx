@@ -26,7 +26,13 @@ export function TodayScreen({ navigation }: Props) {
 
   useEffect(() => {
     void refreshToday(services);
-  }, [refreshToday, services]);
+    const unsub = navigation?.addListener?.('focus', () => {
+      void refreshToday(services);
+    });
+    return () => {
+      unsub?.();
+    };
+  }, [navigation, refreshToday, services]);
 
   const activeTask =
     timerSnapshot.state.kind === 'Running' || timerSnapshot.state.kind === 'Paused';

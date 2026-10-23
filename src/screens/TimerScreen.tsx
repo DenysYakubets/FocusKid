@@ -34,6 +34,8 @@ export function TimerScreen({ route, navigation }: Props) {
   const pause = useTimerStore((s) => s.pause);
   const resume = useTimerStore((s) => s.resume);
   const addTime = useTimerStore((s) => s.addTime);
+  const verify = useTimerStore((s) => s.verify);
+  const abandon = useTimerStore((s) => s.abandon);
 
   const [task, setTask] = useState<Task | null>(null);
 

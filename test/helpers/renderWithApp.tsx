@@ -10,6 +10,7 @@ import { migrate } from '../../src/services/db/migrations';
 import { seedIfEmpty } from '../../src/services/db/seed';
 import { timerStore } from '../../src/state/timerStore';
 import { tasksStore } from '../../src/state/tasksStore';
+import { parentSessionStore } from '../../src/state/parentSessionStore';
 import { Db } from '../../src/services/db/Db';
 
 export interface RenderWithAppOptions {
@@ -50,6 +51,7 @@ export async function setupTestServices(options: RenderWithAppOptions = {}): Pro
   await timerStore.hydrate();
   tasksStore.setServices(services);
   await tasksStore.refreshToday();
+  parentSessionStore.setService(services.authService);
 
   return { services, clock, wall, db };
 }
