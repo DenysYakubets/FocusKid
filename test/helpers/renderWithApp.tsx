@@ -72,11 +72,10 @@ export async function renderWithApp(
 
   const result = await render(ui, { wrapper: Wrapper });
 
-  return {
-    ...result,
+  return Object.assign(result, {
     services,
     clock,
     wall,
     db,
-  };
+  });
 }

@@ -65,7 +65,7 @@ export function TaskListEditScreen({ navigation }: Props) {
             </AppText>
           </TapTarget>
 
-          <AppText variant="title" style={styles.title}>
+          <AppText variant="title" accessibilityRole="header" style={styles.title}>
             {uk.taskCrud.listTitle}
           </AppText>
 

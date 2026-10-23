@@ -17,6 +17,18 @@ else
   exit 1
 fi
 
+# TSC-4: INV-01 Merged AndroidManifest has no INTERNET (requires Gradle build)
+if test -d android/app/build/intermediates/merged_manifests/debug; then
+  if ! grep -rq "android.permission.INTERNET" android/app/build/intermediates/merged_manifests/debug; then
+    echo "PASS TSC-4"
+  else
+    echo "FAIL TSC-4"
+    exit 1
+  fi
+else
+  echo "SKIP TSC-4 (requires Gradle build)"
+fi
+
 # TSC-5: INV-01 No networking/analytics dependencies or calls
 if ! grep -qF -e '"firebase"' -e '@react-native-firebase/' -e '@sentry/' -e 'sentry-expo' -e '"axios"' -e '"expo-updates"' -e '"expo-notifications"' -e '"expo-network"' -e '@react-native-community/netinfo' -e 'google-mobile-ads' -e 'react-native-iap' -e 'expo-in-app-purchases' -e '@segment/' -e 'mixpanel' -e '@amplitude/' package.json && ! grep -rnE -e "\bfetch\(" -e "XMLHttpRequest" -e "new WebSocket\(" src App.tsx; then
   echo "PASS TSC-5"
@@ -71,4 +83,26 @@ if test -z "$(git ls-files '*.apk' '*.aab')" && grep -qxF '*.apk' .gitignore && 
 else
   echo "FAIL TSC-17"
   exit 1
+fi
+
+# TSC-18: INV-01 Config plugins registered and tested
+if grep -qF './plugins/withNoInternet' app.json && grep -qF './plugins/withBundledDebugJs' app.json && npm test -- --ci test/config; then
+  echo "PASS TSC-18"
+else
+  echo "FAIL TSC-18"
+  exit 1
+fi
+
+# TSC-19: Build debug APK produced by Gradle (requires Gradle build)
+if test -s android/app/build/outputs/apk/debug/app-debug.apk; then
+  echo "PASS TSC-19"
+else
+  echo "SKIP TSC-19 (requires Gradle build)"
+fi
+
+# TSC-20: Distribution published release (requires published release)
+if test -d /tmp/fk-release-verify && test -f /tmp/fk-release-verify/focuskid-v0.1.0-debug.apk; then
+  echo "PASS TSC-20"
+else
+  echo "SKIP TSC-20 (requires published release)"
 fi

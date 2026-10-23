@@ -46,7 +46,7 @@ export function PinSetupScreen({ navigation }: Props) {
   return (
     <ScrollView contentContainerStyle={styles.container}>
       <View style={styles.header}>
-        <AppText variant="title" style={styles.title}>
+        <AppText variant="title" accessibilityRole="header" style={styles.title}>
           {uk.pin.setupTitle}
         </AppText>
         <AppText variant="body" style={styles.subtitle}>

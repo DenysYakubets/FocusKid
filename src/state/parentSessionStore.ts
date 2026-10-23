@@ -9,6 +9,9 @@ export type ParentIntent =
 
 export interface ParentSessionStoreState {
   isSessionActive: boolean;
+  pinDraft: string;
+  setPinDraft: (pin: string) => void;
+  clearPinDraft: () => void;
   service: AuthService | null;
   setService: (service: AuthService) => void;
   isActive: (now?: number) => boolean;
@@ -28,6 +31,9 @@ export interface ParentSessionStoreState {
 
 export const useParentSessionStore = create<ParentSessionStoreState>((set, get) => ({
   isSessionActive: false,
+  pinDraft: '',
+  setPinDraft: (pin: string) => set({ pinDraft: pin }),
+  clearPinDraft: () => set({ pinDraft: '' }),
   service: null,
 
   setService: (service: AuthService) => {
@@ -87,7 +93,7 @@ export const useParentSessionStore = create<ParentSessionStoreState>((set, get) 
     if (service) {
       service.endParentSession();
     }
-    set({ isSessionActive: false });
+    set({ isSessionActive: false, pinDraft: '' });
   },
 
   touch: (now?: number) => {

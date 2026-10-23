@@ -13,6 +13,7 @@ import { timerStore } from './src/state/timerStore';
 import { tasksStore } from './src/state/tasksStore';
 import { parentSessionStore } from './src/state/parentSessionStore';
 import { RootNavigator } from './src/navigation/RootNavigator';
+import { ErrorBoundary } from './src/ui/components/ErrorBoundary';
 import { AppText } from './src/ui/components/AppText';
 import { uk } from './src/i18n/uk';
 import { colors } from './src/ui/theme';
@@ -65,7 +66,9 @@ export default function App() {
     <AppServicesProvider services={services}>
       <SafeAreaProvider>
         <NavigationContainer>
-          <RootNavigator />
+          <ErrorBoundary>
+            <RootNavigator />
+          </ErrorBoundary>
         </NavigationContainer>
         <StatusBar style="auto" />
       </SafeAreaProvider>

@@ -11,6 +11,7 @@ import {
   TimerService,
   TokenConsumer,
 } from '../services/timer/timerService';
+import { createStatsService, StatsService } from '../services/stats/statsService';
 
 export interface AppServices {
   db: Db;
@@ -21,6 +22,7 @@ export interface AppServices {
   authRepo: AuthRepo;
   authService: AuthService;
   timerService: TimerService;
+  statsService: StatsService;
 }
 
 export interface CreateAppServicesOptions {
@@ -58,6 +60,12 @@ export function createAppServices(options: CreateAppServicesOptions): AppService
     consumeToken,
   });
 
+  const statsService = createStatsService({
+    db,
+    wall,
+    sessionsRepo,
+  });
+
   return {
     db,
     clock,
@@ -67,6 +75,7 @@ export function createAppServices(options: CreateAppServicesOptions): AppService
     authRepo,
     authService,
     timerService,
+    statsService,
   };
 }
 

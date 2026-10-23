@@ -5,11 +5,12 @@ import { RootStackParamList } from '../navigation/routes';
 import { useServices } from '../state/appServices';
 import { useTimerStore, timerStore } from '../state/timerStore';
 import { tasksStore } from '../state/tasksStore';
-import { parentSessionStore } from '../state/parentSessionStore';
+import { parentSessionStore, useParentSessionStore } from '../state/parentSessionStore';
 import { ParentToken } from '../services/auth/authService';
 import { AppText } from '../ui/components/AppText';
 import { PinPad } from '../ui/components/PinPad';
 import { TapTarget } from '../ui/components/TapTarget';
+import { useOrientation } from '../ui/hooks/useOrientation';
 import { uk } from '../i18n/uk';
 import { colors, spacing } from '../ui/theme';
 
@@ -17,8 +18,14 @@ type Props = NativeStackScreenProps<RootStackParamList, 'PinGate'>;
 
 export function PinGateScreen({ route, navigation }: Props) {
   const { clock, authService } = useServices();
+  const orientation = useOrientation();
+  const isLandscape = orientation === 'landscape';
 
-  const [pinValue, setPinValue] = useState('');
+  const pinValue = useParentSessionStore((s) => s.pinDraft);
+  const setPinDraft = useParentSessionStore((s) => s.setPinDraft);
+  const clearPinDraft = useParentSessionStore((s) => s.clearPinDraft);
+  const setPinValue = (p: string) => setPinDraft(p);
+
   const [error, setError] = useState<string | null>(null);
   const [lockoutSec, setLockoutSec] = useState(0);
   const [showAbandonDialog, setShowAbandonDialog] = useState(false);
@@ -45,15 +52,15 @@ export function PinGateScreen({ route, navigation }: Props) {
     const res = await parentSessionStore.attempt(completedPin, route.params);
 
     if (res.status === 'LOCKED') {
-      setPinValue('');
+      clearPinDraft();
       setError(null);
       const sec = Math.ceil((res.remainingMs ?? authService.lockoutRemainingMs()) / 1000);
       setLockoutSec(sec);
     } else if (res.status === 'INVALID') {
-      setPinValue('');
+      clearPinDraft();
       setError(uk.pin.invalidPin);
     } else if (res.ok && res.status === 'SUCCESS') {
-      setPinValue('');
+      clearPinDraft();
       setError(null);
 
       if (route.params.intent === 'enterParent') {
@@ -130,7 +137,10 @@ export function PinGateScreen({ route, navigation }: Props) {
   }
 
   return (
-    <View style={styles.container}>
+    <View
+      testID={isLandscape ? 'pingate-layout-landscape' : 'pingate-layout-portrait'}
+      style={[styles.container, isLandscape && styles.containerLandscape]}
+    >
       <View style={styles.topBar}>
         <TapTarget
           accessibilityRole="button"
@@ -144,35 +154,39 @@ export function PinGateScreen({ route, navigation }: Props) {
         </TapTarget>
       </View>
 
-      <View style={styles.header}>
-        <AppText variant="title" style={styles.title}>
-          {getTitle()}
-        </AppText>
-        <AppText variant="body" style={styles.subtitle}>
-          {uk.pin.enterPin}
-        </AppText>
+      <View style={isLandscape ? styles.contentLandscape : styles.contentPortrait}>
+        <View style={isLandscape ? styles.leftSectionLandscape : styles.header}>
+          <AppText variant="title" accessibilityRole="header" style={styles.title}>
+            {getTitle()}
+          </AppText>
+          <AppText variant="body" style={styles.subtitle}>
+            {uk.pin.enterPin}
+          </AppText>
+
+          {isLocked ? (
+            <View style={styles.lockoutBox}>
+              <AppText variant="body" style={styles.lockoutText}>
+                {`${uk.pin.lockedRemaining} ${lockoutSec} ${uk.pin.seconds}`}
+              </AppText>
+            </View>
+          ) : error ? (
+            <View style={styles.errorContainer}>
+              <AppText variant="body" style={styles.errorText}>
+                {error}
+              </AppText>
+            </View>
+          ) : null}
+        </View>
+
+        <View style={isLandscape ? styles.rightSectionLandscape : undefined}>
+          <PinPad
+            disabled={isLocked}
+            value={pinValue}
+            onChange={setPinValue}
+            onComplete={handleComplete}
+          />
+        </View>
       </View>
-
-      {isLocked ? (
-        <View style={styles.lockoutBox}>
-          <AppText variant="body" style={styles.lockoutText}>
-            {`${uk.pin.lockedRemaining} ${lockoutSec} ${uk.pin.seconds}`}
-          </AppText>
-        </View>
-      ) : error ? (
-        <View style={styles.errorContainer}>
-          <AppText variant="body" style={styles.errorText}>
-            {error}
-          </AppText>
-        </View>
-      ) : null}
-
-      <PinPad
-        disabled={isLocked}
-        value={pinValue}
-        onChange={setPinValue}
-        onComplete={handleComplete}
-      />
     </View>
   );
 }
@@ -183,6 +197,32 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
     padding: spacing.lg,
     justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  containerLandscape: {
+    paddingHorizontal: spacing.xl,
+  },
+  contentLandscape: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-around',
+    width: '100%',
+  },
+  contentPortrait: {
+    width: '100%',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    flex: 1,
+  },
+  leftSectionLandscape: {
+    flex: 1,
+    alignItems: 'center',
+    gap: spacing.sm,
+    paddingRight: spacing.md,
+  },
+  rightSectionLandscape: {
+    flex: 1,
     alignItems: 'center',
   },
   topBar: {

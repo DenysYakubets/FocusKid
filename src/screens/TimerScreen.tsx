@@ -147,7 +147,7 @@ export function TimerScreen({ route, navigation }: Props) {
         </TapTarget>
 
         {task ? (
-          <AppText variant="title" style={styles.taskTitle}>
+          <AppText variant="title" accessibilityRole="header" style={styles.taskTitle}>
             {task.emoji ? `${task.emoji} ${task.title}` : task.title}
           </AppText>
         ) : null}

@@ -37,7 +37,8 @@
           }
         }
       ],
-      "./plugins/withNoInternet"
+      "./plugins/withNoInternet",
+      "./plugins/withBundledDebugJs"
     ]
   }
 }

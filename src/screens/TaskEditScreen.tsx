@@ -151,7 +151,7 @@ export function TaskEditScreen({ route, navigation }: Props) {
             </AppText>
           </TapTarget>
 
-          <AppText variant="title" style={styles.screenTitle}>
+          <AppText variant="title" accessibilityRole="header" style={styles.screenTitle}>
             {isEditing ? uk.taskCrud.editTask : uk.taskCrud.createTask}
           </AppText>
 
@@ -422,8 +422,8 @@ const styles = StyleSheet.create({
     gap: spacing.xs,
   },
   dayButton: {
-    width: 44,
-    height: 48,
+    minWidth: 48,
+    minHeight: 48,
     borderRadius: 8,
     justifyContent: 'center',
     alignItems: 'center',

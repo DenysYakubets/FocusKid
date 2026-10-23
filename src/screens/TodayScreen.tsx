@@ -8,6 +8,7 @@ import { useServices } from '../state/appServices';
 import { TaskCard } from '../ui/components/TaskCard';
 import { AppText } from '../ui/components/AppText';
 import { TapTarget } from '../ui/components/TapTarget';
+import { useOrientation } from '../ui/hooks/useOrientation';
 import { uk } from '../i18n/uk';
 import { colors, spacing, statusColors } from '../ui/theme';
 import { TodayTaskView } from '../domain/tasks/types';
@@ -16,6 +17,9 @@ type Props = NativeStackScreenProps<RootStackParamList, 'Today'>;
 
 export function TodayScreen({ navigation }: Props) {
   const services = useServices();
+  const orientation = useOrientation();
+  const isLandscape = orientation === 'landscape';
+
   const todayTasks = useTasksStore((s) => s.todayTasks);
   const refreshToday = useTasksStore((s) => s.refreshToday);
   const timerSnapshot = useTimerStore((s) => s.snapshot);
@@ -63,10 +67,13 @@ export function TodayScreen({ navigation }: Props) {
   };
 
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
+    <View
+      testID={isLandscape ? 'today-layout-landscape' : 'today-layout-portrait'}
+      style={[styles.container, isLandscape && styles.containerLandscape]}
+    >
+      <View style={[styles.header, isLandscape && styles.headerLandscape]}>
         <View style={styles.titleArea}>
-          <AppText variant="title" style={styles.titleText}>
+          <AppText variant="title" accessibilityRole="header" style={styles.titleText}>
             {uk.today.title}
           </AppText>
           {activeTask ? (
@@ -124,11 +131,17 @@ const styles = StyleSheet.create({
     paddingTop: spacing.xl,
     paddingHorizontal: spacing.md,
   },
+  containerLandscape: {
+    paddingHorizontal: spacing.xl,
+  },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
     marginBottom: spacing.lg,
+  },
+  headerLandscape: {
+    marginBottom: spacing.md,
   },
   titleArea: {
     flex: 1,

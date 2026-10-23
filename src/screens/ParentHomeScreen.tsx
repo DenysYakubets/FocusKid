@@ -10,6 +10,7 @@ import { AppText } from '../ui/components/AppText';
 import { TapTarget } from '../ui/components/TapTarget';
 import { PinPad } from '../ui/components/PinPad';
 import { ParentGuard } from '../navigation/ParentGuard';
+import { useOrientation } from '../ui/hooks/useOrientation';
 import { uk } from '../i18n/uk';
 import { colors, spacing } from '../ui/theme';
 
@@ -22,6 +23,8 @@ interface AwaitingItem {
 
 export function ParentHomeScreen({ navigation }: Props) {
   const { sessionsRepo, tasksRepo, authService } = useServices();
+  const orientation = useOrientation();
+  const isLandscape = orientation === 'landscape';
 
   const [awaitingItems, setAwaitingItems] = useState<AwaitingItem[]>([]);
   const [changingPin, setChangingPin] = useState(false);
@@ -92,10 +95,13 @@ export function ParentHomeScreen({ navigation }: Props) {
 
   return (
     <ParentGuard navigation={navigation}>
-      <View style={styles.container}>
+      <View
+        testID={isLandscape ? 'parent-home-layout-landscape' : 'parent-home-layout-portrait'}
+        style={[styles.container, isLandscape && styles.containerLandscape]}
+      >
         {/* Header */}
         <View style={styles.header}>
-          <AppText variant="title" style={styles.title}>
+          <AppText variant="title" accessibilityRole="header" style={styles.title}>
             {uk.parentHome.title}
           </AppText>
           <TapTarget
@@ -174,7 +180,7 @@ export function ParentHomeScreen({ navigation }: Props) {
 
         {/* Awaiting verification list */}
         <View style={styles.awaitingSection}>
-          <AppText variant="title" style={styles.sectionTitle}>
+          <AppText variant="title" accessibilityRole="header" style={styles.sectionTitle}>
             {uk.parentHome.awaitingTitle}
           </AppText>
 
@@ -237,6 +243,9 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background,
     padding: spacing.lg,
+  },
+  containerLandscape: {
+    paddingHorizontal: spacing.xl,
   },
   header: {
     flexDirection: 'row',
