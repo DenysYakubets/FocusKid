@@ -50,7 +50,7 @@
 - [INV-07] **Local Data Persistence**: Усі дані зберігаються виключно в `expo-sqlite` на пристрої.
 - [INV-08] **Landscape Parity**: Підтримка як портретного, так і альбомного (Desk Clock) режимів без розсинхронізації стану.
 - [INV-09] **No Dark Patterns**: Жодних streak-штрафів, реклами чи пейволів.
-- [INV-10] **Accessibility & Target Sizes**: Мін. розмір шрифту 48sp, сенсорні кнопки $\ge 48\times 48\text{dp}$, підтримка TalkBack.
+- [INV-10] **Accessibility & Target Sizes**: Масштабований текст — AppText: body 16sp, секційні заголовки 20–24sp, таймер 64–72sp; `allowFontScaling=true` з per-role `maxFontSizeMultiplier` до 3.0 (доступний текст досягає 48sp), сенсорні кнопки $\ge 48\times 48\text{dp}$, підтримка TalkBack.
 
 ---
 
