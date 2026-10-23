@@ -19,6 +19,13 @@ export const uk = {
     autoResumed: 'Час паузи вичерпано. Таймер продовжено',
     completedAnnouncement: 'Час вийшов! Очікує перевірки',
     minuteLeft: 'залишилося',
+    pauseBudgetExhausted: 'Час паузи вичерпано. Таймер продовжиться автоматично.',
+    errors: {
+      parentAuthRequired: 'Потрібен свіжий батьківський PIN-код. Спробуйте ще раз.',
+      notCompleted: 'Сесія ще не завершена: перевірити можна лише після завершення таймера.',
+      verifiedImmutable: 'Цю сесію вже перевірено.',
+      invalidSession: 'Сесію не знайдено.',
+    },
   },
   status: {
     idle: 'Не розпочато',
@@ -44,6 +51,10 @@ export const uk = {
     backspace: 'Видалити цифру',
     digitsEntered: (n: number) => `Введено ${n} з 4 цифр`,
     digit: (d: number | string) => `Цифра ${d}`,
+    attemptsLeft: (n: number) => `Залишилось спроб: ${n}`,
+    operationFailed: 'Не вдалося виконати дію. Спробуйте ще раз.',
+    verifyFailed: 'Не вдалося підтвердити перевірку. Спробуйте ще раз.',
+    abandonFailed: 'Не вдалося скасувати сесію. Спробуйте ще раз.',
   },
   parentHome: {
     title: 'Батьківський режим',

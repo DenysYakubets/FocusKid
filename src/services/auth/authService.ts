@@ -17,6 +17,7 @@ export interface AuthService {
   setupPin(pin: string): Promise<boolean>;
   changePin(currentPin: string, newPin: string): Promise<boolean>;
   attempt(pin: string): Promise<AuthAttemptResult>;
+  failedAttempts(): Promise<number>;
   lockoutRemainingMs(now?: number): number;
   isParentSessionActive(now?: number): boolean;
   startParentSession(): void;
@@ -43,9 +44,11 @@ function defaultRandomBytes(byteCount: number): Uint8Array {
   }
 }
 
+export const MAX_FAILED_ATTEMPTS = 5;
+
 function getLockoutDurationMs(failedAttempts: number): number {
-  if (failedAttempts < 5) return 0;
-  const exponent = failedAttempts - 5;
+  if (failedAttempts < MAX_FAILED_ATTEMPTS) return 0;
+  const exponent = failedAttempts - MAX_FAILED_ATTEMPTS;
   const duration = 30_000 * Math.pow(2, exponent);
   return Math.min(900_000, duration);
 }
@@ -92,7 +95,7 @@ export function createAuthService(options: CreateAuthServiceOptions): AuthServic
   function issueToken(): ParentToken {
     const now = clock.now();
     pruneExpiredTokens(now);
-    const id = bytesToHex(nobleRandomBytes(16));
+    const id = bytesToHex(randomBytes(16));
     activeTokens.set(id, now);
     return { id, issuedAt: now };
   }
@@ -186,6 +189,11 @@ export function createAuthService(options: CreateAuthServiceOptions): AuthServic
         return false;
       }
       return this.setupPin(newPin);
+    },
+
+    async failedAttempts(): Promise<number> {
+      const record = await authRepo.get();
+      return record?.failedAttempts ?? 0;
     },
 
     attempt,
