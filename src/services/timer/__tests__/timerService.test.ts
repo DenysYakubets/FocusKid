@@ -200,6 +200,26 @@ describe('TimerService', () => {
     expect(service.getSnapshot().state.kind).toBe('Running');
   });
 
+  it('combined case: task with today\'s row AND a foreign active session reports ACTIVE_SESSION_EXISTS (friendly UX precedence)', async () => {
+    const clock = createFakeClock(1000);
+    const sessionsRepo = createSessionsRepo(db);
+    const tasksRepo = createTasksRepo(db);
+    const service = createTimerService({ db, clock, wall: fakeWall, sessionsRepo, tasksRepo });
+
+    // Task 1 runs to completion today -> today's row exists for task 1, none active
+    expect((await service.start(1)).ok).toBe(true);
+    clock.advance(900000);
+    await service.tick();
+    expect(service.getSnapshot().state.kind).toBe('Completed');
+
+    // Task 2 starts -> foreign ACTIVE session
+    expect((await service.start(2)).ok).toBe(true);
+
+    // Task 1 now holds both: today's row (AS-04) + foreign active session (AS-05).
+    // AS-05 must win so TodayScreen can show the friendly activeSessionError.
+    expect(await service.start(1)).toEqual({ ok: false, error: 'ACTIVE_SESSION_EXISTS' });
+  });
+
   it('concurrent start(1) and start(2) results in one ok:true and one ok:false with error ACTIVE_SESSION_EXISTS', async () => {
     const clock = createFakeClock(1000);
     const sessionsRepo = createSessionsRepo(db);

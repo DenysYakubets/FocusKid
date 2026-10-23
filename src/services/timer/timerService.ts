@@ -123,6 +123,13 @@ export function createTimerService(deps: {
   }
 
   async function doStart(newTaskId: number): Promise<TimerServiceResult> {
+    // AS-05: at most one active session (fast-path pre-check). Checked first so the friendly-mapped
+    // activeSessionError code wins when a task has both today's row and a foreign active session.
+    const active = await sessionsRepo.getActive();
+    if (active && active.taskId !== newTaskId) {
+      return { ok: false, error: 'ACTIVE_SESSION_EXISTS' };
+    }
+
     // AS-04: one session per task per local calendar day (fast-path pre-check)
     const today = wall.todayLocalDate();
     const existingToday = await sessionsRepo.getTodayForTask(newTaskId, today);
@@ -130,8 +137,6 @@ export function createTimerService(deps: {
       return { ok: false, error: 'SESSION_ALREADY_EXISTS_TODAY' };
     }
 
-    // AS-05: at most one active session (fast-path pre-check)
-    const active = await sessionsRepo.getActive();
     if (active) {
       return { ok: false, error: 'ACTIVE_SESSION_EXISTS' };
     }

@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   AccessibilityInfo,
   BackHandler,
@@ -38,6 +38,7 @@ export function TimerScreen({ route, navigation }: Props) {
 
   const [task, setTask] = useState<Task | null>(null);
   const [routeSession, setRouteSession] = useState<SessionRow | null>(null);
+  const loadSeqRef = useRef(0);
 
   useEffect(() => {
     let isMounted = true;
@@ -49,23 +50,46 @@ export function TimerScreen({ route, navigation }: Props) {
     };
   }, [tasksRepo, route.params.taskId]);
 
-  useEffect(() => {
-    let isMounted = true;
-    async function loadSession() {
+  const refreshRouteSession = useCallback(() => {
+    const seq = ++loadSeqRef.current;
+    void (async () => {
       const todayDate = wall.todayLocalDate();
       let s = await sessionsRepo.getTodayForTask(route.params.taskId, todayDate);
       if (!s) {
         s = await sessionsRepo.getLatestForTask(route.params.taskId);
       }
-      if (isMounted) {
+      if (loadSeqRef.current === seq) {
         setRouteSession(s);
       }
-    }
-    void loadSession();
-    return () => {
-      isMounted = false;
-    };
+    })();
   }, [sessionsRepo, wall, route.params.taskId]);
+
+  // Initial load; invalidate in-flight loads on unmount/dep change.
+  useEffect(() => {
+    refreshRouteSession();
+    return () => {
+      loadSeqRef.current += 1;
+    };
+  }, [refreshRouteSession]);
+
+  // Reload when the screen regains focus (PinGate -> goBack after verify/abandon).
+  useEffect(() => {
+    const unsubscribe = navigation.addListener?.('focus', refreshRouteSession);
+    return () => {
+      unsubscribe?.();
+    };
+  }, [navigation, refreshRouteSession]);
+
+  // Reload whenever a session mutation lands in the store. verify/abandon always
+  // set a NEW snapshot object even when its fields are deep-equal (cold-start
+  // path: Idle/null before and after), so identity is the signal to use.
+  useEffect(() => {
+    return useTimerStore.subscribe((state, prev) => {
+      if (state.snapshot !== prev.snapshot) {
+        refreshRouteSession();
+      }
+    });
+  }, [refreshRouteSession]);
 
   // BackHandler navigation to Today
   useEffect(() => {

@@ -4,6 +4,7 @@ export const uk = {
     parentButton: 'Батьки',
     active: 'Іде таймер',
     activeSessionError: 'Інше завдання вже виконується',
+    startError: 'Щось пішло не так. Спробуй ще раз',
     empty: 'Немає завдань на сьогодні',
   },
   timer: {

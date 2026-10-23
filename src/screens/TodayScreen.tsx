@@ -58,7 +58,7 @@ export function TodayScreen({ navigation }: Props) {
           if (error === 'ACTIVE_SESSION_EXISTS') {
             setErrorMessage(uk.today.activeSessionError);
           } else {
-            setErrorMessage(error ?? 'Error');
+            setErrorMessage(uk.today.startError);
           }
         }
       } finally {
