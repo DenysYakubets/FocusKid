@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { ScrollView, StyleSheet, View } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/routes';
 import { useServices } from '../state/appServices';
@@ -7,12 +7,14 @@ import { useTimerStore, timerStore } from '../state/timerStore';
 import { tasksStore } from '../state/tasksStore';
 import { parentSessionStore, useParentSessionStore } from '../state/parentSessionStore';
 import { ParentToken, MAX_FAILED_ATTEMPTS } from '../services/auth/authService';
+import { AppButton } from '../ui/components/AppButton';
 import { AppText } from '../ui/components/AppText';
+import { NoticeBox } from '../ui/components/NoticeBox';
 import { PinPad } from '../ui/components/PinPad';
-import { TapTarget } from '../ui/components/TapTarget';
+import { ScreenTopBar } from '../ui/components/ScreenTopBar';
 import { useOrientation } from '../ui/hooks/useOrientation';
 import { uk } from '../i18n/uk';
-import { colors, spacing } from '../ui/theme';
+import { colors, radius, shadows, spacing } from '../ui/theme';
 import { mapTimerError } from '../ui/timerErrors';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'PinGate'>;
@@ -138,9 +140,9 @@ export function PinGateScreen({ route, navigation }: Props) {
 
   if (showAbandonDialog) {
     return (
-      <View style={styles.container}>
+      <View style={styles.dialogContainer}>
         <View style={styles.dialogCard}>
-          <AppText variant="title" style={styles.dialogTitle}>
+          <AppText variant="title" accessibilityRole="header" style={styles.dialogTitle}>
             {uk.parentHome.abandonDialogTitle}
           </AppText>
           <AppText variant="body" style={styles.dialogMessage}>
@@ -148,27 +150,18 @@ export function PinGateScreen({ route, navigation }: Props) {
           </AppText>
 
           <View style={styles.dialogButtons}>
-            <TapTarget
-              accessibilityRole="button"
-              accessibilityLabel={uk.parentHome.confirmAbandon}
+            <AppButton
+              label={uk.parentHome.confirmAbandon}
+              variant="danger"
+              size="lg"
               onPress={handleConfirmAbandon}
-              style={[styles.dialogButton, styles.confirmButton]}
-            >
-              <AppText variant="title" style={styles.confirmButtonText}>
-                {uk.parentHome.confirmAbandon}
-              </AppText>
-            </TapTarget>
-
-            <TapTarget
-              accessibilityRole="button"
-              accessibilityLabel={uk.parentHome.cancelAbandon}
+            />
+            <AppButton
+              label={uk.parentHome.cancelAbandon}
+              variant="secondary"
+              size="lg"
               onPress={handleCancelAbandon}
-              style={[styles.dialogButton, styles.cancelButton]}
-            >
-              <AppText variant="title" style={styles.cancelButtonText}>
-                {uk.parentHome.cancelAbandon}
-              </AppText>
-            </TapTarget>
+            />
           </View>
         </View>
       </View>
@@ -178,55 +171,48 @@ export function PinGateScreen({ route, navigation }: Props) {
   return (
     <View
       testID={isLandscape ? 'pingate-layout-landscape' : 'pingate-layout-portrait'}
-      style={[styles.container, isLandscape && styles.containerLandscape]}
+      style={styles.container}
     >
-      <View style={styles.topBar}>
-        <TapTarget
-          accessibilityRole="button"
-          accessibilityLabel={uk.timer.back}
-          onPress={() => navigation.goBack()}
-          style={styles.backButton}
-        >
-          <AppText variant="body" style={styles.backButtonText}>
-            {`← ${uk.timer.back}`}
-          </AppText>
-        </TapTarget>
-      </View>
+      {/* The whole gate scrolls, so nothing clips at font scale 3.0 (§4.1). */}
+      <ScrollView
+        contentContainerStyle={[
+          styles.scrollContent,
+          isLandscape && styles.scrollContentLandscape,
+        ]}
+        keyboardShouldPersistTaps="handled"
+      >
+        <ScreenTopBar onBack={() => navigation.goBack()} />
 
-      <View style={isLandscape ? styles.contentLandscape : styles.contentPortrait}>
-        <View style={isLandscape ? styles.leftSectionLandscape : styles.header}>
-          <AppText variant="title" accessibilityRole="header" style={styles.title}>
-            {getTitle()}
-          </AppText>
-          <AppText variant="body" style={styles.subtitle}>
-            {uk.pin.enterPin}
-          </AppText>
+        <View style={isLandscape ? styles.contentLandscape : styles.contentPortrait}>
+          <View
+            style={[
+              styles.header,
+              isLandscape ? styles.headerLandscape : styles.headerPortrait,
+            ]}
+          >
+            <AppText
+              variant="title"
+              accessibilityRole="header"
+              numberOfLines={2}
+              style={styles.title}
+            >
+              {getTitle()}
+            </AppText>
+            <AppText variant="body" style={styles.subtitle}>
+              {uk.pin.enterPin}
+            </AppText>
 
-          {isLocked ? (
-            <View style={styles.lockoutBox}>
-              <AppText variant="body" style={styles.lockoutText}>
-                {`${uk.pin.lockedRemaining} ${lockoutSec} ${uk.pin.seconds}`}
-              </AppText>
-            </View>
-          ) : error ? (
-            <View style={styles.errorContainer}>
-              {error.startsWith(uk.pin.invalidPin) && error.length > uk.pin.invalidPin.length ? (
-                <AppText variant="body" style={styles.errorText}>
-                  <AppText variant="body" style={styles.errorText}>
-                    {uk.pin.invalidPin}
-                  </AppText>
-                  {error.slice(uk.pin.invalidPin.length)}
-                </AppText>
-              ) : (
-                <AppText variant="body" style={styles.errorText}>
-                  {error}
-                </AppText>
-              )}
-            </View>
-          ) : null}
-        </View>
+            {isLocked ? (
+              <NoticeBox
+                testID="pingate-lockout"
+                tone="warning"
+                message={`${uk.pin.lockedRemaining} ${lockoutSec} ${uk.pin.seconds}`}
+              />
+            ) : error ? (
+              <NoticeBox testID="pingate-error" tone="error" message={error} />
+            ) : null}
+          </View>
 
-        <View style={isLandscape ? styles.rightSectionLandscape : undefined}>
           <PinPad
             disabled={isLocked}
             value={pinValue}
@@ -234,7 +220,7 @@ export function PinGateScreen({ route, navigation }: Props) {
             onComplete={handleComplete}
           />
         </View>
-      </View>
+      </ScrollView>
     </View>
   );
 }
@@ -243,50 +229,43 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
-    padding: spacing.lg,
-    justifyContent: 'space-between',
-    alignItems: 'center',
   },
-  containerLandscape: {
+  scrollContent: {
+    flexGrow: 1,
+    // §4.1: the gate keeps the lg gutter (272dp content at 320dp).
+    padding: spacing.lg,
+    gap: spacing.md,
+  },
+  scrollContentLandscape: {
     paddingHorizontal: spacing.xl,
+  },
+  contentPortrait: {
+    flex: 1,
+    width: '100%',
+    alignItems: 'center',
+    gap: spacing.md,
   },
   contentLandscape: {
     flex: 1,
+    width: '100%',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-around',
-    width: '100%',
-  },
-  contentPortrait: {
-    width: '100%',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    flex: 1,
-  },
-  leftSectionLandscape: {
-    flex: 1,
-    alignItems: 'center',
-    gap: spacing.sm,
-    paddingRight: spacing.md,
-  },
-  rightSectionLandscape: {
-    flex: 1,
-    alignItems: 'center',
-  },
-  topBar: {
-    width: '100%',
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  backButton: {
-    padding: spacing.sm,
-  },
-  backButtonText: {
-    color: colors.primary,
+    gap: spacing.lg,
   },
   header: {
     alignItems: 'center',
     gap: spacing.sm,
+  },
+  headerPortrait: {
+    width: '100%',
+  },
+  // §4.1 landscape two-column: the left column must shrink instead of claiming
+  // 100% of the row — with RN's default flexShrink 0 that left the right keypad
+  // column 0dp wide (INV-08 regression).
+  headerLandscape: {
+    flex: 1,
+    minWidth: 0,
   },
   title: {
     color: colors.text,
@@ -296,37 +275,23 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     textAlign: 'center',
   },
-  lockoutBox: {
-    backgroundColor: '#FEF3C7',
-    padding: spacing.md,
-    borderRadius: 8,
-    marginVertical: spacing.md,
-  },
-  lockoutText: {
-    color: colors.awaiting,
-    textAlign: 'center',
-  },
-  errorContainer: {
-    backgroundColor: '#FEE2E2',
-    padding: spacing.md,
-    borderRadius: 8,
-    marginVertical: spacing.md,
-  },
-  errorText: {
-    color: colors.abandoned,
-    textAlign: 'center',
+  dialogContainer: {
+    flex: 1,
+    backgroundColor: colors.background,
+    padding: spacing.lg,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   dialogCard: {
     backgroundColor: colors.surface,
     padding: spacing.xl,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: colors.border,
+    borderRadius: radius.lg,
+    borderCurve: 'continuous',
+    boxShadow: shadows.overlay,
     alignItems: 'center',
     maxWidth: 480,
     width: '100%',
     gap: spacing.lg,
-    marginVertical: 'auto',
   },
   dialogTitle: {
     color: colors.text,
@@ -339,24 +304,5 @@ const styles = StyleSheet.create({
   dialogButtons: {
     width: '100%',
     gap: spacing.md,
-  },
-  dialogButton: {
-    borderRadius: 12,
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.lg,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  confirmButton: {
-    backgroundColor: colors.abandoned,
-  },
-  confirmButtonText: {
-    color: colors.white,
-  },
-  cancelButton: {
-    backgroundColor: colors.border,
-  },
-  cancelButtonText: {
-    color: colors.text,
   },
 });

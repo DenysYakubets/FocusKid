@@ -5,16 +5,20 @@ import { RootStackParamList } from '../navigation/routes';
 import { useServices } from '../state/appServices';
 import { parentSessionStore } from '../state/parentSessionStore';
 import { Task } from '../domain/tasks/types';
+import { AppButton } from '../ui/components/AppButton';
 import { AppText } from '../ui/components/AppText';
+import { ScreenTopBar } from '../ui/components/ScreenTopBar';
 import { TapTarget } from '../ui/components/TapTarget';
 import { ParentGuard } from '../navigation/ParentGuard';
+import { CONTENT_MAX_WIDTH, useScreenGutter } from '../ui/hooks/useScreenGutter';
 import { uk } from '../i18n/uk';
-import { colors, spacing } from '../ui/theme';
+import { colors, radius, shadows, spacing } from '../ui/theme';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'TaskListEdit'>;
 
 export function TaskListEditScreen({ navigation }: Props) {
   const { tasksRepo } = useServices();
+  const { gutter, isLandscape } = useScreenGutter();
   const [tasks, setTasks] = useState<Task[]>([]);
 
   const loadTasks = async () => {
@@ -48,47 +52,30 @@ export function TaskListEditScreen({ navigation }: Props) {
 
   return (
     <ParentGuard navigation={navigation}>
-      <View style={styles.container}>
-        {/* Top bar */}
-        <View testID="tasklistedit-topbar" style={styles.topBar}>
-          <TapTarget
-            accessibilityRole="button"
-            accessibilityLabel={uk.timer.back}
-            onPress={() => {
-              parentSessionStore.touch();
-              navigation.goBack();
-            }}
-            style={styles.backButton}
-          >
-            <AppText variant="body" style={styles.backButtonText}>
-              {`← ${uk.timer.back}`}
-            </AppText>
-          </TapTarget>
+      <View style={[styles.container, { padding: gutter }]}>
+        {/* Row B = full-width primary "add" action (pinned by layoutResponsive). */}
+        <ScreenTopBar
+          testID="tasklistedit-topbar"
+          onBack={() => {
+            parentSessionStore.touch();
+            navigation.goBack();
+          }}
+          backLabel={uk.timer.back}
+          title={uk.taskCrud.listTitle}
+          titleTestID="tasklistedit-title"
+          actions={
+            <AppButton
+              label={uk.taskCrud.addTask}
+              variant="primary"
+              size="md"
+              onPress={handleCreate}
+            />
+          }
+        />
 
-          <AppText
-            testID="tasklistedit-title"
-            variant="title"
-            accessibilityRole="header"
-            numberOfLines={1}
-            style={styles.title}
-          >
-            {uk.taskCrud.listTitle}
-          </AppText>
-
-          <TapTarget
-            accessibilityRole="button"
-            accessibilityLabel={uk.taskCrud.addTask}
-            onPress={handleCreate}
-            style={styles.addButton}
-          >
-            <AppText variant="body" style={styles.addButtonText}>
-              {`+ ${uk.taskCrud.addTask}`}
-            </AppText>
-          </TapTarget>
-        </View>
-
-        {/* Task list */}
+        {/* Task list — the list is the scroll container (no outer ScrollView) */}
         <FlatList
+          style={[styles.list, isLandscape && styles.listLandscape]}
           data={tasks}
           keyExtractor={(item) => String(item.id)}
           contentContainerStyle={styles.listContent}
@@ -97,10 +84,10 @@ export function TaskListEditScreen({ navigation }: Props) {
           renderItem={({ item, index }) => (
             <View style={styles.taskCard}>
               <View style={styles.taskInfo}>
-                <AppText variant="title" style={styles.taskTitle}>
+                <AppText variant="title" numberOfLines={2} style={styles.taskTitle}>
                   {item.emoji ? `${item.emoji} ${item.title}` : item.title}
                 </AppText>
-                <AppText variant="body" style={styles.taskMinutes}>
+                <AppText variant="caption" style={styles.taskMinutes}>
                   {`${item.targetMinutes} хв`}
                 </AppText>
               </View>
@@ -135,16 +122,13 @@ export function TaskListEditScreen({ navigation }: Props) {
                   </TapTarget>
                 </View>
 
-                <TapTarget
-                  accessibilityRole="button"
-                  accessibilityLabel={`${uk.taskCrud.editTask}: ${item.title}`}
+                <AppButton
+                  label={uk.taskCrud.editTask}
+                  a11yLabel={`${uk.taskCrud.editTask}: ${item.title}`}
+                  variant="ghost"
+                  size="sm"
                   onPress={() => handleEdit(item.id)}
-                  style={styles.editButton}
-                >
-                  <AppText variant="body" style={styles.editButtonText}>
-                    {uk.taskCrud.editTask}
-                  </AppText>
-                </TapTarget>
+                />
               </View>
             </View>
           )}
@@ -158,48 +142,27 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
-    padding: spacing.lg,
+    gap: spacing.lg,
   },
-  topBar: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    alignItems: 'center',
-    rowGap: spacing.sm,
-    columnGap: spacing.sm,
-    width: '100%',
-    marginBottom: spacing.lg,
-  },
-  backButton: {
-    padding: spacing.sm,
-  },
-  backButtonText: {
-    color: colors.primary,
-  },
-  title: {
-    color: colors.text,
+  list: {
     flex: 1,
-    minWidth: 0,
-    flexShrink: 1,
+    width: '100%',
   },
-  addButton: {
-    flexBasis: '100%',
-    alignSelf: 'stretch',
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    backgroundColor: colors.primary,
-    borderRadius: 8,
-  },
-  addButtonText: {
-    color: colors.white,
+  listLandscape: {
+    maxWidth: CONTENT_MAX_WIDTH.list,
+    alignSelf: 'center',
   },
   listContent: {
     gap: spacing.md,
+    paddingBottom: spacing.xxl,
   },
   taskCard: {
     backgroundColor: colors.cardBg,
-    borderRadius: 12,
+    borderRadius: radius.md,
+    borderCurve: 'continuous',
     borderWidth: 1,
     borderColor: colors.border,
+    boxShadow: shadows.card,
     padding: spacing.md,
     gap: spacing.md,
   },
@@ -208,14 +171,18 @@ const styles = StyleSheet.create({
   },
   taskTitle: {
     color: colors.text,
+    flexShrink: 1,
   },
   taskMinutes: {
     color: colors.textSecondary,
   },
   actionsRow: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     justifyContent: 'space-between',
     alignItems: 'center',
+    rowGap: spacing.sm,
+    columnGap: spacing.sm,
   },
   reorderButtons: {
     flexDirection: 'row',
@@ -224,10 +191,11 @@ const styles = StyleSheet.create({
   reorderButton: {
     width: 48,
     height: 48,
-    borderRadius: 8,
+    borderRadius: radius.md,
+    borderCurve: 'continuous',
     backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: colors.borderStrong,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -236,16 +204,5 @@ const styles = StyleSheet.create({
   },
   reorderButtonText: {
     color: colors.text,
-  },
-  editButton: {
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.sm,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.primary,
-    borderRadius: 8,
-  },
-  editButtonText: {
-    color: colors.primary,
   },
 });

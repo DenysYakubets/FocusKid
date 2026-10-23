@@ -1,7 +1,7 @@
 import React from 'react';
 import { StyleSheet, View } from 'react-native';
 import { AppText } from './AppText';
-import { colors, spacing } from '../theme';
+import { colors, radius, spacing } from '../theme';
 
 export interface StatBarProps {
   label: string; // e.g. 'Пн' or 'Понеділок'
@@ -89,21 +89,27 @@ const styles = StyleSheet.create({
   },
   labelRow: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     justifyContent: 'space-between',
     alignItems: 'center',
+    rowGap: spacing.xs,
     marginBottom: spacing.xs,
   },
   dayLabel: {
     color: colors.text,
+    flexShrink: 1,
   },
   valueText: {
     color: colors.textSecondary,
+    flexShrink: 1,
+    fontVariant: ['tabular-nums'],
   },
   track: {
-    height: 16,
+    height: spacing.md,
     width: '100%',
     backgroundColor: colors.surface,
-    borderRadius: 8,
+    borderRadius: radius.sm,
+    borderCurve: 'continuous',
     borderWidth: 1,
     borderColor: colors.border,
     overflow: 'hidden',
@@ -111,7 +117,7 @@ const styles = StyleSheet.create({
   fill: {
     height: '100%',
     backgroundColor: colors.verified,
-    borderRadius: 7,
+    borderRadius: radius.sm,
     minWidth: 4,
   },
 });

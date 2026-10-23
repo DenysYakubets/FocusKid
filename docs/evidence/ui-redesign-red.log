@@ -1,0 +1,21 @@
+FAIL src/screens/__tests__/uiRedesignLayout.test.tsx
+  ● Test suite failed to run
+
+    Cannot find module '../../ui/components/AppButton' from 'src/screens/__tests__/uiRedesignLayout.test.tsx'
+
+      4 | import { act, render } from '@testing-library/react-native';
+      5 | import { AppText } from '../../ui/components/AppText';
+    > 6 | import { AppButton } from '../../ui/components/AppButton';
+        | ^
+      7 | import { NoticeBox } from '../../ui/components/NoticeBox';
+      8 | import { StatusChip } from '../../ui/components/StatusChip';
+      9 | import { PinPad } from '../../ui/components/PinPad';
+
+      at Resolver._throwModNotFoundError (node_modules/jest-resolve/build/index.js:1031:11)
+      at Object.require (src/screens/__tests__/uiRedesignLayout.test.tsx:6:1)
+
+Test Suites: 1 failed, 1 total
+Tests:       0 total
+Snapshots:   0 total
+Time:        1.223 s
+Ran all test suites matching src/screens/__tests__/uiRedesignLayout.test.tsx.

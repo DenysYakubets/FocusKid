@@ -61,7 +61,7 @@ else
   exit 1
 fi
 
-# TSC-15: INV-10 Typography >= 48sp, no raw fontSize (static half)
+# TSC-15: INV-10 no raw fontSize literals outside theme.ts (amended INV-10)
 if ! grep -rnE --exclude=theme.ts --exclude-dir=__tests__ "fontSize:\s*[0-9]" src App.tsx; then
   echo "PASS TSC-15"
 else

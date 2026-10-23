@@ -2,8 +2,9 @@ import React from 'react';
 import { StyleSheet, View } from 'react-native';
 import { TodayTaskView } from '../../domain/tasks/types';
 import { uk } from '../../i18n/uk';
-import { colors, spacing, statusColors } from '../theme';
+import { colors, radius, shadows, spacing, statusColors } from '../theme';
 import { AppText } from './AppText';
+import { StatusChip } from './StatusChip';
 import { TapTarget } from './TapTarget';
 
 export function formatMinutesUk(n: number): string {
@@ -42,12 +43,15 @@ export interface TaskCardProps {
   disabled?: boolean;
 }
 
+/**
+ * Pressed list card (spec §4.2): cardBg + hairline + shadows.card + radius.lg,
+ * 2-line title, `StatusChip` state pill and a trailing `›` press affordance.
+ * The whole card stays one TapTarget with the composite a11y label.
+ */
 export function TaskCard({ task, onPress, disabled }: TaskCardProps) {
   const statusLabel = uk.status[task.status] ?? uk.status.idle;
   const minutesLabel = formatMinutesUk(task.targetMinutes);
   const a11yLabel = `${task.title}, ${minutesLabel}, ${statusLabel}`;
-
-  const currentStatusColor = statusColors[getStatusThemeKey(task.status)];
 
   return (
     <TapTarget
@@ -60,11 +64,11 @@ export function TaskCard({ task, onPress, disabled }: TaskCardProps) {
       <View style={styles.cardInner}>
         <View style={styles.headerRow}>
           {task.emoji ? (
-            <AppText variant="title" style={styles.emoji}>
+            <AppText variant="body" style={styles.emoji}>
               {task.emoji}
             </AppText>
           ) : null}
-          <AppText variant="title" style={styles.title}>
+          <AppText variant="title" numberOfLines={2} style={styles.title}>
             {task.title}
           </AppText>
         </View>
@@ -74,11 +78,11 @@ export function TaskCard({ task, onPress, disabled }: TaskCardProps) {
             {`${task.targetMinutes} хв`}
           </AppText>
 
-          <View style={[styles.statusPill, { backgroundColor: currentStatusColor.bg }]}>
-            <AppText variant="body" style={[styles.statusText, { color: currentStatusColor.text }]}>
-              {statusLabel}
-            </AppText>
-          </View>
+          <StatusChip status={getStatusThemeKey(task.status)} label={statusLabel} />
+
+          <AppText variant="heading" style={styles.chevron}>
+            ›
+          </AppText>
         </View>
       </View>
     </TapTarget>
@@ -89,42 +93,44 @@ const styles = StyleSheet.create({
   card: {
     width: '100%',
     backgroundColor: colors.cardBg,
-    borderRadius: 16,
-    borderWidth: 2,
+    borderRadius: radius.lg,
+    borderCurve: 'continuous',
+    borderWidth: 1,
     borderColor: colors.border,
+    boxShadow: shadows.card,
     padding: spacing.md,
-    marginVertical: spacing.sm,
   },
   cardInner: {
     width: '100%',
+    gap: spacing.sm,
   },
   headerRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: spacing.sm,
+    gap: spacing.sm,
   },
   emoji: {
-    marginRight: spacing.sm,
+    color: colors.text,
   },
   title: {
     flex: 1,
+    minWidth: 0,
+    flexShrink: 1,
     color: colors.text,
   },
   footerRow: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginTop: spacing.xs,
+    rowGap: spacing.xs,
+    columnGap: spacing.sm,
   },
   duration: {
+    flexShrink: 1,
     color: colors.textSecondary,
   },
-  statusPill: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs,
-    borderRadius: 9999,
-  },
-  statusText: {
-    fontWeight: '600',
+  chevron: {
+    color: colors.textSecondary,
   },
 });

@@ -1,7 +1,7 @@
 import React from 'react';
 import { StyleSheet } from 'react-native';
 import { render } from '@testing-library/react-native';
-import { MIN_FONT_SP, MIN_TOUCH_DP, statusColors, typography } from '../theme';
+import { MIN_TOUCH_DP, fontScaleMax, statusColors, typography } from '../theme';
 import { TapTarget } from '../components/TapTarget';
 import { AppText } from '../components/AppText';
 
@@ -30,14 +30,21 @@ function contrastRatio(hex1: string, hex2: string): number {
 }
 
 describe('INV-10 Theme & Typography', () => {
-  it('MIN_FONT_SP and MIN_TOUCH_DP are at least 48', () => {
-    expect(MIN_FONT_SP).toBeGreaterThanOrEqual(48);
+  it('MIN_TOUCH_DP stays 48 and body text can reach the old 48sp need via font scaling', () => {
     expect(MIN_TOUCH_DP).toBeGreaterThanOrEqual(48);
+    expect(typography.body).toBe(16);
+    expect(fontScaleMax.text * typography.body).toBeGreaterThanOrEqual(48); // 16 × 3.0 = 48
   });
 
-  it('every typography token is >= MIN_FONT_SP (48)', () => {
+  it('typography tokens follow the amended INV-10 scale (body 16, titles 20-24, timer 64-72, all 12..72)', () => {
+    expect(typography.body).toBe(16);
+    expect(typography.title).toBeGreaterThanOrEqual(20);
+    expect(typography.title).toBeLessThanOrEqual(24);
+    expect(typography.timer).toBeGreaterThanOrEqual(64);
+    expect(typography.timer).toBeLessThanOrEqual(72);
     for (const [, size] of Object.entries(typography)) {
-      expect(size).toBeGreaterThanOrEqual(MIN_FONT_SP);
+      expect(size).toBeGreaterThanOrEqual(12);
+      expect(size).toBeLessThanOrEqual(72);
     }
   });
 

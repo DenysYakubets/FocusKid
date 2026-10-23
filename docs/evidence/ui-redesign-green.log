@@ -1,0 +1,5 @@
+Test Suites: 1 passed, 1 total
+Tests:       5 passed, 5 total
+Snapshots:   0 total
+Time:        2.107 s
+Ran all test suites matching src/screens/__tests__/uiRedesignLayout.test.tsx.

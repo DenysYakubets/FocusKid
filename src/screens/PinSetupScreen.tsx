@@ -4,7 +4,9 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/routes';
 import { useServices } from '../state/appServices';
 import { AppText } from '../ui/components/AppText';
+import { NoticeBox } from '../ui/components/NoticeBox';
 import { PinPad } from '../ui/components/PinPad';
+import { CONTENT_MAX_WIDTH, useScreenGutter } from '../ui/hooks/useScreenGutter';
 import { uk } from '../i18n/uk';
 import { colors, spacing } from '../ui/theme';
 
@@ -12,6 +14,7 @@ type Props = NativeStackScreenProps<RootStackParamList, 'PinSetup'>;
 
 export function PinSetupScreen({ navigation }: Props) {
   const { authService } = useServices();
+  const { gutter } = useScreenGutter();
 
   const [step, setStep] = useState<1 | 2>(1);
   const [firstPin, setFirstPin] = useState('');
@@ -44,34 +47,30 @@ export function PinSetupScreen({ navigation }: Props) {
   };
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <View style={styles.header}>
-        <AppText variant="title" accessibilityRole="header" style={styles.title}>
-          {uk.pin.setupTitle}
-        </AppText>
-        <AppText variant="body" style={styles.subtitle}>
-          {step === 1 ? uk.pin.setupStep1 : uk.pin.setupStep2}
-        </AppText>
-      </View>
-
-      {error ? (
-        <View style={styles.errorContainer}>
-          <AppText variant="body" style={styles.errorText}>
-            {error}
+    <ScrollView
+      contentContainerStyle={[styles.container, { padding: gutter }]}
+      keyboardShouldPersistTaps="handled"
+    >
+      {/* §4.1: centered single column, maxWidth 480, usable at any rotation. */}
+      <View style={styles.inner}>
+        <View style={styles.header}>
+          <AppText variant="title" accessibilityRole="header" style={styles.title}>
+            {uk.pin.setupTitle}
+          </AppText>
+          <AppText variant="body" style={styles.subtitle}>
+            {step === 1 ? uk.pin.setupStep1 : uk.pin.setupStep2}
           </AppText>
         </View>
-      ) : null}
 
-      <PinPad
-        value={pinValue}
-        onChange={setPinValue}
-        onComplete={handleComplete}
-      />
+        {error ? <NoticeBox tone="error" message={error} /> : null}
 
-      <View style={styles.noticeBox}>
-        <AppText variant="body" style={styles.noticeText}>
-          {uk.pin.noRecoveryNotice}
-        </AppText>
+        <PinPad
+          value={pinValue}
+          onChange={setPinValue}
+          onComplete={handleComplete}
+        />
+
+        <NoticeBox tone="info" message={uk.pin.noRecoveryNotice} />
       </View>
     </ScrollView>
   );
@@ -81,13 +80,18 @@ const styles = StyleSheet.create({
   container: {
     flexGrow: 1,
     backgroundColor: colors.background,
-    padding: spacing.lg,
-    justifyContent: 'space-between',
+  },
+  inner: {
+    flexGrow: 1,
+    width: '100%',
+    maxWidth: CONTENT_MAX_WIDTH.pin,
+    alignSelf: 'center',
     alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: spacing.md,
   },
   header: {
     alignItems: 'center',
-    marginTop: spacing.xl,
     gap: spacing.sm,
   },
   title: {
@@ -95,30 +99,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   subtitle: {
-    color: colors.textSecondary,
-    textAlign: 'center',
-  },
-  errorContainer: {
-    backgroundColor: '#FEE2E2',
-    padding: spacing.md,
-    borderRadius: 8,
-    marginVertical: spacing.md,
-    maxWidth: 400,
-  },
-  errorText: {
-    color: colors.abandoned,
-    textAlign: 'center',
-  },
-  noticeBox: {
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
-    borderWidth: 1,
-    borderRadius: 8,
-    padding: spacing.md,
-    marginTop: spacing.xl,
-    maxWidth: 480,
-  },
-  noticeText: {
     color: colors.textSecondary,
     textAlign: 'center',
   },

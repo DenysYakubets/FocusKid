@@ -16,21 +16,25 @@ import { SessionRow } from '../services/repos/sessionsRepo';
 import { restore } from '../services/timer/timerService';
 import { useServices } from '../state/appServices';
 import { useTimerStore } from '../state/timerStore';
+import { AppButton } from '../ui/components/AppButton';
 import { AppText } from '../ui/components/AppText';
+import { NoticeBox } from '../ui/components/NoticeBox';
 import { ProgressBar } from '../ui/components/ProgressBar';
-import { TapTarget } from '../ui/components/TapTarget';
+import { ScreenTopBar } from '../ui/components/ScreenTopBar';
 import { formatMinutesUk } from '../ui/components/TaskCard';
-import { useOrientation } from '../ui/hooks/useOrientation';
+import { useScreenGutter } from '../ui/hooks/useScreenGutter';
 import { uk } from '../i18n/uk';
-import { colors, spacing, statusColors } from '../ui/theme';
+import { colors, radius, spacing, statusColors } from '../ui/theme';
 import { mapTimerError } from '../ui/timerErrors';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Timer'>;
 
+/** Landscape side column narrower than this stacks the actions full-width. */
+const STACK_ACTION_COLUMN_DP = 260;
+
 export function TimerScreen({ route, navigation }: Props) {
   const { clock, tasksRepo, sessionsRepo, wall } = useServices();
-  const orientation = useOrientation();
-  const isLandscape = orientation === 'landscape';
+  const { width, gutter, isLandscape } = useScreenGutter();
 
   const snapshot = useTimerStore((s) => s.snapshot);
   const lastError = useTimerStore((s) => s.lastError);
@@ -200,6 +204,7 @@ export function TimerScreen({ route, navigation }: Props) {
 
   const isCompleted = displayState.kind === 'Completed';
   const isVerified = displayState.kind === 'Verified';
+  const isPaused = displayState.kind === 'Paused';
 
   const handleBack = () => {
     navigation.navigate('Today');
@@ -234,144 +239,145 @@ export function TimerScreen({ route, navigation }: Props) {
 
   const layoutTestID = isLandscape ? 'timer-layout-landscape' : 'timer-layout-portrait';
 
-  return (
-    <View testID={layoutTestID} style={[styles.container, isLandscape && styles.containerLandscape]}>
-      <View style={styles.topBar}>
-        <TapTarget
-          accessibilityRole="button"
-          accessibilityLabel={uk.timer.back}
-          onPress={handleBack}
-          style={styles.backButton}
-        >
-          <AppText variant="body" style={styles.backButtonText}>
-            {`← ${uk.timer.back}`}
-          </AppText>
-        </TapTarget>
+  // §4.3: two flex:1 buttons in a row — no minWidth, so nothing clips at 320dp.
+  const sideColumnWidth = (width - 2 * gutter - spacing.xl) / 2;
+  const stackSideActions = isLandscape && sideColumnWidth < STACK_ACTION_COLUMN_DP;
+  const buttonStyle = stackSideActions ? undefined : styles.flexButton;
 
-        {task ? (
-          <AppText variant="title" accessibilityRole="header" style={styles.taskTitle}>
-            {task.emoji ? `${task.emoji} ${task.title}` : task.title}
-          </AppText>
-        ) : null}
-      </View>
+  const displayNode = (
+    <View style={styles.displayZone}>
+      <AppText
+        variant={isLandscape ? 'timerLandscape' : 'timer'}
+        style={styles.digits}
+      >
+        {timeString}
+      </AppText>
+      <ProgressBar total={totalMs} elapsed={elapsedMs} style={styles.progressBar} />
+    </View>
+  );
 
-      {lastError ? (
-        <View style={styles.errorContainer}>
-          <AppText variant="body" style={styles.errorText}>
-            {mapTimerError(lastError)}
+  const pauseHintNode = isPaused ? (
+    <View style={styles.pauseHint}>
+      {budgetLeftMs > 0 ? (
+        <>
+          <AppText variant="caption" style={styles.pauseHintText}>
+            {`${uk.timer.pauseLeft} ${Math.floor(budgetLeftMs / 60000)}:${String(
+              Math.floor((budgetLeftMs % 60000) / 1000)
+            ).padStart(2, '0')}`}
           </AppText>
-        </View>
+          {budgetLeftMs < 60000 ? (
+            <AppText variant="caption" style={styles.pauseHintText}>
+              {`Часу паузи ${uk.timer.minuteLeft} менше хвилини.`}
+            </AppText>
+          ) : null}
+        </>
+      ) : (
+        <AppText variant="caption" style={styles.pauseHintText}>
+          {uk.timer.pauseBudgetExhausted}
+        </AppText>
+      )}
+    </View>
+  ) : null;
+
+  const stateNode = isCompleted ? (
+    <AppText variant="heading" style={styles.awaitingText}>
+      {uk.timer.awaiting}
+    </AppText>
+  ) : isVerified ? (
+    <View style={styles.verifiedBox}>
+      <AppText variant="heading" style={styles.verifiedText}>
+        {uk.timer.verified}
+      </AppText>
+    </View>
+  ) : null;
+
+  const actionControls = isCompleted ? (
+    <AppButton
+      label={uk.timer.showParent}
+      variant="primary"
+      size="lg"
+      disabled={displaySessionId === null}
+      onPress={handleShowParent}
+      style={isLandscape ? undefined : styles.flexButton}
+    />
+  ) : isVerified ? null : (
+    <>
+      {isLive && displayState.kind === 'Running' ? (
+        <AppButton
+          label={uk.timer.pause}
+          variant="primary"
+          size="lg"
+          disabled={isPauseDisabled}
+          onPress={() => {
+            void handlePause();
+          }}
+          style={buttonStyle}
+        />
+      ) : isLive && displayState.kind === 'Paused' ? (
+        <AppButton
+          label={uk.timer.resume}
+          variant="success"
+          size="lg"
+          onPress={() => {
+            void handleResume();
+          }}
+          style={buttonStyle}
+        />
       ) : null}
 
-      <View style={[styles.content, isLandscape && styles.contentLandscape]}>
-        {/* Digits & Progress Bar Section */}
-        <View style={[styles.displaySection, isLandscape && styles.displaySectionLandscape]}>
-          <AppText
-            variant={isLandscape ? 'timerLandscape' : 'timer'}
-            style={styles.digits}
-          >
-            {timeString}
-          </AppText>
+      <AppButton
+        label={uk.timer.addTime}
+        variant="secondary"
+        size="lg"
+        disabled={isAddTimeDisabled}
+        onPress={() => {
+          void handleAddTime();
+        }}
+        style={buttonStyle}
+      />
+    </>
+  );
 
-          <ProgressBar total={totalMs} elapsed={elapsedMs} style={styles.progressBar} />
-        </View>
-
-        {/* Controls Section */}
-        <View style={[styles.controlsSection, isLandscape && styles.controlsSectionLandscape]}>
-          {isCompleted ? (
-            <View style={styles.completedBox}>
-              <AppText variant="title" style={styles.awaitingText}>
-                {uk.timer.awaiting}
-              </AppText>
-              <TapTarget
-                accessibilityRole="button"
-                accessibilityLabel={uk.timer.showParent}
-                disabled={displaySessionId === null}
-                onPress={handleShowParent}
-                style={[styles.showParentButton, displaySessionId === null && styles.disabledButton]}
-              >
-                <AppText variant="title" style={styles.showParentButtonText}>
-                  {uk.timer.showParent}
-                </AppText>
-              </TapTarget>
-            </View>
-          ) : isVerified ? (
-            <View style={styles.verifiedBox}>
-              <AppText variant="title" style={styles.verifiedText}>
-                {uk.timer.verified}
-              </AppText>
-            </View>
-          ) : (
-            <View style={styles.controlsWrapper}>
-              <View style={[styles.buttonsRow, isLandscape && styles.buttonsColumnLandscape]}>
-                {isLive && displayState.kind === 'Running' ? (
-                  <TapTarget
-                    accessibilityRole="button"
-                    accessibilityLabel={uk.timer.pause}
-                    disabled={isPauseDisabled}
-                    onPress={() => {
-                      void handlePause();
-                    }}
-                    style={[styles.actionButton, isPauseDisabled && styles.disabledButton]}
-                  >
-                    <AppText variant="title" style={styles.actionButtonText}>
-                      {uk.timer.pause}
-                    </AppText>
-                  </TapTarget>
-                ) : isLive && displayState.kind === 'Paused' ? (
-                  <TapTarget
-                    accessibilityRole="button"
-                    accessibilityLabel={uk.timer.resume}
-                    onPress={() => {
-                      void handleResume();
-                    }}
-                    style={[styles.actionButton, styles.resumeButton]}
-                  >
-                    <AppText variant="title" style={styles.actionButtonText}>
-                      {uk.timer.resume}
-                    </AppText>
-                  </TapTarget>
-                ) : null}
-
-                <TapTarget
-                  accessibilityRole="button"
-                  accessibilityLabel={uk.timer.addTime}
-                  disabled={isAddTimeDisabled}
-                  onPress={() => {
-                    void handleAddTime();
-                  }}
-                  style={[styles.actionButton, styles.addTimeButton, isAddTimeDisabled && styles.disabledButton]}
-                >
-                  <AppText variant="title" style={styles.actionButtonText}>
-                    {uk.timer.addTime}
-                  </AppText>
-                </TapTarget>
-              </View>
-
-              {displayState.kind === 'Paused' ? (
-                <View style={styles.pauseBudgetContainer}>
-                  {budgetLeftMs > 0 ? (
-                    <>
-                      <AppText variant="body" accessibilityRole="text" style={styles.pauseBudgetText}>
-                        {`${uk.timer.pauseLeft} ${Math.floor(budgetLeftMs / 60000)}:${String(Math.floor((budgetLeftMs % 60000) / 1000)).padStart(2, '0')}`}
-                      </AppText>
-                      {budgetLeftMs < 60000 ? (
-                        <AppText variant="body" accessibilityRole="text" style={styles.pauseBudgetText}>
-                          {`Часу паузи ${uk.timer.minuteLeft} менше хвилини.`}
-                        </AppText>
-                      ) : null}
-                    </>
-                  ) : (
-                    <AppText variant="body" accessibilityRole="text" style={styles.pauseBudgetText}>
-                      {uk.timer.pauseBudgetExhausted}
-                    </AppText>
-                  )}
-                </View>
-              ) : null}
-            </View>
-          )}
-        </View>
+  const actionRow =
+    actionControls === null ? null : (
+      <View
+        style={[styles.actionRow, stackSideActions && styles.actionRowStacked]}
+      >
+        {actionControls}
       </View>
+    );
+
+  const bottomNode = (
+    <View style={styles.bottomZone}>
+      {pauseHintNode}
+      {stateNode}
+      {actionRow}
+    </View>
+  );
+
+  return (
+    <View
+      testID={layoutTestID}
+      style={[styles.container, { paddingHorizontal: gutter }]}
+    >
+      <ScreenTopBar
+        onBack={handleBack}
+        title={task ? (task.emoji ? `${task.emoji} ${task.title}` : task.title) : undefined}
+      />
+
+      {lastError ? <NoticeBox tone="error" message={mapTimerError(lastError)} /> : null}
+
+      {isLandscape ? (
+        <View style={styles.landscapeRow}>
+          {displayNode}
+          <View style={styles.sideZone}>{bottomNode}</View>
+        </View>
+      ) : (
+        <>
+          {displayNode}
+          {bottomNode}
+        </>
+      )}
     </View>
   );
 }
@@ -381,152 +387,77 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background,
     paddingTop: spacing.xl,
-    paddingHorizontal: spacing.md,
   },
-  containerLandscape: {
-    paddingTop: spacing.md,
-    paddingHorizontal: spacing.lg,
-  },
-  topBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: spacing.md,
-  },
-  backButton: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    backgroundColor: colors.surface,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  backButtonText: {
-    color: colors.textSecondary,
-  },
-  taskTitle: {
+  displayZone: {
     flex: 1,
-    marginLeft: spacing.md,
-    color: colors.text,
-  },
-  content: {
-    flex: 1,
-    justifyContent: 'space-around',
-    alignItems: 'center',
-    paddingBottom: spacing.xxl,
-  },
-  contentLandscape: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingBottom: spacing.md,
-  },
-  displaySection: {
     width: '100%',
     alignItems: 'center',
-  },
-  displaySectionLandscape: {
-    flex: 1,
-    marginRight: spacing.lg,
+    justifyContent: 'center',
+    gap: spacing.md,
   },
   digits: {
     color: colors.text,
     textAlign: 'center',
-    marginBottom: spacing.md,
+    fontVariant: ['tabular-nums'],
   },
   progressBar: {
-    width: '90%',
-    marginVertical: spacing.md,
+    width: '100%',
   },
-  controlsSection: {
+  bottomZone: {
     width: '100%',
     alignItems: 'center',
+    gap: spacing.sm,
+    paddingBottom: spacing.sm,
   },
-  controlsSectionLandscape: {
+  landscapeRow: {
     flex: 1,
-    marginLeft: spacing.lg,
-  },
-  buttonsRow: {
+    width: '100%',
     flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xl,
+  },
+  sideZone: {
+    flex: 1,
     justifyContent: 'center',
     gap: spacing.md,
-    width: '100%',
+    alignItems: 'stretch',
   },
-  buttonsColumnLandscape: {
+  actionRow: {
+    flexDirection: 'row',
+    gap: spacing.s12,
+    width: '100%',
+    paddingVertical: spacing.lg,
+  },
+  actionRowStacked: {
     flexDirection: 'column',
+  },
+  flexButton: {
+    flex: 1,
+  },
+  pauseHint: {
     alignItems: 'center',
+    gap: spacing.xs,
+    paddingHorizontal: spacing.md,
   },
-  actionButton: {
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
-    borderRadius: 16,
-    backgroundColor: colors.primary,
-    minWidth: 140,
-  },
-  resumeButton: {
-    backgroundColor: '#059669',
-  },
-  addTimeButton: {
-    backgroundColor: '#4B5563',
-  },
-  disabledButton: {
-    backgroundColor: colors.border,
-    opacity: 0.6,
-  },
-  actionButtonText: {
-    color: '#FFFFFF',
+  pauseHintText: {
+    color: colors.textSecondary,
     textAlign: 'center',
-  },
-  completedBox: {
-    alignItems: 'center',
-    width: '100%',
   },
   awaitingText: {
-    color: statusColors.awaiting.bg,
-    marginBottom: spacing.lg,
+    color: colors.awaiting,
     textAlign: 'center',
   },
-  showParentButton: {
-    backgroundColor: statusColors.awaiting.bg,
-    paddingHorizontal: spacing.xl,
-    paddingVertical: spacing.md,
-    borderRadius: 16,
-  },
-  showParentButtonText: {
-    color: statusColors.awaiting.text,
-  },
   verifiedBox: {
+    width: '100%',
     alignItems: 'center',
     backgroundColor: statusColors.verified.bg,
     paddingHorizontal: spacing.xl,
     paddingVertical: spacing.lg,
-    borderRadius: 16,
+    borderRadius: radius.lg,
+    borderCurve: 'continuous',
   },
   verifiedText: {
     color: statusColors.verified.text,
-    textAlign: 'center',
-  },
-  errorContainer: {
-    backgroundColor: '#FEE2E2',
-    padding: spacing.md,
-    borderRadius: 12,
-    marginHorizontal: spacing.md,
-    marginBottom: spacing.md,
-  },
-  errorText: {
-    color: '#991B1B',
-    textAlign: 'center',
-  },
-  controlsWrapper: {
-    alignItems: 'center',
-    width: '100%',
-  },
-  pauseBudgetContainer: {
-    marginTop: spacing.md,
-    alignItems: 'center',
-    gap: spacing.xs,
-  },
-  pauseBudgetText: {
-    color: colors.textSecondary,
     textAlign: 'center',
   },
 });

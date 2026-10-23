@@ -1,0 +1,966 @@
+
+> focuskid@0.1.0 test
+> jest --ci src/screens/__tests__/landscapeParity.inv08.test.tsx src/screens/__tests__/listActionTalkBackContext.test.tsx src/screens/__tests__/uiRedesignLayout.test.tsx
+
+FAIL src/screens/__tests__/uiRedesignLayout.test.tsx
+  ● UI redesign layout pins (UI_REDESIGN_SPEC §4-§5) › TaskEdit form max-width has a single source of truth in CONTENT_MAX_WIDTH.form (round-1 finding 3)
+
+    expect(received).not.toMatch(expected)
+
+    Expected pattern: not /\b560\b/
+    Received string:      "import React, { useEffect, useState } from 'react';
+    import { ScrollView, StyleSheet, TextInput, View } from 'react-native';
+    import { NativeStackScreenProps } from '@react-navigation/native-stack';
+    import { RootStackParamList } from '../navigation/routes';
+    import { useServices } from '../state/appServices';
+    import { tasksStore } from '../state/tasksStore';
+    import { parentSessionStore } from '../state/parentSessionStore';
+    import { validateTask, TaskValidationError } from '../domain/tasks/validation';
+    import { AppButton } from '../ui/components/AppButton';
+    import { AppText } from '../ui/components/AppText';
+    import { NoticeBox } from '../ui/components/NoticeBox';
+    import { ScreenTopBar } from '../ui/components/ScreenTopBar';
+    import { TapTarget } from '../ui/components/TapTarget';
+    import { ParentGuard } from '../navigation/ParentGuard';
+    import { useScreenGutter } from '../ui/hooks/useScreenGutter';
+    import { uk } from '../i18n/uk';
+    import { colors, radius, spacing, typography } from '../ui/theme';
+
+    type Props = NativeStackScreenProps<RootStackParamList, 'TaskEdit'>;
+
+    const WEEKDAYS = uk.taskCrud.weekdays.map((label, bit) => ({ label, bit }));
+
+    /** Forms never stretch across wide/landscape viewports (spec §4.4). */
+    const FORM_MAX_WIDTH = 560;
+
+    export function TaskEditScreen({ route, navigation }: Props) {
+      const { tasksRepo, sessionsRepo, wall, db } = useServices();
+      const { gutter } = useScreenGutter();
+      const taskId = route.params?.taskId;
+      const isEditing = taskId !== undefined;
+
+      const [title, setTitle] = useState('');
+      const [emoji, setEmoji] = useState('');
+      const [targetMinutes, setTargetMinutes] = useState(15);
+      const [daysMask, setDaysMask] = useState(127); // all 7 days by default
+      const [hasSessions, setHasSessions] = useState(false);
+      const [errors, setErrors] = useState<TaskValidationError[]>([]);
+
+      useEffect(() => {
+        if (isEditing && taskId) {
+          void (async () => {
+            const task = await tasksRepo.get(taskId);
+            if (task) {
+              setTitle(task.title);
+              setEmoji(task.emoji ?? '');
+              setTargetMinutes(task.targetMinutes);
+              setDaysMask(task.daysMask);
+            }
+
+            const countRow = await db.get<{ count: number }>(
+              `SELECT COUNT(*) AS count FROM sessions WHERE task_id = ?;`,
+              [taskId]
+            );
+            setHasSessions((countRow?.count ?? 0) > 0);
+          })();
+        }
+      }, [isEditing, taskId, tasksRepo, db]);
+
+      const toggleDay = (bit: number) => {
+        parentSessionStore.touch();
+        const mask = 1 << bit;
+        setDaysMask((prev) => prev ^ mask);
+      };
+
+      const handleAdjustMinutes = (delta: number) => {
+        parentSessionStore.touch();
+        setTargetMinutes((prev) => Math.max(0, Math.min(130, prev + delta)));
+      };
+
+      const handleSave = async () => {
+        parentSessionStore.touch();
+        const result = validateTask({
+          title,
+          emoji: emoji.trim() ? emoji.trim() : null,
+          targetMinutes,
+          daysMask,
+        });
+
+        if (!result.ok) {
+          setErrors(result.errors);
+          return;
+        }
+
+        setErrors([]);
+        const nowIso = wall.nowIso();
+
+        if (isEditing && taskId) {
+          await tasksRepo.update(
+            taskId,
+            {
+              title: result.value.title,
+              emoji: result.value.emoji,
+              targetMinutes: result.value.targetMinutes,
+              daysMask: result.value.daysMask,
+            },
+            nowIso
+          );
+        } else {
+          await tasksRepo.create(result.value, nowIso);
+        }
+
+        await tasksStore.refreshToday();
+        navigation.goBack();
+      };
+
+      const handleArchive = async () => {
+        if (!taskId) return;
+        parentSessionStore.touch();
+        await tasksRepo.archive(taskId, wall.nowIso());
+        await tasksStore.refreshToday();
+        navigation.goBack();
+      };
+
+      const handleDelete = async () => {
+        if (!taskId) return;
+        parentSessionStore.touch();
+        await tasksRepo.deleteIfUnused(taskId);
+        await tasksStore.refreshToday();
+        navigation.goBack();
+      };
+
+      const getErrorMessage = (err: TaskValidationError): string => {
+        switch (err) {
+          case 'TITLE_EMPTY':
+            return uk.taskCrud.errors.titleEmpty;
+          case 'TITLE_TOO_LONG':
+            return uk.taskCrud.errors.titleTooLong;
+          case 'TARGET_RANGE':
+            return uk.taskCrud.errors.targetRange;
+          case 'DAYS_EMPTY':
+            return uk.taskCrud.errors.daysEmpty;
+        }
+      };
+
+      return (
+        <ParentGuard navigation={navigation}>
+          <ScrollView
+            contentContainerStyle={[styles.container, { padding: gutter }]}
+            keyboardShouldPersistTaps=\"handled\"
+            onScroll={() => parentSessionStore.touch()}
+            scrollEventThrottle={1000}
+          >
+            {/* Wrapping top bar: Row A = cancel + title, Row B = full-width Save,
+                so the primary action can never sit under the keyboard. */}
+            <ScreenTopBar
+              testID=\"taskedit-topbar\"
+              onBack={() => {
+                parentSessionStore.touch();
+                navigation.goBack();
+              }}
+              backLabel={uk.taskCrud.cancel}
+              title={isEditing ? uk.taskCrud.editTask : uk.taskCrud.createTask}
+              actions={
+                <AppButton
+                  label={uk.taskCrud.save}
+                  variant=\"primary\"
+                  size=\"md\"
+                  onPress={handleSave}
+                />
+              }
+            />
+
+            {/* Validation errors */}
+            {errors.map((err) => (
+              <NoticeBox key={err} tone=\"error\" message={getErrorMessage(err)} />
+            ))}
+
+            {/* Title Input */}
+            <View style={styles.field}>
+              <AppText variant=\"body\" style={styles.fieldLabel}>
+                {uk.taskCrud.titleLabel}
+              </AppText>
+              <TextInput
+                testID=\"task-title-input\"
+                value={title}
+                onChangeText={(t) => {
+                  parentSessionStore.touch();
+                  setTitle(t);
+                }}
+                placeholder={uk.taskCrud.errors.titleEmpty}
+                placeholderTextColor={colors.textSecondary}
+                style={styles.textInput}
+              />
+            </View>
+
+            {/* Emoji Input */}
+            <View style={styles.field}>
+              <AppText variant=\"body\" style={styles.fieldLabel}>
+                {uk.taskCrud.emojiLabel}
+              </AppText>
+              <TextInput
+                testID=\"task-emoji-input\"
+                value={emoji}
+                onChangeText={(e) => {
+                  parentSessionStore.touch();
+                  setEmoji(e);
+                }}
+                placeholder=\"📚\"
+                placeholderTextColor={colors.textSecondary}
+                style={styles.textInput}
+                maxLength={8}
+              />
+            </View>
+
+            {/* Target Minutes Stepper */}
+            <View style={styles.field}>
+              <AppText variant=\"body\" style={styles.fieldLabel}>
+                {uk.taskCrud.targetMinutesLabel}
+              </AppText>
+              <View testID=\"taskedit-stepper\" style={styles.stepperRow}>
+                <TapTarget
+                  accessibilityRole=\"button\"
+                  accessibilityLabel={uk.taskCrud.stepLess5}
+                  onPress={() => handleAdjustMinutes(-5)}
+                  style={styles.stepperButton}
+                >
+                  <AppText variant=\"body\" style={styles.stepperButtonText}>
+                    -5
+                  </AppText>
+                </TapTarget>
+
+                <TapTarget
+                  accessibilityRole=\"button\"
+                  accessibilityLabel={uk.taskCrud.stepLess1}
+                  onPress={() => handleAdjustMinutes(-1)}
+                  style={styles.stepperButton}
+                >
+                  <AppText variant=\"body\" style={styles.stepperButtonText}>
+                    -1
+                  </AppText>
+                </TapTarget>
+
+                <AppText variant=\"heading\" style={styles.minutesDisplay}>
+                  {`${targetMinutes} хв`}
+                </AppText>
+
+                <TapTarget
+                  accessibilityRole=\"button\"
+                  accessibilityLabel={uk.taskCrud.stepMore1}
+                  onPress={() => handleAdjustMinutes(1)}
+                  style={styles.stepperButton}
+                >
+                  <AppText variant=\"body\" style={styles.stepperButtonText}>
+                    +1
+                  </AppText>
+                </TapTarget>
+
+                <TapTarget
+                  accessibilityRole=\"button\"
+                  accessibilityLabel={uk.taskCrud.stepMore5}
+                  onPress={() => handleAdjustMinutes(5)}
+                  style={styles.stepperButton}
+                >
+                  <AppText variant=\"body\" style={styles.stepperButtonText}>
+                    +5
+                  </AppText>
+                </TapTarget>
+              </View>
+            </View>
+
+            {/* Weekday Toggles */}
+            <View style={styles.field}>
+              <AppText variant=\"body\" style={styles.fieldLabel}>
+                {uk.taskCrud.weekdaysLabel}
+              </AppText>
+              <View testID=\"taskedit-weekdays\" style={styles.weekdaysRow}>
+                {WEEKDAYS.map((day) => {
+                  const isSelected = (daysMask & (1 << day.bit)) !== 0;
+                  return (
+                    <TapTarget
+                      key={day.bit}
+                      accessibilityRole=\"button\"
+                      accessibilityLabel={`${day.label}: ${isSelected ? uk.taskCrud.daySelected : uk.taskCrud.dayUnselected}`}
+                      onPress={() => toggleDay(day.bit)}
+                      style={[
+                        styles.dayButton,
+                        isSelected ? styles.dayButtonSelected : styles.dayButtonUnselected,
+                      ]}
+                    >
+                      <AppText
+                        variant=\"body\"
+                        style={[
+                          styles.dayText,
+                          isSelected ? styles.dayTextSelected : styles.dayTextUnselected,
+                        ]}
+                      >
+                        {day.label}
+                      </AppText>
+                    </TapTarget>
+                  );
+                })}
+              </View>
+            </View>
+
+            {/* Action: Archive or Delete */}
+            {isEditing ? (
+              <View style={styles.dangerZone}>
+                {hasSessions ? (
+                  <AppButton
+                    label={uk.taskCrud.archive}
+                    variant=\"secondary\"
+                    size=\"md\"
+                    onPress={handleArchive}
+                  />
+                ) : (
+                  <AppButton
+                    label={uk.taskCrud.delete}
+                    variant=\"danger\"
+                    size=\"md\"
+                    onPress={handleDelete}
+                  />
+                )}
+              </View>
+            ) : null}
+          </ScrollView>
+        </ParentGuard>
+      );
+    }
+
+    const styles = StyleSheet.create({
+      container: {
+        flexGrow: 1,
+        width: '100%',
+        maxWidth: FORM_MAX_WIDTH,
+        alignSelf: 'center',
+        backgroundColor: colors.background,
+        gap: spacing.lg,
+      },
+      field: {
+        gap: spacing.sm,
+      },
+      fieldLabel: {
+        color: colors.textSecondary,
+      },
+      textInput: {
+        backgroundColor: colors.surface,
+        borderWidth: 1,
+        borderColor: colors.borderStrong,
+        borderRadius: radius.md,
+        borderCurve: 'continuous',
+        padding: spacing.md,
+        color: colors.text,
+        minHeight: 56,
+        fontSize: typography.body,
+      },
+      stepperRow: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        rowGap: spacing.sm,
+        gap: spacing.s12,
+      },
+      stepperButton: {
+        width: 48,
+        height: 48,
+        borderRadius: radius.md,
+        borderCurve: 'continuous',
+        backgroundColor: colors.surface,
+        borderWidth: 1,
+        borderColor: colors.borderStrong,
+        justifyContent: 'center',
+        alignItems: 'center',
+      },
+      stepperButtonText: {
+        color: colors.primary,
+      },
+      minutesDisplay: {
+        color: colors.text,
+        minWidth: 80,
+        textAlign: 'center',
+      },
+      weekdaysRow: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        rowGap: spacing.sm,
+        gap: spacing.sm,
+      },
+      dayButton: {
+        minWidth: 48,
+        minHeight: 48,
+        paddingHorizontal: spacing.sm,
+        borderRadius: radius.md,
+        borderCurve: 'continuous',
+        justifyContent: 'center',
+        alignItems: 'center',
+      },
+      dayButtonSelected: {
+        backgroundColor: colors.primary,
+      },
+      dayButtonUnselected: {
+        backgroundColor: colors.surface,
+        borderWidth: 1,
+        borderColor: colors.borderStrong,
+      },
+      dayText: {
+        textAlign: 'center',
+      },
+      dayTextSelected: {
+        color: colors.white,
+      },
+      dayTextUnselected: {
+        color: colors.text,
+      },
+      dangerZone: {
+        marginTop: spacing.xl,
+        paddingTop: spacing.lg,
+        borderTopWidth: 1,
+        borderTopColor: colors.divider,
+        gap: spacing.md,
+      },
+    });"
+
+      146 |     // Spec §1.1: one source of truth — no second 560 constant in a screen.
+      147 |     const src = readFileSync('src/screens/TaskEditScreen.tsx', 'utf8');
+    > 148 |     expect(src).not.toMatch(/\b560\b/);
+          |                     ^
+      149 |     expect(src).toContain('CONTENT_MAX_WIDTH.form');
+      150 |
+      151 |     // The rendered form still caps at the §3.6 forms width.
+
+      at Object.toMatch (src/screens/__tests__/uiRedesignLayout.test.tsx:148:21)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+      at node_modules/@babel/runtime/helpers/asyncToGenerator.js:22:7
+      at Object.<anonymous> (node_modules/@babel/runtime/helpers/asyncToGenerator.js:14:12)
+
+FAIL src/screens/__tests__/landscapeParity.inv08.test.tsx
+  ● Console
+
+    console.error
+      An update to PinGateScreen inside a test was not wrapped in act(...).
+      
+      When testing, code that causes React state updates should be wrapped into act(...):
+      
+      act(() => {
+        /* fire events that update state */
+      });
+      /* assert on the output */
+      
+      This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+
+      34 |   pinDraft: '',
+      35 |   setPinDraft: (pin: string) => set({ pinDraft: pin }),
+    > 36 |   clearPinDraft: () => set({ pinDraft: '' }),
+         |                        ^
+      37 |   service: null,
+      38 |
+      39 |   setService: (service: AuthService) => {
+
+      at node_modules/react-reconciler/cjs/react-reconciler.development.js:17864:19
+      at runWithFiberInDEV (node_modules/react-reconciler/cjs/react-reconciler.development.js:2663:13)
+      at warnIfUpdatesNotWrappedWithActDEV (node_modules/react-reconciler/cjs/react-reconciler.development.js:17863:9)
+      at scheduleUpdateOnFiber (node_modules/react-reconciler/cjs/react-reconciler.development.js:15445:11)
+      at forceStoreRerender (node_modules/react-reconciler/cjs/react-reconciler.development.js:6163:24)
+      at node_modules/react-reconciler/cjs/react-reconciler.development.js:6148:11
+      at node_modules/zustand/vanilla.js:11:39
+          at Set.forEach (<anonymous>)
+      at setState (node_modules/zustand/vanilla.js:11:17)
+      at Object.set [as clearPinDraft] (src/state/parentSessionStore.ts:36:24)
+      at Object.clearPinDraft (src/screens/__tests__/landscapeParity.inv08.test.tsx:273:35)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+    console.error
+      React has detected a change in the order of Hooks called by PinGateScreen. This will lead to bugs and errors if not fixed. For more information, read the Rules of Hooks: https://react.dev/link/rules-of-hooks
+      
+         Previous render            Next render
+         ------------------------------------------------------
+      1. useContext                 useContext
+      2. useCallback                useState
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+      4 |
+      5 | export function useOrientation(): Orientation {
+    > 6 |   const { width, height } = ReactNative.useWindowDimensions();
+        |                                         ^
+      7 |   return width > height ? 'landscape' : 'portrait';
+      8 | }
+      9 |
+
+      at updateHookTypesDev (node_modules/react-reconciler/cjs/react-reconciler.development.js:5456:19)
+      at Object.useState (node_modules/react-reconciler/cjs/react-reconciler.development.js:19815:9)
+      at process.env.NODE_ENV.exports.useState (node_modules/react/cjs/react.development.js:1309:34)
+      at Object.useWindowDimensions (node_modules/react-native/Libraries/Utilities/useWindowDimensions.js:26:47)
+      at useWindowDimensions (src/ui/hooks/useOrientation.ts:6:41)
+      at PinGateScreen (src/screens/PinGateScreen.tsx:24:37)
+      at Object.react_stack_bottom_frame (node_modules/react-reconciler/cjs/react-reconciler.development.js:19204:20)
+      at renderWithHooks (node_modules/react-reconciler/cjs/react-reconciler.development.js:5549:22)
+      at updateFunctionComponent (node_modules/react-reconciler/cjs/react-reconciler.development.js:7969:19)
+      at beginWork (node_modules/react-reconciler/cjs/react-reconciler.development.js:9591:18)
+      at runWithFiberInDEV (node_modules/react-reconciler/cjs/react-reconciler.development.js:2663:13)
+      at performUnitOfWork (node_modules/react-reconciler/cjs/react-reconciler.development.js:16674:22)
+      at workLoopSync (node_modules/react-reconciler/cjs/react-reconciler.development.js:16500:41)
+      at renderRootSync (node_modules/react-reconciler/cjs/react-reconciler.development.js:16481:11)
+      at performWorkOnRoot (node_modules/react-reconciler/cjs/react-reconciler.development.js:15540:11)
+      at performSyncWorkOnRoot (node_modules/react-reconciler/cjs/react-reconciler.development.js:3535:7)
+      at flushSyncWorkAcrossRoots_impl (node_modules/react-reconciler/cjs/react-reconciler.development.js:3377:21)
+      at processRootScheduleInMicrotask (node_modules/react-reconciler/cjs/react-reconciler.development.js:3416:9)
+      at node_modules/react-reconciler/cjs/react-reconciler.development.js:3555:17
+      at node_modules/test-renderer/src/reconciler/scheduling.ts:66:7
+
+    console.error
+      Uncaught error: Error: Should have a queue. You are likely calling Hooks conditionally, which is not allowed. (https://react.dev/link/invalid-hook-call)
+          at updateReducerImpl (/home/hermes/work/FocusKid/node_modules/react-reconciler/cjs/react-reconciler.development.js:5874:15)
+          at updateReducer (/home/hermes/work/FocusKid/node_modules/react-reconciler/cjs/react-reconciler.development.js:5869:14)
+          at Object.useState (/home/hermes/work/FocusKid/node_modules/react-reconciler/cjs/react-reconciler.development.js:19819:18)
+          at process.env.NODE_ENV.exports.useState (/home/hermes/work/FocusKid/node_modules/react/cjs/react.development.js:1309:34)
+          at Object.useWindowDimensions (/home/hermes/work/FocusKid/node_modules/react-native/Libraries/Utilities/useWindowDimensions.js:26:47)
+          at useWindowDimensions (/home/hermes/work/FocusKid/src/ui/hooks/useOrientation.ts:6:41)
+          at PinGateScreen (/home/hermes/work/FocusKid/src/screens/PinGateScreen.tsx:24:37)
+          at Object.react_stack_bottom_frame (/home/hermes/work/FocusKid/node_modules/react-reconciler/cjs/react-reconciler.development.js:19204:20)
+          at renderWithHooks (/home/hermes/work/FocusKid/node_modules/react-reconciler/cjs/react-reconciler.development.js:5549:22)
+          at updateFunctionComponent (/home/hermes/work/FocusKid/node_modules/react-reconciler/cjs/react-reconciler.development.js:7969:19)
+          at beginWork (/home/hermes/work/FocusKid/node_modules/react-reconciler/cjs/react-reconciler.development.js:9591:18)
+          at runWithFiberInDEV (/home/hermes/work/FocusKid/node_modules/react-reconciler/cjs/react-reconciler.development.js:2663:13)
+          at performUnitOfWork (/home/hermes/work/FocusKid/node_modules/react-reconciler/cjs/react-reconciler.development.js:16674:22)
+          at workLoopSync (/home/hermes/work/FocusKid/node_modules/react-reconciler/cjs/react-reconciler.development.js:16500:41)
+          at renderRootSync (/home/hermes/work/FocusKid/node_modules/react-reconciler/cjs/react-reconciler.development.js:16481:11)
+          at performWorkOnRoot (/home/hermes/work/FocusKid/node_modules/react-reconciler/cjs/react-reconciler.development.js:15620:35)
+          at performSyncWorkOnRoot (/home/hermes/work/FocusKid/node_modules/react-reconciler/cjs/react-reconciler.development.js:3535:7)
+          at flushSyncWorkAcrossRoots_impl (/home/hermes/work/FocusKid/node_modules/react-reconciler/cjs/react-reconciler.development.js:3377:21)
+          at processRootScheduleInMicrotask (/home/hermes/work/FocusKid/node_modules/react-reconciler/cjs/react-reconciler.development.js:3416:9)
+          at /home/hermes/work/FocusKid/node_modules/react-reconciler/cjs/react-reconciler.development.js:3555:17
+          at /home/hermes/work/FocusKid/node_modules/test-renderer/src/reconciler/scheduling.ts:66:7
+          at node:internal/process/task_queues:151:7
+          at AsyncResource.runInAsyncScope (node:async_hooks:226:14)
+          at AsyncResource.runMicrotask (node:internal/process/task_queues:148:8) {
+        componentStack: '\n' +
+          '    at route (/home/hermes/work/FocusKid/src/screens/PinGateScreen.tsx:22:33)\n' +
+          '    at value (/home/hermes/work/FocusKid/node_modules/@react-navigation/core/src/theming/ThemeProvider.tsx:10:33)\n' +
+          '    at children (/home/hermes/work/FocusKid/node_modules/@react-navigation/core/src/EnsureSingleNavigator.tsx:20:41)\n' +
+          '    at initialState (/home/hermes/work/FocusKid/node_modules/@react-navigation/core/src/BaseNavigationContainer.tsx:92:7)\n' +
+          '    at direction (/home/hermes/work/FocusKid/node_modules/@react-navigation/native/src/NavigationContainer.tsx:72:5)\n' +
+          '    at children (/home/hermes/work/FocusKid/test/setup.ts:15:26)\n' +
+          '    at services (/home/hermes/work/FocusKid/src/state/appServices.ts:89:39)\n' +
+          '    at children (/home/hermes/work/FocusKid/test/helpers/renderWithApp.tsx:65:22)'
+      }
+
+      at defaultOnUncaughtError (node_modules/test-renderer/src/renderer.ts:16:11)
+      at logUncaughtError (node_modules/react-reconciler/cjs/react-reconciler.development.js:7217:11)
+      at runWithFiberInDEV (node_modules/react-reconciler/cjs/react-reconciler.development.js:2663:13)
+      at lane.callback (node_modules/react-reconciler/cjs/react-reconciler.development.js:7247:9)
+      at callCallback (node_modules/react-reconciler/cjs/react-reconciler.development.js:5300:16)
+      at commitCallbacks (node_modules/react-reconciler/cjs/react-reconciler.development.js:5320:11)
+      at runWithFiberInDEV (node_modules/react-reconciler/cjs/react-reconciler.development.js:2663:13)
+      at commitLayoutEffectOnFiber (node_modules/react-reconciler/cjs/react-reconciler.development.js:12580:15)
+      at flushLayoutEffects (node_modules/react-reconciler/cjs/react-reconciler.development.js:17239:15)
+      at commitRoot (node_modules/react-reconciler/cjs/react-reconciler.development.js:17104:36)
+      at completeRoot (node_modules/react-reconciler/cjs/react-reconciler.development.js:17008:9)
+      at completeRootWhenReady (node_modules/react-reconciler/cjs/react-reconciler.development.js:15856:7)
+      at performWorkOnRoot (node_modules/react-reconciler/cjs/react-reconciler.development.js:15764:15)
+      at performSyncWorkOnRoot (node_modules/react-reconciler/cjs/react-reconciler.development.js:3535:7)
+      at flushSyncWorkAcrossRoots_impl (node_modules/react-reconciler/cjs/react-reconciler.development.js:3377:21)
+      at processRootScheduleInMicrotask (node_modules/react-reconciler/cjs/react-reconciler.development.js:3416:9)
+      at node_modules/react-reconciler/cjs/react-reconciler.development.js:3555:17
+      at node_modules/test-renderer/src/reconciler/scheduling.ts:66:7
+
+  ● INV-08 Landscape Parity › landscape two-column: PinGate header shrinks instead of collapsing the keypad to 0dp (round-1 finding 1)
+
+    expect(received).toBeGreaterThan(expected)
+
+    Expected: > 0
+    Received:   0
+
+      314 |       // Before the fix the right column resolved to 0dp at every width
+      315 |       // (header claimed width:100% with RN's default flexShrink 0).
+    > 316 |       expect(pinPadW).toBeGreaterThan(0);
+          |                       ^
+      317 |       expect(pinPadW).toBeGreaterThanOrEqual(inner * 0.3); // usable keypad column
+      318 |       expect(headerW + pinPadW + spacing.lg).toBeLessThanOrEqual(inner + 0.01);
+      319 |
+
+      at toBeGreaterThan (src/screens/__tests__/landscapeParity.inv08.test.tsx:316:23)
+          at _loop.next (<anonymous>)
+      at Object._loop (src/screens/__tests__/landscapeParity.inv08.test.tsx:281:40)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+FAIL src/screens/__tests__/listActionTalkBackContext.test.tsx
+  ● round-1: TalkBack keeps per-task context on list actions › TaskListEdit: the edit button announces which task it edits
+
+    Unable to find an element with accessibility label: Редагувати завдання: Читання
+
+    [36m<View>[39m
+      [36m<View[39m
+        [33mtestID[39m=[32m"tasklistedit-topbar"[39m
+      [36m>[39m
+        [36m<View[39m
+          [33maccessibilityLabel[39m=[32m"Назад"[39m
+          [33maccessibilityRole[39m=[32m"button"[39m
+          [33maccessibilityState[39m=[32m{
+            {
+              "disabled": false,
+            }
+          }[39m
+          [33maccessible[39m=[32m{true}[39m
+        [36m>[39m
+          [36m<Text>[39m
+            [0m← Назад[0m
+          [36m</Text>[39m
+        [36m</View>[39m
+        [36m<Text[39m
+          [33maccessibilityRole[39m=[32m"header"[39m
+          [33mtestID[39m=[32m"tasklistedit-title"[39m
+        [36m>[39m
+          [0mЗавдання[0m
+        [36m</Text>[39m
+        [36m<View[39m
+          [33maccessibilityLabel[39m=[32m"Додати завдання"[39m
+          [33maccessibilityRole[39m=[32m"button"[39m
+          [33maccessibilityState[39m=[32m{
+            {
+              "disabled": false,
+            }
+          }[39m
+          [33maccessible[39m=[32m{true}[39m
+        [36m>[39m
+          [36m<Text>[39m
+            [0mДодати завдання[0m
+          [36m</Text>[39m
+        [36m</View>[39m
+      [36m</View>[39m
+      [36m<RCTScrollView>[39m
+        [36m<View>[39m
+          [36m<View>[39m
+            [36m<View>[39m
+              [36m<View>[39m
+                [36m<Text>[39m
+                  [0m📚 Читання[0m
+                [36m</Text>[39m
+                [36m<Text>[39m
+                  [0m15 хв[0m
+                [36m</Text>[39m
+              [36m</View>[39m
+              [36m<View>[39m
+                [36m<View>[39m
+                  [36m<View[39m
+                    [33maccessibilityLabel[39m=[32m"Вгору: Читання"[39m
+                    [33maccessibilityRole[39m=[32m"button"[39m
+                    [33maccessibilityState[39m=[32m{
+                      {
+                        "disabled": true,
+                      }
+                    }[39m
+                    [33maccessible[39m=[32m{true}[39m
+                  [36m>[39m
+                    [36m<Text>[39m
+                      [0m▲[0m
+                    [36m</Text>[39m
+                  [36m</View>[39m
+                  [36m<View[39m
+                    [33maccessibilityLabel[39m=[32m"Вниз: Читання"[39m
+                    [33maccessibilityRole[39m=[32m"button"[39m
+                    [33maccessibilityState[39m=[32m{
+                      {
+                        "disabled": false,
+                      }
+                    }[39m
+                    [33maccessible[39m=[32m{true}[39m
+                  [36m>[39m
+                    [36m<Text>[39m
+                      [0m▼[0m
+                    [36m</Text>[39m
+                  [36m</View>[39m
+                [36m</View>[39m
+                [36m<View[39m
+                  [33maccessibilityLabel[39m=[32m"Редагувати завдання"[39m
+                  [33maccessibilityRole[39m=[32m"button"[39m
+                  [33maccessibilityState[39m=[32m{
+                    {
+                      "disabled": false,
+                    }
+                  }[39m
+                  [33maccessible[39m=[32m{true}[39m
+                [36m>[39m
+                  [36m<Text>[39m
+                    [0mРедагувати завдання[0m
+                  [36m</Text>[39m
+                [36m</View>[39m
+              [36m</View>[39m
+            [36m</View>[39m
+          [36m</View>[39m
+          [36m<View>[39m
+            [36m<View>[39m
+              [36m<View>[39m
+                [36m<Text>[39m
+                  [0m📝 Домашнє завдання[0m
+                [36m</Text>[39m
+                [36m<Text>[39m
+                  [0m30 хв[0m
+                [36m</Text>[39m
+              [36m</View>[39m
+              [36m<View>[39m
+                [36m<View>[39m
+                  [36m<View[39m
+                    [33maccessibilityLabel[39m=[32m"Вгору: Домашнє завдання"[39m
+                    [33maccessibilityRole[39m=[32m"button"[39m
+                    [33maccessibilityState[39m=[32m{
+                      {
+                        "disabled": false,
+                      }
+                    }[39m
+                    [33maccessible[39m=[32m{true}[39m
+                  [36m>[39m
+                    [36m<Text>[39m
+                      [0m▲[0m
+                    [36m</Text>[39m
+                  [36m</View>[39m
+                  [36m<View[39m
+                    [33maccessibilityLabel[39m=[32m"Вниз: Домашнє завдання"[39m
+                    [33maccessibilityRole[39m=[32m"button"[39m
+                    [33maccessibilityState[39m=[32m{
+                      {
+                        "disabled": false,
+                      }
+                    }[39m
+                    [33maccessible[39m=[32m{true}[39m
+                  [36m>[39m
+                    [36m<Text>[39m
+                      [0m▼[0m
+                    [36m</Text>[39m
+                  [36m</View>[39m
+                [36m</View>[39m
+                [36m<View[39m
+                  [33maccessibilityLabel[39m=[32m"Редагувати завдання"[39m
+                  [33maccessibilityRole[39m=[32m"button"[39m
+                  [33maccessibilityState[39m=[32m{
+                    {
+                      "disabled": false,
+                    }
+                  }[39m
+                  [33maccessible[39m=[32m{true}[39m
+                [36m>[39m
+                  [36m<Text>[39m
+                    [0mРедагувати завдання[0m
+                  [36m</Text>[39m
+                [36m</View>[39m
+              [36m</View>[39m
+            [36m</View>[39m
+          [36m</View>[39m
+          [36m<View>[39m
+            [36m<View>[39m
+              [36m<View>[39m
+                [36m<Text>[39m
+                  [0m🧹 Прибрати кімнату[0m
+                [36m</Text>[39m
+                [36m<Text>[39m
+                  [0m10 хв[0m
+                [36m</Text>[39m
+              [36m</View>[39m
+              [36m<View>[39m
+                [36m<View>[39m
+                  [36m<View[39m
+                    [33maccessibilityLabel[39m=[32m"Вгору: Прибрати кімнату"[39m
+                    [33maccessibilityRole[39m=[32m"button"[39m
+                    [33maccessibilityState[39m=[32m{
+                      {
+                        "disabled": false,
+                      }
+                    }[39m
+                    [33maccessible[39m=[32m{true}[39m
+                  [36m>[39m
+                    [36m<Text>[39m
+                      [0m▲[0m
+                    [36m</Text>[39m
+                  [36m</View>[39m
+                  [36m<View[39m
+                    [33maccessibilityLabel[39m=[32m"Вниз: Прибрати кімнату"[39m
+                    [33maccessibilityRole[39m=[32m"button"[39m
+                    [33maccessibilityState[39m=[32m{
+                      {
+                        "disabled": true,
+                      }
+                    }[39m
+                    [33maccessible[39m=[32m{true}[39m
+                  [36m>[39m
+                    [36m<Text>[39m
+                      [0m▼[0m
+                    [36m</Text>[39m
+                  [36m</View>[39m
+                [36m</View>[39m
+                [36m<View[39m
+                  [33maccessibilityLabel[39m=[32m"Редагувати завдання"[39m
+                  [33maccessibilityRole[39m=[32m"button"[39m
+                  [33maccessibilityState[39m=[32m{
+                    {
+                      "disabled": false,
+                    }
+                  }[39m
+                  [33maccessible[39m=[32m{true}[39m
+                [36m>[39m
+                  [36m<Text>[39m
+                    [0mРедагувати завдання[0m
+                  [36m</Text>[39m
+                [36m</View>[39m
+              [36m</View>[39m
+            [36m</View>[39m
+          [36m</View>[39m
+        [36m</View>[39m
+      [36m</RCTScrollView>[39m
+    [36m</View>[39m
+
+      58 |     // ...while TalkBack gets the base-85f762c composite label with the task title.
+      59 |     for (const task of tasks) {
+    > 60 |       expect(screen.getByLabelText(`${uk.taskCrud.editTask}: ${task.title}`)).toBeTruthy();
+         |                     ^
+      61 |     }
+      62 |   });
+      63 |
+
+      at Object.getByLabelText (src/screens/__tests__/listActionTalkBackContext.test.tsx:60:21)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+  ● round-1: TalkBack keeps per-task context on list actions › ParentHome: verify / abandon buttons announce which session they act on
+
+    Unable to find an element with accessibility label: Перевірити: Читання
+
+    [36m<View[39m
+      [33mtestID[39m=[32m"parent-home-layout-portrait"[39m
+    [36m>[39m
+      [36m<View>[39m
+        [36m<Text[39m
+          [33maccessibilityRole[39m=[32m"header"[39m
+        [36m>[39m
+          [0mБатьківський режим[0m
+        [36m</Text>[39m
+        [36m<View[39m
+          [33maccessibilityLabel[39m=[32m"Вийти"[39m
+          [33maccessibilityRole[39m=[32m"button"[39m
+          [33maccessibilityState[39m=[32m{
+            {
+              "disabled": false,
+            }
+          }[39m
+          [33maccessible[39m=[32m{true}[39m
+        [36m>[39m
+          [36m<Text>[39m
+            [0mВийти[0m
+          [36m</Text>[39m
+        [36m</View>[39m
+      [36m</View>[39m
+      [36m<View>[39m
+        [36m<View[39m
+          [33maccessibilityLabel[39m=[32m"Керування завданнями"[39m
+          [33maccessibilityRole[39m=[32m"button"[39m
+          [33maccessibilityState[39m=[32m{
+            {
+              "disabled": false,
+            }
+          }[39m
+          [33maccessible[39m=[32m{true}[39m
+        [36m>[39m
+          [36m<Text>[39m
+            [0mКерування завданнями[0m
+          [36m</Text>[39m
+        [36m</View>[39m
+        [36m<View[39m
+          [33maccessibilityLabel[39m=[32m"Статистика"[39m
+          [33maccessibilityRole[39m=[32m"button"[39m
+          [33maccessibilityState[39m=[32m{
+            {
+              "disabled": false,
+            }
+          }[39m
+          [33maccessible[39m=[32m{true}[39m
+        [36m>[39m
+          [36m<Text>[39m
+            [0mСтатистика[0m
+          [36m</Text>[39m
+        [36m</View>[39m
+        [36m<View[39m
+          [33maccessibilityLabel[39m=[32m"Змінити PIN-код"[39m
+          [33maccessibilityRole[39m=[32m"button"[39m
+          [33maccessibilityState[39m=[32m{
+            {
+              "disabled": false,
+            }
+          }[39m
+          [33maccessible[39m=[32m{true}[39m
+        [36m>[39m
+          [36m<Text>[39m
+            [0mЗмінити PIN-код[0m
+          [36m</Text>[39m
+        [36m</View>[39m
+      [36m</View>[39m
+      [36m<View>[39m
+        [36m<Text[39m
+          [33maccessibilityRole[39m=[32m"header"[39m
+        [36m>[39m
+          [0mОчікують перевірки[0m
+        [36m</Text>[39m
+        [36m<RCTScrollView>[39m
+          [36m<View>[39m
+            [36m<View>[39m
+              [36m<View>[39m
+                [36m<View>[39m
+                  [36m<Text>[39m
+                    [0m📚 Читання[0m
+                  [36m</Text>[39m
+                [36m</View>[39m
+                [36m<View>[39m
+                  [36m<View[39m
+                    [33maccessibilityLabel[39m=[32m"Перевірити"[39m
+                    [33maccessibilityRole[39m=[32m"button"[39m
+                    [33maccessibilityState[39m=[32m{
+                      {
+                        "disabled": false,
+                      }
+                    }[39m
+                    [33maccessible[39m=[32m{true}[39m
+                  [36m>[39m
+                    [36m<Text>[39m
+                      [0mПеревірити[0m
+                    [36m</Text>[39m
+                  [36m</View>[39m
+                  [36m<View[39m
+                    [33maccessibilityLabel[39m=[32m"Скасувати сесію"[39m
+                    [33maccessibilityRole[39m=[32m"button"[39m
+                    [33maccessibilityState[39m=[32m{
+                      {
+                        "disabled": false,
+                      }
+                    }[39m
+                    [33maccessible[39m=[32m{true}[39m
+                  [36m>[39m
+                    [36m<Text>[39m
+                      [0mСкасувати сесію[0m
+                    [36m</Text>[39m
+                  [36m</View>[39m
+                [36m</View>[39m
+              [36m</View>[39m
+            [36m</View>[39m
+          [36m</View>[39m
+        [36m</RCTScrollView>[39m
+      [36m</View>[39m
+    [36m</View>[39m
+
+      93 |     // ...TalkBack keeps the per-task suffix from the baseline implementation.
+      94 |     expect(
+    > 95 |       screen.getByLabelText(`${uk.parentHome.verify}: ${task!.title}`)
+         |              ^
+      96 |     ).toBeTruthy();
+      97 |     expect(
+      98 |       screen.getByLabelText(`${uk.parentHome.abandon}: ${task!.title}`)
+
+      at Object.getByLabelText (src/screens/__tests__/listActionTalkBackContext.test.tsx:95:14)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+Test Suites: 3 failed, 3 total
+Tests:       4 failed, 9 passed, 13 total
+Snapshots:   0 total
+Time:        3.431 s, estimated 5 s
+Ran all test suites matching src/screens/__tests__/landscapeParity.inv08.test.tsx|src/screens/__tests__/listActionTalkBackContext.test.tsx|src/screens/__tests__/uiRedesignLayout.test.tsx.

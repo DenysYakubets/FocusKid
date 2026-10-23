@@ -7,11 +7,11 @@ import { parentSessionStore } from '../state/parentSessionStore';
 import { ParentGuard } from '../navigation/ParentGuard';
 import { WeekSummary, TaskStat } from '../domain/stats/aggregate';
 import { AppText } from '../ui/components/AppText';
-import { TapTarget } from '../ui/components/TapTarget';
+import { ScreenTopBar } from '../ui/components/ScreenTopBar';
 import { StatBar } from '../ui/components/StatBar';
 import { useOrientation } from '../ui/hooks/useOrientation';
 import { uk } from '../i18n/uk';
-import { colors, spacing } from '../ui/theme';
+import { colors, radius, spacing } from '../ui/theme';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Stats'>;
 
@@ -61,34 +61,78 @@ export function StatsScreen({ navigation }: Props) {
     ? Math.max(...summary.days.map((d) => d.focusedMinutes), 60)
     : 60;
 
+  const totalsNode = (
+    <View style={styles.totalsContainer}>
+      <View style={styles.totalCard}>
+        <AppText variant="body" style={styles.totalLabel}>
+          {uk.stats.totalVerified}
+        </AppText>
+        <AppText variant="display" style={styles.totalValue}>
+          {String(summary?.totalVerified ?? 0)}
+        </AppText>
+      </View>
+
+      <View style={styles.totalCard}>
+        <AppText variant="body" style={styles.totalLabel}>
+          {uk.stats.totalMinutes}
+        </AppText>
+        <AppText variant="display" style={styles.totalValue}>
+          {String(summary?.totalMinutes ?? 0)}
+        </AppText>
+      </View>
+    </View>
+  );
+
+  const daysNode = (
+    <View style={styles.daysSection}>
+      {summary?.days.map((day, idx) => {
+        const shortDay = uk.stats.shortWeekdays[idx] ?? day.localDate;
+        const fullDay = uk.stats.weekdays[idx] ?? day.localDate;
+        return (
+          <StatBar
+            key={day.localDate}
+            label={shortDay}
+            fullDayName={fullDay}
+            verifiedCount={day.verified}
+            minutes={day.focusedMinutes}
+            maxMinutes={maxDayMinutes}
+          />
+        );
+      })}
+    </View>
+  );
+
+  const taskListNode = (
+    <View style={styles.taskList}>
+      {taskStats.map((task) => (
+        <View key={task.taskId} style={styles.taskCard}>
+          <AppText variant="body" style={styles.taskTitle}>
+            {task.emoji ? `${task.emoji} ${task.title}` : task.title}
+          </AppText>
+          <AppText variant="body" style={styles.taskMinutes}>
+            {`${task.minutes} хв`}
+          </AppText>
+        </View>
+      ))}
+    </View>
+  );
+
+  const taskSectionNode = (
+    <View style={styles.taskSection}>
+      <AppText variant="title" accessibilityRole="header" style={styles.sectionHeader}>
+        {uk.stats.tasksHeader}
+      </AppText>
+      {taskListNode}
+    </View>
+  );
+
   return (
     <ParentGuard navigation={navigation}>
       <View
         testID={isLandscape ? 'stats-layout-landscape' : 'stats-layout-portrait'}
-        style={styles.container}
+        style={[styles.container, isLandscape && styles.containerLandscape]}
       >
-        {/* Top bar */}
-        <View style={styles.topBar}>
-          <TapTarget
-            accessibilityRole="button"
-            accessibilityLabel={uk.timer.back}
-            onPress={() => navigation.goBack()}
-            style={styles.backButton}
-          >
-            <AppText variant="body" style={styles.backButtonText}>
-              {`← ${uk.timer.back}`}
-            </AppText>
-          </TapTarget>
-
-          <AppText
-            variant="title"
-            accessibilityRole="header"
-            numberOfLines={1}
-            style={styles.title}
-          >
-            {uk.stats.title}
-          </AppText>
-        </View>
+        <ScreenTopBar onBack={() => navigation.goBack()} title={uk.stats.title} />
 
         {loading ? (
           <View style={styles.centerBox}>
@@ -103,9 +147,8 @@ export function StatsScreen({ navigation }: Props) {
             </AppText>
           </View>
         ) : isLandscape ? (
-          /* Landscape 2-column layout */
+          /* Landscape 2-column layout: totals+days | per-task */
           <View style={styles.landscapeRow}>
-            {/* Left Column: Totals + Day Bars */}
             <ScrollView
               style={styles.column}
               contentContainerStyle={styles.scrollContent}
@@ -113,45 +156,10 @@ export function StatsScreen({ navigation }: Props) {
               onScroll={() => parentSessionStore.touch()}
               scrollEventThrottle={1000}
             >
-              <View style={styles.totalsContainer}>
-                <View style={styles.totalCard}>
-                  <AppText variant="body" style={styles.totalLabel}>
-                    {uk.stats.totalVerified}
-                  </AppText>
-                  <AppText variant="title" style={styles.totalValue}>
-                    {String(summary?.totalVerified ?? 0)}
-                  </AppText>
-                </View>
-
-                <View style={styles.totalCard}>
-                  <AppText variant="body" style={styles.totalLabel}>
-                    {uk.stats.totalMinutes}
-                  </AppText>
-                  <AppText variant="title" style={styles.totalValue}>
-                    {String(summary?.totalMinutes ?? 0)}
-                  </AppText>
-                </View>
-              </View>
-
-              <View style={styles.daysSection}>
-                {summary?.days.map((day, idx) => {
-                  const shortDay = uk.stats.shortWeekdays[idx] ?? day.localDate;
-                  const fullDay = uk.stats.weekdays[idx] ?? day.localDate;
-                  return (
-                    <StatBar
-                      key={day.localDate}
-                      label={shortDay}
-                      fullDayName={fullDay}
-                      verifiedCount={day.verified}
-                      minutes={day.focusedMinutes}
-                      maxMinutes={maxDayMinutes}
-                    />
-                  );
-                })}
-              </View>
+              {totalsNode}
+              {daysNode}
             </ScrollView>
 
-            {/* Right Column: Per-Task breakdown */}
             <ScrollView
               style={styles.column}
               contentContainerStyle={styles.scrollContent}
@@ -159,21 +167,7 @@ export function StatsScreen({ navigation }: Props) {
               onScroll={() => parentSessionStore.touch()}
               scrollEventThrottle={1000}
             >
-              <AppText variant="title" accessibilityRole="header" style={styles.sectionHeader}>
-                {uk.stats.tasksHeader}
-              </AppText>
-              <View style={styles.taskList}>
-                {taskStats.map((task) => (
-                  <View key={task.taskId} style={styles.taskCard}>
-                    <AppText variant="body" style={styles.taskTitle}>
-                      {task.emoji ? `${task.emoji} ${task.title}` : task.title}
-                    </AppText>
-                    <AppText variant="body" style={styles.taskMinutes}>
-                      {`${task.minutes} хв`}
-                    </AppText>
-                  </View>
-                ))}
-              </View>
+              {taskSectionNode}
             </ScrollView>
           </View>
         ) : (
@@ -185,62 +179,9 @@ export function StatsScreen({ navigation }: Props) {
             onScroll={() => parentSessionStore.touch()}
             scrollEventThrottle={1000}
           >
-            <View style={styles.totalsContainer}>
-              <View style={styles.totalCard}>
-                <AppText variant="body" style={styles.totalLabel}>
-                  {uk.stats.totalVerified}
-                </AppText>
-                <AppText variant="title" style={styles.totalValue}>
-                  {String(summary?.totalVerified ?? 0)}
-                </AppText>
-              </View>
-
-              <View style={styles.totalCard}>
-                <AppText variant="body" style={styles.totalLabel}>
-                  {uk.stats.totalMinutes}
-                </AppText>
-                <AppText variant="title" style={styles.totalValue}>
-                  {String(summary?.totalMinutes ?? 0)}
-                </AppText>
-              </View>
-            </View>
-
-            <View style={styles.daysSection}>
-              {summary?.days.map((day, idx) => {
-                const shortDay = uk.stats.shortWeekdays[idx] ?? day.localDate;
-                const fullDay = uk.stats.weekdays[idx] ?? day.localDate;
-                return (
-                  <StatBar
-                    key={day.localDate}
-                    label={shortDay}
-                    fullDayName={fullDay}
-                    verifiedCount={day.verified}
-                    minutes={day.focusedMinutes}
-                    maxMinutes={maxDayMinutes}
-                  />
-                );
-              })}
-            </View>
-
-            {taskStats.length > 0 ? (
-              <View style={styles.taskSection}>
-                <AppText variant="title" accessibilityRole="header" style={styles.sectionHeader}>
-                  {uk.stats.tasksHeader}
-                </AppText>
-                <View style={styles.taskList}>
-                  {taskStats.map((task) => (
-                    <View key={task.taskId} style={styles.taskCard}>
-                      <AppText variant="body" style={styles.taskTitle}>
-                        {task.emoji ? `${task.emoji} ${task.title}` : task.title}
-                      </AppText>
-                      <AppText variant="body" style={styles.taskMinutes}>
-                        {`${task.minutes} хв`}
-                      </AppText>
-                    </View>
-                  ))}
-                </View>
-              </View>
-            ) : null}
+            {totalsNode}
+            {daysNode}
+            {taskStats.length > 0 ? taskSectionNode : null}
           </ScrollView>
         )}
       </View>
@@ -253,24 +194,10 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background,
     padding: spacing.lg,
+    gap: spacing.lg,
   },
-  topBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flexWrap: 'wrap',
-    rowGap: spacing.sm,
-    marginBottom: spacing.lg,
-    gap: spacing.md,
-  },
-  backButton: {
-    padding: spacing.sm,
-  },
-  backButtonText: {
-    color: colors.primary,
-  },
-  title: {
-    color: colors.text,
-    flexShrink: 1,
+  containerLandscape: {
+    padding: spacing.xl,
   },
   centerBox: {
     flex: 1,
@@ -309,7 +236,8 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.surface,
     padding: spacing.md,
-    borderRadius: 16,
+    borderRadius: radius.lg,
+    borderCurve: 'continuous',
     borderWidth: 1,
     borderColor: colors.border,
     alignItems: 'center',
@@ -322,11 +250,13 @@ const styles = StyleSheet.create({
   totalValue: {
     color: colors.primary,
     textAlign: 'center',
+    fontVariant: ['tabular-nums'],
   },
   daysSection: {
     backgroundColor: colors.cardBg,
     padding: spacing.md,
-    borderRadius: 16,
+    borderRadius: radius.lg,
+    borderCurve: 'continuous',
     borderWidth: 1,
     borderColor: colors.border,
     gap: spacing.xs,
@@ -344,18 +274,22 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    rowGap: spacing.xs,
     backgroundColor: colors.surface,
     padding: spacing.md,
-    borderRadius: 12,
+    borderRadius: radius.md,
+    borderCurve: 'continuous',
     borderWidth: 1,
     borderColor: colors.border,
   },
   taskTitle: {
     color: colors.text,
     flex: 1,
+    minWidth: 0,
+    flexShrink: 1,
   },
   taskMinutes: {
     color: colors.textSecondary,
-    marginLeft: spacing.md,
+    flexShrink: 0,
   },
 });

@@ -1,6 +1,6 @@
 import React from 'react';
 import { StyleProp, StyleSheet, View, ViewStyle } from 'react-native';
-import { colors } from '../theme';
+import { colors, radius, spacing } from '../theme';
 
 export interface ProgressBarProps {
   total: number;
@@ -31,15 +31,16 @@ export function ProgressBar({ total, elapsed, style }: ProgressBarProps) {
 
 const styles = StyleSheet.create({
   container: {
-    height: 16,
+    height: spacing.md,
     width: '100%',
     backgroundColor: colors.border,
-    borderRadius: 8,
+    borderRadius: radius.sm,
+    borderCurve: 'continuous',
     overflow: 'hidden',
   },
   bar: {
     height: '100%',
     backgroundColor: colors.primary,
-    borderRadius: 8,
+    borderRadius: radius.sm,
   },
 });

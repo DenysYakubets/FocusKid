@@ -58,7 +58,7 @@ FocusKid ${TAG} (Offline Debug Build)
 - Offline-first child visual timer with parent PIN verification
 - INV-01: zero networking, zero ads/analytics/telemetry, blocked INTERNET permission
 - INV-08: full landscape and portrait parity
-- INV-10: accessible touch targets >= 48dp and typography >= 48sp
+- INV-10: scalable text (16sp body, maxFontScale 3.0) + touch targets >= 48dp + TalkBack
 - Self-contained debug APK with bundled JS
 EOF
 

@@ -6,11 +6,15 @@ import { useServices } from '../state/appServices';
 import { tasksStore } from '../state/tasksStore';
 import { parentSessionStore } from '../state/parentSessionStore';
 import { validateTask, TaskValidationError } from '../domain/tasks/validation';
+import { AppButton } from '../ui/components/AppButton';
 import { AppText } from '../ui/components/AppText';
+import { NoticeBox } from '../ui/components/NoticeBox';
+import { ScreenTopBar } from '../ui/components/ScreenTopBar';
 import { TapTarget } from '../ui/components/TapTarget';
 import { ParentGuard } from '../navigation/ParentGuard';
+import { CONTENT_MAX_WIDTH, useScreenGutter } from '../ui/hooks/useScreenGutter';
 import { uk } from '../i18n/uk';
-import { colors, spacing } from '../ui/theme';
+import { colors, radius, spacing, typography } from '../ui/theme';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'TaskEdit'>;
 
@@ -18,6 +22,7 @@ const WEEKDAYS = uk.taskCrud.weekdays.map((label, bit) => ({ label, bit }));
 
 export function TaskEditScreen({ route, navigation }: Props) {
   const { tasksRepo, sessionsRepo, wall, db } = useServices();
+  const { gutter } = useScreenGutter();
   const taskId = route.params?.taskId;
   const isEditing = taskId !== undefined;
 
@@ -127,57 +132,35 @@ export function TaskEditScreen({ route, navigation }: Props) {
   return (
     <ParentGuard navigation={navigation}>
       <ScrollView
-        contentContainerStyle={styles.container}
+        contentContainerStyle={[styles.container, { padding: gutter }]}
+        keyboardShouldPersistTaps="handled"
         onScroll={() => parentSessionStore.touch()}
         scrollEventThrottle={1000}
       >
-        {/* Top bar */}
-        <View testID="taskedit-topbar" style={styles.topBar}>
-          <TapTarget
-            accessibilityRole="button"
-            accessibilityLabel={uk.taskCrud.cancel}
-            onPress={() => {
-              parentSessionStore.touch();
-              navigation.goBack();
-            }}
-            style={styles.cancelNavButton}
-          >
-            <AppText variant="body" style={styles.cancelNavText}>
-              {uk.taskCrud.cancel}
-            </AppText>
-          </TapTarget>
+        {/* Wrapping top bar: Row A = cancel + title, Row B = full-width Save,
+            so the primary action can never sit under the keyboard. */}
+        <ScreenTopBar
+          testID="taskedit-topbar"
+          onBack={() => {
+            parentSessionStore.touch();
+            navigation.goBack();
+          }}
+          backLabel={uk.taskCrud.cancel}
+          title={isEditing ? uk.taskCrud.editTask : uk.taskCrud.createTask}
+          actions={
+            <AppButton
+              label={uk.taskCrud.save}
+              variant="primary"
+              size="md"
+              onPress={handleSave}
+            />
+          }
+        />
 
-          <AppText
-            variant="title"
-            accessibilityRole="header"
-            numberOfLines={1}
-            style={styles.screenTitle}
-          >
-            {isEditing ? uk.taskCrud.editTask : uk.taskCrud.createTask}
-          </AppText>
-
-          <TapTarget
-            accessibilityRole="button"
-            accessibilityLabel={uk.taskCrud.save}
-            onPress={handleSave}
-            style={styles.saveNavButton}
-          >
-            <AppText variant="body" style={styles.saveNavText}>
-              {uk.taskCrud.save}
-            </AppText>
-          </TapTarget>
-        </View>
-
-        {/* Validation Errors */}
-        {errors.length > 0 ? (
-          <View style={styles.errorBox}>
-            {errors.map((err) => (
-              <AppText key={err} variant="body" style={styles.errorText}>
-                {getErrorMessage(err)}
-              </AppText>
-            ))}
-          </View>
-        ) : null}
+        {/* Validation errors */}
+        {errors.map((err) => (
+          <NoticeBox key={err} tone="error" message={getErrorMessage(err)} />
+        ))}
 
         {/* Title Input */}
         <View style={styles.field}>
@@ -228,7 +211,7 @@ export function TaskEditScreen({ route, navigation }: Props) {
               onPress={() => handleAdjustMinutes(-5)}
               style={styles.stepperButton}
             >
-              <AppText variant="title" style={styles.stepperButtonText}>
+              <AppText variant="body" style={styles.stepperButtonText}>
                 -5
               </AppText>
             </TapTarget>
@@ -239,12 +222,12 @@ export function TaskEditScreen({ route, navigation }: Props) {
               onPress={() => handleAdjustMinutes(-1)}
               style={styles.stepperButton}
             >
-              <AppText variant="title" style={styles.stepperButtonText}>
+              <AppText variant="body" style={styles.stepperButtonText}>
                 -1
               </AppText>
             </TapTarget>
 
-            <AppText variant="title" style={styles.minutesDisplay}>
+            <AppText variant="heading" style={styles.minutesDisplay}>
               {`${targetMinutes} хв`}
             </AppText>
 
@@ -254,7 +237,7 @@ export function TaskEditScreen({ route, navigation }: Props) {
               onPress={() => handleAdjustMinutes(1)}
               style={styles.stepperButton}
             >
-              <AppText variant="title" style={styles.stepperButtonText}>
+              <AppText variant="body" style={styles.stepperButtonText}>
                 +1
               </AppText>
             </TapTarget>
@@ -265,7 +248,7 @@ export function TaskEditScreen({ route, navigation }: Props) {
               onPress={() => handleAdjustMinutes(5)}
               style={styles.stepperButton}
             >
-              <AppText variant="title" style={styles.stepperButtonText}>
+              <AppText variant="body" style={styles.stepperButtonText}>
                 +5
               </AppText>
             </TapTarget>
@@ -310,27 +293,19 @@ export function TaskEditScreen({ route, navigation }: Props) {
         {isEditing ? (
           <View style={styles.dangerZone}>
             {hasSessions ? (
-              <TapTarget
-                accessibilityRole="button"
-                accessibilityLabel={uk.taskCrud.archive}
+              <AppButton
+                label={uk.taskCrud.archive}
+                variant="secondary"
+                size="md"
                 onPress={handleArchive}
-                style={styles.archiveButton}
-              >
-                <AppText variant="body" style={styles.archiveButtonText}>
-                  {uk.taskCrud.archive}
-                </AppText>
-              </TapTarget>
+              />
             ) : (
-              <TapTarget
-                accessibilityRole="button"
-                accessibilityLabel={uk.taskCrud.delete}
+              <AppButton
+                label={uk.taskCrud.delete}
+                variant="danger"
+                size="md"
                 onPress={handleDelete}
-                style={styles.deleteButton}
-              >
-                <AppText variant="body" style={styles.deleteButtonText}>
-                  {uk.taskCrud.delete}
-                </AppText>
-              </TapTarget>
+              />
             )}
           </View>
         ) : null}
@@ -341,49 +316,12 @@ export function TaskEditScreen({ route, navigation }: Props) {
 
 const styles = StyleSheet.create({
   container: {
-    padding: spacing.lg,
+    flexGrow: 1,
+    width: '100%',
+    maxWidth: CONTENT_MAX_WIDTH.form, // forms never stretch across wide viewports (§4.4)
+    alignSelf: 'center',
     backgroundColor: colors.background,
     gap: spacing.lg,
-  },
-  topBar: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    alignItems: 'center',
-    rowGap: spacing.sm,
-    columnGap: spacing.sm,
-    width: '100%',
-  },
-  cancelNavButton: {
-    padding: spacing.sm,
-  },
-  cancelNavText: {
-    color: colors.textSecondary,
-  },
-  screenTitle: {
-    color: colors.text,
-    flex: 1,
-    minWidth: 0,
-    flexShrink: 1,
-  },
-  saveNavButton: {
-    flexBasis: '100%',
-    alignSelf: 'stretch',
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    backgroundColor: colors.primary,
-    borderRadius: 8,
-  },
-  saveNavText: {
-    color: colors.white,
-  },
-  errorBox: {
-    backgroundColor: '#FEE2E2',
-    padding: spacing.md,
-    borderRadius: 8,
-    gap: spacing.xs,
-  },
-  errorText: {
-    color: colors.abandoned,
   },
   field: {
     gap: spacing.sm,
@@ -394,30 +332,32 @@ const styles = StyleSheet.create({
   textInput: {
     backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 8,
+    borderColor: colors.borderStrong,
+    borderRadius: radius.md,
+    borderCurve: 'continuous',
     padding: spacing.md,
     color: colors.text,
-    minHeight: 48,
+    minHeight: 56,
+    fontSize: typography.body,
   },
   stepperRow: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     alignItems: 'center',
     justifyContent: 'space-between',
-    flexWrap: 'wrap',
     rowGap: spacing.sm,
-    gap: spacing.sm,
+    gap: spacing.s12,
   },
   stepperButton: {
-    minWidth: 48,
+    width: 48,
     height: 48,
-    borderRadius: 8,
+    borderRadius: radius.md,
+    borderCurve: 'continuous',
     backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: colors.borderStrong,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: spacing.sm,
   },
   stepperButtonText: {
     color: colors.primary,
@@ -429,15 +369,16 @@ const styles = StyleSheet.create({
   },
   weekdaysRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     flexWrap: 'wrap',
     rowGap: spacing.sm,
-    gap: spacing.xs,
+    gap: spacing.sm,
   },
   dayButton: {
     minWidth: 48,
     minHeight: 48,
-    borderRadius: 8,
+    paddingHorizontal: spacing.sm,
+    borderRadius: radius.md,
+    borderCurve: 'continuous',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -447,7 +388,7 @@ const styles = StyleSheet.create({
   dayButtonUnselected: {
     backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: colors.borderStrong,
   },
   dayText: {
     textAlign: 'center',
@@ -462,28 +403,7 @@ const styles = StyleSheet.create({
     marginTop: spacing.xl,
     paddingTop: spacing.lg,
     borderTopWidth: 1,
-    borderTopColor: colors.border,
-  },
-  archiveButton: {
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.awaiting,
-    borderRadius: 8,
-    padding: spacing.md,
-    alignItems: 'center',
-  },
-  archiveButtonText: {
-    color: colors.awaiting,
-  },
-  deleteButton: {
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.abandoned,
-    borderRadius: 8,
-    padding: spacing.md,
-    alignItems: 'center',
-  },
-  deleteButtonText: {
-    color: colors.abandoned,
+    borderTopColor: colors.divider,
+    gap: spacing.md,
   },
 });

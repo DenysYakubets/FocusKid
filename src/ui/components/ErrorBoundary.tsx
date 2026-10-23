@@ -1,7 +1,7 @@
 import React, { Component, ErrorInfo, ReactNode } from 'react';
 import { StyleSheet, View } from 'react-native';
+import { AppButton } from './AppButton';
 import { AppText } from './AppText';
-import { TapTarget } from './TapTarget';
 import { uk } from '../../i18n/uk';
 import { colors, spacing } from '../theme';
 
@@ -38,16 +38,13 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
           <AppText variant="title" accessibilityRole="header" style={styles.title}>
             {uk.errorBoundary.title}
           </AppText>
-          <TapTarget
-            accessibilityRole="button"
-            accessibilityLabel={uk.errorBoundary.retry}
+          <AppButton
+            label={uk.errorBoundary.retry}
+            variant="primary"
+            size="lg"
             onPress={this.handleRetry}
             style={styles.retryButton}
-          >
-            <AppText variant="body" style={styles.retryText}>
-              {uk.errorBoundary.retry}
-            </AppText>
-          </TapTarget>
+          />
         </View>
       );
     }
@@ -70,14 +67,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   retryButton: {
-    backgroundColor: colors.primary,
-    paddingHorizontal: spacing.xl,
-    paddingVertical: spacing.md,
-    borderRadius: 16,
+    alignSelf: 'center',
     minWidth: 160,
-  },
-  retryText: {
-    color: colors.white,
-    textAlign: 'center',
   },
 });

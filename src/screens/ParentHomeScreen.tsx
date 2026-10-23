@@ -7,13 +7,14 @@ import { parentSessionStore } from '../state/parentSessionStore';
 import { SessionRow } from '../services/repos/sessionsRepo';
 import { MAX_FAILED_ATTEMPTS } from '../services/auth/authService';
 import { Task } from '../domain/tasks/types';
+import { AppButton } from '../ui/components/AppButton';
 import { AppText } from '../ui/components/AppText';
-import { TapTarget } from '../ui/components/TapTarget';
+import { NoticeBox } from '../ui/components/NoticeBox';
 import { PinPad } from '../ui/components/PinPad';
 import { ParentGuard } from '../navigation/ParentGuard';
 import { useOrientation } from '../ui/hooks/useOrientation';
 import { uk } from '../i18n/uk';
-import { colors, spacing } from '../ui/theme';
+import { colors, radius, shadows, spacing } from '../ui/theme';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'ParentHome'>;
 
@@ -88,6 +89,14 @@ export function ParentHomeScreen({ navigation }: Props) {
     navigation.navigate('PinGate', { intent: 'abandon', sessionId });
   };
 
+  const handleChangePin = () => {
+    parentSessionStore.touch();
+    setChangingPin(!changingPin);
+    setPinStep(1);
+    setPinError(null);
+    setPinDraft('');
+  };
+
   const handleChangePinComplete = async (entered: string) => {
     if (isLocked) return;
     parentSessionStore.touch();
@@ -127,174 +136,157 @@ export function ParentHomeScreen({ navigation }: Props) {
     }
   };
 
+  const headerNode = (
+    <View style={styles.header}>
+      <AppText
+        variant="title"
+        accessibilityRole="header"
+        numberOfLines={1}
+        style={styles.title}
+      >
+        {uk.parentHome.title}
+      </AppText>
+      <AppButton
+        label={uk.parentHome.exit}
+        variant="danger"
+        size="sm"
+        onPress={handleExit}
+      />
+    </View>
+  );
+
+  // §4.6: deterministic stacked column replaces the wrapping chip row.
+  const navNode = (
+    <View style={styles.navColumn}>
+      <AppButton
+        label={uk.parentHome.tasks}
+        variant="secondary"
+        size="lg"
+        onPress={() => {
+          parentSessionStore.touch();
+          navigation.navigate('TaskListEdit');
+        }}
+      />
+      <AppButton
+        label={uk.parentHome.stats}
+        variant="secondary"
+        size="lg"
+        onPress={() => {
+          parentSessionStore.touch();
+          navigation.navigate('Stats');
+        }}
+      />
+      <AppButton
+        label={uk.parentHome.changePin}
+        variant="secondary"
+        size="lg"
+        onPress={handleChangePin}
+      />
+    </View>
+  );
+
+  const changePinNode = changingPin ? (
+    <View style={styles.changePinBox}>
+      <AppText variant="body" style={styles.changePinPrompt}>
+        {pinStep === 1 ? uk.parentHome.enterCurrentPin : uk.parentHome.enterNewPin}
+      </AppText>
+      {isLocked ? (
+        <NoticeBox
+          testID="parenthome-lockout"
+          tone="warning"
+          message={`${uk.pin.lockedRemaining} ${lockoutSec} ${uk.pin.seconds}`}
+        />
+      ) : pinError ? (
+        <NoticeBox testID="parenthome-pinerror" tone="error" message={pinError} />
+      ) : null}
+      <PinPad
+        disabled={isLocked}
+        value={pinDraft}
+        onChange={setPinDraft}
+        onComplete={handleChangePinComplete}
+      />
+    </View>
+  ) : null;
+
+  const awaitingNode = (
+    <View style={styles.awaitingSection}>
+      <AppText variant="heading" accessibilityRole="header" style={styles.sectionTitle}>
+        {uk.parentHome.awaitingTitle}
+      </AppText>
+
+      {awaitingItems.length === 0 ? (
+        <View style={styles.emptyContainer}>
+          <AppText variant="body" style={styles.emptyText}>
+            {uk.parentHome.emptyAwaiting}
+          </AppText>
+        </View>
+      ) : (
+        <FlatList
+          style={styles.list}
+          data={awaitingItems}
+          keyExtractor={(item) => String(item.session.id)}
+          contentContainerStyle={styles.listContent}
+          onScroll={() => parentSessionStore.touch()}
+          scrollEventThrottle={1000}
+          renderItem={({ item }) => (
+            <View style={styles.itemCard}>
+              <View style={styles.itemInfo}>
+                <AppText variant="title" numberOfLines={2} style={styles.itemTitle}>
+                  {item.task?.emoji
+                    ? `${item.task.emoji} ${item.task.title}`
+                    : item.task?.title ?? uk.parentHome.taskFallback}
+                </AppText>
+              </View>
+
+              <View style={styles.itemActions}>
+                <AppButton
+                  label={uk.parentHome.verify}
+                  a11yLabel={`${uk.parentHome.verify}: ${item.task?.title ?? ''}`}
+                  variant="primary"
+                  size="md"
+                  onPress={() => handleVerify(item.session.id)}
+                  style={styles.actionFlex}
+                />
+                <AppButton
+                  label={uk.parentHome.abandon}
+                  a11yLabel={`${uk.parentHome.abandon}: ${item.task?.title ?? ''}`}
+                  variant="danger"
+                  size="md"
+                  onPress={() => handleAbandon(item.session.id)}
+                  style={styles.actionFlex}
+                />
+              </View>
+            </View>
+          )}
+        />
+      )}
+    </View>
+  );
+
   return (
     <ParentGuard navigation={navigation}>
       <View
         testID={isLandscape ? 'parent-home-layout-landscape' : 'parent-home-layout-portrait'}
         style={[styles.container, isLandscape && styles.containerLandscape]}
       >
-        {/* Header */}
-        <View style={styles.header}>
-          <AppText
-            variant="title"
-            accessibilityRole="header"
-            numberOfLines={1}
-            style={styles.title}
-          >
-            {uk.parentHome.title}
-          </AppText>
-          <TapTarget
-            accessibilityRole="button"
-            accessibilityLabel={uk.parentHome.exit}
-            onPress={handleExit}
-            style={styles.exitButton}
-          >
-            <AppText variant="body" style={styles.exitText}>
-              {uk.parentHome.exit}
-            </AppText>
-          </TapTarget>
-        </View>
-
-        {/* Navigation links */}
-        <View style={styles.navRow}>
-          <TapTarget
-            accessibilityRole="button"
-            accessibilityLabel={uk.parentHome.tasks}
-            onPress={() => {
-              parentSessionStore.touch();
-              navigation.navigate('TaskListEdit');
-            }}
-            style={styles.navButton}
-          >
-            <AppText variant="body" style={styles.navButtonText}>
-              {uk.parentHome.tasks}
-            </AppText>
-          </TapTarget>
-
-          <TapTarget
-            accessibilityRole="button"
-            accessibilityLabel={uk.parentHome.stats}
-            onPress={() => {
-              parentSessionStore.touch();
-              navigation.navigate('Stats');
-            }}
-            style={styles.navButton}
-          >
-            <AppText variant="body" style={styles.navButtonText}>
-              {uk.parentHome.stats}
-            </AppText>
-          </TapTarget>
-
-          <TapTarget
-            accessibilityRole="button"
-            accessibilityLabel={uk.parentHome.changePin}
-            onPress={() => {
-              parentSessionStore.touch();
-              setChangingPin(!changingPin);
-              setPinStep(1);
-              setPinError(null);
-              setPinDraft('');
-            }}
-            style={styles.navButton}
-          >
-            <AppText variant="body" style={styles.navButtonText}>
-              {uk.parentHome.changePin}
-            </AppText>
-          </TapTarget>
-        </View>
-
-        {/* Change PIN section */}
-        {changingPin ? (
-          <View style={styles.changePinBox}>
-            <AppText variant="body" style={styles.changePinPrompt}>
-              {pinStep === 1 ? uk.parentHome.enterCurrentPin : uk.parentHome.enterNewPin}
-            </AppText>
-            {isLocked ? (
-              <View style={styles.lockoutBox}>
-                <AppText variant="body" style={styles.lockoutText}>
-                  {`${uk.pin.lockedRemaining} ${lockoutSec} ${uk.pin.seconds}`}
-                </AppText>
-              </View>
-            ) : pinError ? (
-              pinError.startsWith(uk.pin.invalidPin) && pinError.length > uk.pin.invalidPin.length ? (
-                <AppText variant="body" style={styles.errorText}>
-                  <AppText variant="body" style={styles.errorText}>
-                    {uk.pin.invalidPin}
-                  </AppText>
-                  {pinError.slice(uk.pin.invalidPin.length)}
-                </AppText>
-              ) : (
-                <AppText variant="body" style={styles.errorText}>
-                  {pinError}
-                </AppText>
-              )
-            ) : null}
-            <PinPad
-              disabled={isLocked}
-              value={pinDraft}
-              onChange={setPinDraft}
-              onComplete={handleChangePinComplete}
-            />
-          </View>
-        ) : null}
-
-        {/* Awaiting verification list */}
-        <View style={styles.awaitingSection}>
-          <AppText variant="title" accessibilityRole="header" style={styles.sectionTitle}>
-            {uk.parentHome.awaitingTitle}
-          </AppText>
-
-          {awaitingItems.length === 0 ? (
-            <View style={styles.emptyContainer}>
-              <AppText variant="body" style={styles.emptyText}>
-                {uk.parentHome.emptyAwaiting}
-              </AppText>
+        {isLandscape ? (
+          // INV-08: left = header + nav + change-PIN, right = awaiting list.
+          <View style={styles.landscapeRow}>
+            <View style={styles.leftColumn}>
+              {headerNode}
+              {navNode}
+              {changePinNode}
             </View>
-          ) : (
-            <FlatList
-              data={awaitingItems}
-              keyExtractor={(item) => String(item.session.id)}
-              contentContainerStyle={styles.listContent}
-              onScroll={() => parentSessionStore.touch()}
-              scrollEventThrottle={1000}
-              renderItem={({ item }) => (
-                <View style={styles.itemCard}>
-                  <View style={styles.itemInfo}>
-                    <AppText variant="title" style={styles.itemTitle}>
-                      {item.task?.emoji
-                        ? `${item.task.emoji} ${item.task.title}`
-                        : item.task?.title ?? uk.parentHome.taskFallback}
-                    </AppText>
-                  </View>
-
-                  <View style={styles.itemActions}>
-                    <TapTarget
-                      accessibilityRole="button"
-                      accessibilityLabel={`${uk.parentHome.verify}: ${item.task?.title ?? ''}`}
-                      onPress={() => handleVerify(item.session.id)}
-                      style={styles.verifyButton}
-                    >
-                      <AppText variant="body" style={styles.verifyButtonText}>
-                        {uk.parentHome.verify}
-                      </AppText>
-                    </TapTarget>
-
-                    <TapTarget
-                      accessibilityRole="button"
-                      accessibilityLabel={`${uk.parentHome.abandon}: ${item.task?.title ?? ''}`}
-                      onPress={() => handleAbandon(item.session.id)}
-                      style={styles.abandonButton}
-                    >
-                      <AppText variant="body" style={styles.abandonButtonText}>
-                        {uk.parentHome.abandon}
-                      </AppText>
-                    </TapTarget>
-                  </View>
-                </View>
-              )}
-            />
-          )}
-        </View>
+            <View style={styles.rightColumn}>{awaitingNode}</View>
+          </View>
+        ) : (
+          <>
+            {headerNode}
+            {navNode}
+            {changePinNode}
+            {awaitingNode}
+          </>
+        )}
       </View>
     </ParentGuard>
   );
@@ -305,9 +297,22 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background,
     padding: spacing.lg,
+    gap: spacing.lg,
   },
   containerLandscape: {
     paddingHorizontal: spacing.xl,
+  },
+  landscapeRow: {
+    flex: 1,
+    flexDirection: 'row',
+    gap: spacing.xl,
+  },
+  leftColumn: {
+    flex: 1,
+    gap: spacing.lg,
+  },
+  rightColumn: {
+    flex: 1,
   },
   header: {
     flexDirection: 'row',
@@ -315,73 +320,35 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     flexWrap: 'wrap',
     rowGap: spacing.sm,
-    marginBottom: spacing.lg,
+    columnGap: spacing.sm,
   },
   title: {
-    color: colors.text,
     flex: 1,
     minWidth: 0,
     flexShrink: 1,
+    color: colors.text,
   },
-  exitButton: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    backgroundColor: colors.surface,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  exitText: {
-    color: colors.abandoned,
-  },
-  navRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.md,
-    marginBottom: spacing.xl,
-  },
-  navButton: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    backgroundColor: colors.surface,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  navButtonText: {
-    color: colors.primary,
+  navColumn: {
+    gap: spacing.sm,
   },
   changePinBox: {
     backgroundColor: colors.surface,
     padding: spacing.lg,
-    borderRadius: 12,
-    marginBottom: spacing.xl,
-    alignItems: 'center',
+    borderRadius: radius.lg,
+    borderCurve: 'continuous',
+    width: '100%',
+    gap: spacing.md,
   },
   changePinPrompt: {
     color: colors.text,
-    marginBottom: spacing.sm,
-  },
-  lockoutBox: {
-    backgroundColor: '#FEF3C7',
-    padding: spacing.md,
-    borderRadius: 8,
-    marginVertical: spacing.md,
-  },
-  lockoutText: {
-    color: colors.awaiting,
     textAlign: 'center',
-  },
-  errorText: {
-    color: colors.abandoned,
-    marginBottom: spacing.sm,
   },
   awaitingSection: {
     flex: 1,
+    gap: spacing.md,
   },
   sectionTitle: {
     color: colors.text,
-    marginBottom: spacing.md,
   },
   emptyContainer: {
     padding: spacing.xl,
@@ -389,15 +356,22 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     color: colors.textSecondary,
+    textAlign: 'center',
+  },
+  list: {
+    flex: 1,
   },
   listContent: {
     gap: spacing.md,
+    paddingBottom: spacing.xxl,
   },
   itemCard: {
     backgroundColor: colors.cardBg,
-    borderRadius: 12,
+    borderRadius: radius.md,
+    borderCurve: 'continuous',
     borderWidth: 1,
     borderColor: colors.border,
+    boxShadow: shadows.card,
     padding: spacing.md,
     gap: spacing.md,
   },
@@ -406,34 +380,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   itemTitle: {
+    flex: 1,
+    minWidth: 0,
+    flexShrink: 1,
     color: colors.text,
   },
   itemActions: {
     flexDirection: 'row',
-    gap: spacing.md,
+    flexWrap: 'wrap',
+    gap: spacing.s12,
   },
-  verifyButton: {
+  actionFlex: {
     flex: 1,
-    backgroundColor: colors.verified,
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.md,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  verifyButtonText: {
-    color: colors.white,
-  },
-  abandonButton: {
-    flex: 1,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.abandoned,
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.md,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  abandonButtonText: {
-    color: colors.abandoned,
   },
 });
