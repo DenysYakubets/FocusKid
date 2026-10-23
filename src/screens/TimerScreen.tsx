@@ -23,6 +23,7 @@ import { formatMinutesUk } from '../ui/components/TaskCard';
 import { useOrientation } from '../ui/hooks/useOrientation';
 import { uk } from '../i18n/uk';
 import { colors, spacing, statusColors } from '../ui/theme';
+import { mapTimerError } from '../ui/timerErrors';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Timer'>;
 
@@ -32,6 +33,7 @@ export function TimerScreen({ route, navigation }: Props) {
   const isLandscape = orientation === 'landscape';
 
   const snapshot = useTimerStore((s) => s.snapshot);
+  const lastError = useTimerStore((s) => s.lastError);
   const pause = useTimerStore((s) => s.pause);
   const resume = useTimerStore((s) => s.resume);
   const addTime = useTimerStore((s) => s.addTime);
@@ -39,6 +41,7 @@ export function TimerScreen({ route, navigation }: Props) {
   const [task, setTask] = useState<Task | null>(null);
   const [routeSession, setRouteSession] = useState<SessionRow | null>(null);
   const loadSeqRef = useRef(0);
+  const restoredBaseRef = useRef<{ key: string; base: number }>({ key: '', base: 0 });
 
   useEffect(() => {
     let isMounted = true;
@@ -113,14 +116,30 @@ export function TimerScreen({ route, navigation }: Props) {
     displaySessionId = snapshot.sessionId;
     isLive = true;
   } else if (routeSession !== null) {
-    displayState = restore(routeSession, clock.now());
     displaySessionId = routeSession.id;
+    const key = `${displaySessionId}:${routeSession.updatedAt}:${routeSession.status}`;
+    if (restoredBaseRef.current.key !== key) {
+      restoredBaseRef.current = { key, base: clock.now() };
+    }
+    displayState = restore(routeSession, restoredBaseRef.current.base);
     isLive = false;
   } else {
     displayState = { kind: 'Idle' };
     displaySessionId = null;
     isLive = false;
   }
+
+  // Local 1s ticker to guarantee 1 Hz re-render while Running or Paused
+  const [, setSecond] = useState(0);
+  useEffect(() => {
+    if (displayState.kind !== 'Running' && displayState.kind !== 'Paused') {
+      return;
+    }
+    const interval = setInterval(() => {
+      setSecond((v) => v + 1);
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [displayState.kind]);
 
   // Keep awake while running
   useEffect(() => {
@@ -186,6 +205,24 @@ export function TimerScreen({ route, navigation }: Props) {
     navigation.navigate('Today');
   };
 
+  const handlePause = async () => {
+    if (isLive) {
+      await pause();
+    }
+  };
+
+  const handleResume = async () => {
+    if (isLive) {
+      await resume();
+    }
+  };
+
+  const handleAddTime = async () => {
+    if (isLive) {
+      await addTime();
+    }
+  };
+
   const handleShowParent = () => {
     if (displaySessionId !== null) {
       navigation.navigate('PinGate', {
@@ -217,6 +254,14 @@ export function TimerScreen({ route, navigation }: Props) {
           </AppText>
         ) : null}
       </View>
+
+      {lastError ? (
+        <View style={styles.errorContainer}>
+          <AppText variant="body" style={styles.errorText}>
+            {mapTimerError(lastError)}
+          </AppText>
+        </View>
+      ) : null}
 
       <View style={[styles.content, isLandscape && styles.contentLandscape]}>
         {/* Digits & Progress Bar Section */}
@@ -257,49 +302,72 @@ export function TimerScreen({ route, navigation }: Props) {
               </AppText>
             </View>
           ) : (
-            <View style={[styles.buttonsRow, isLandscape && styles.buttonsColumnLandscape]}>
-              {isLive && displayState.kind === 'Running' ? (
-                <TapTarget
-                  accessibilityRole="button"
-                  accessibilityLabel={uk.timer.pause}
-                  disabled={isPauseDisabled}
-                  onPress={() => {
-                    if (isLive) void pause();
-                  }}
-                  style={[styles.actionButton, isPauseDisabled && styles.disabledButton]}
-                >
-                  <AppText variant="title" style={styles.actionButtonText}>
-                    {uk.timer.pause}
-                  </AppText>
-                </TapTarget>
-              ) : isLive && displayState.kind === 'Paused' ? (
-                <TapTarget
-                  accessibilityRole="button"
-                  accessibilityLabel={uk.timer.resume}
-                  onPress={() => {
-                    if (isLive) void resume();
-                  }}
-                  style={[styles.actionButton, styles.resumeButton]}
-                >
-                  <AppText variant="title" style={styles.actionButtonText}>
-                    {uk.timer.resume}
-                  </AppText>
-                </TapTarget>
-              ) : null}
+            <View style={styles.controlsWrapper}>
+              <View style={[styles.buttonsRow, isLandscape && styles.buttonsColumnLandscape]}>
+                {isLive && displayState.kind === 'Running' ? (
+                  <TapTarget
+                    accessibilityRole="button"
+                    accessibilityLabel={uk.timer.pause}
+                    disabled={isPauseDisabled}
+                    onPress={() => {
+                      void handlePause();
+                    }}
+                    style={[styles.actionButton, isPauseDisabled && styles.disabledButton]}
+                  >
+                    <AppText variant="title" style={styles.actionButtonText}>
+                      {uk.timer.pause}
+                    </AppText>
+                  </TapTarget>
+                ) : isLive && displayState.kind === 'Paused' ? (
+                  <TapTarget
+                    accessibilityRole="button"
+                    accessibilityLabel={uk.timer.resume}
+                    onPress={() => {
+                      void handleResume();
+                    }}
+                    style={[styles.actionButton, styles.resumeButton]}
+                  >
+                    <AppText variant="title" style={styles.actionButtonText}>
+                      {uk.timer.resume}
+                    </AppText>
+                  </TapTarget>
+                ) : null}
 
-              <TapTarget
-                accessibilityRole="button"
-                accessibilityLabel={uk.timer.addTime}
-                disabled={isAddTimeDisabled}
-                onPress={() => {
-                  if (isLive) void addTime();
-                }}
-                style={[styles.actionButton, styles.addTimeButton, isAddTimeDisabled && styles.disabledButton]}
-              >
-                <AppText variant="title" style={styles.actionButtonText}>
-                  {uk.timer.addTime}
-                </AppText>
-              </TapTarget>
+                <TapTarget
+                  accessibilityRole="button"
+                  accessibilityLabel={uk.timer.addTime}
+                  disabled={isAddTimeDisabled}
+                  onPress={() => {
+                    void handleAddTime();
+                  }}
+                  style={[styles.actionButton, styles.addTimeButton, isAddTimeDisabled && styles.disabledButton]}
+                >
+                  <AppText variant="title" style={styles.actionButtonText}>
+                    {uk.timer.addTime}
+                  </AppText>
+                </TapTarget>
+              </View>
+
+              {displayState.kind === 'Paused' ? (
+                <View style={styles.pauseBudgetContainer}>
+                  {budgetLeftMs > 0 ? (
+                    <>
+                      <AppText variant="body" accessibilityRole="text" style={styles.pauseBudgetText}>
+                        {`${uk.timer.pauseLeft} ${Math.floor(budgetLeftMs / 60000)}:${String(Math.floor((budgetLeftMs % 60000) / 1000)).padStart(2, '0')}`}
+                      </AppText>
+                      {budgetLeftMs < 60000 ? (
+                        <AppText variant="body" accessibilityRole="text" style={styles.pauseBudgetText}>
+                          {`Часу паузи ${uk.timer.minuteLeft} менше хвилини.`}
+                        </AppText>
+                      ) : null}
+                    </>
+                  ) : (
+                    <AppText variant="body" accessibilityRole="text" style={styles.pauseBudgetText}>
+                      {uk.timer.pauseBudgetExhausted}
+                    </AppText>
+                  )}
+                </View>
+              ) : null}
             </View>
           )}
         </View>
@@ -435,6 +503,30 @@ const styles = StyleSheet.create({
   },
   verifiedText: {
     color: statusColors.verified.text,
+    textAlign: 'center',
+  },
+  errorContainer: {
+    backgroundColor: '#FEE2E2',
+    padding: spacing.md,
+    borderRadius: 12,
+    marginHorizontal: spacing.md,
+    marginBottom: spacing.md,
+  },
+  errorText: {
+    color: '#991B1B',
+    textAlign: 'center',
+  },
+  controlsWrapper: {
+    alignItems: 'center',
+    width: '100%',
+  },
+  pauseBudgetContainer: {
+    marginTop: spacing.md,
+    alignItems: 'center',
+    gap: spacing.xs,
+  },
+  pauseBudgetText: {
+    color: colors.textSecondary,
     textAlign: 'center',
   },
 });

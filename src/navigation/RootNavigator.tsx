@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { StyleSheet, View } from 'react-native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { RootStackParamList } from './routes';
 import { TodayScreen } from '../screens/TodayScreen';
@@ -10,6 +11,8 @@ import { TaskListEditScreen } from '../screens/TaskListEditScreen';
 import { TaskEditScreen } from '../screens/TaskEditScreen';
 import { StatsScreen } from '../screens/StatsScreen';
 import { useServices } from '../state/appServices';
+import { AppText } from '../ui/components/AppText';
+import { uk } from '../i18n/uk';
 import { colors } from '../ui/theme';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -32,11 +35,18 @@ export function RootNavigator({ initialRouteName }: RootNavigatorProps) {
     if (typeof res === 'boolean') {
       setInitialRoute(res ? 'Today' : 'PinSetup');
     } else if (res && typeof res.then === 'function') {
-      void res.then((has: boolean) => {
-        if (isMounted) {
-          setInitialRoute(has ? 'Today' : 'PinSetup');
-        }
-      });
+      void res
+        .then((has: boolean) => {
+          if (isMounted) {
+            setInitialRoute(has ? 'Today' : 'PinSetup');
+          }
+        })
+        .catch((err: unknown) => {
+          console.error('Failed to check pin', err);
+          if (isMounted) {
+            setInitialRoute('Today');
+          }
+        });
     } else {
       setInitialRoute('Today');
     }
@@ -47,7 +57,11 @@ export function RootNavigator({ initialRouteName }: RootNavigatorProps) {
   }, [authService, initialRouteName]);
 
   if (!initialRoute) {
-    return null;
+    return (
+      <View style={styles.loadingContainer}>
+        <AppText variant="title">{uk.loading}</AppText>
+      </View>
+    );
   }
 
   return (
@@ -69,3 +83,12 @@ export function RootNavigator({ initialRouteName }: RootNavigatorProps) {
     </Stack.Navigator>
   );
 }
+
+const styles = StyleSheet.create({
+  loadingContainer: {
+    flex: 1,
+    backgroundColor: colors.background,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+});

@@ -78,9 +78,17 @@ export function TodayScreen({ navigation }: Props) {
       testID={isLandscape ? 'today-layout-landscape' : 'today-layout-portrait'}
       style={[styles.container, isLandscape && styles.containerLandscape]}
     >
-      <View style={[styles.header, isLandscape && styles.headerLandscape]}>
+      <View
+        testID="today-header"
+        style={[styles.header, isLandscape && styles.headerLandscape]}
+      >
         <View style={styles.titleArea}>
-          <AppText variant="title" accessibilityRole="header" style={styles.titleText}>
+          <AppText
+            variant="title"
+            accessibilityRole="header"
+            numberOfLines={1}
+            style={styles.titleText}
+          >
             {uk.today.title}
           </AppText>
           {activeTask ? (
@@ -128,6 +136,19 @@ export function TodayScreen({ navigation }: Props) {
             <AppText variant="body" style={styles.emptyText}>
               {uk.today.empty}
             </AppText>
+            <AppText variant="body" style={styles.emptyHintText}>
+              {uk.today.emptyHint}
+            </AppText>
+            <TapTarget
+              accessibilityRole="button"
+              accessibilityLabel={uk.today.emptyCta}
+              onPress={() => navigation.navigate('PinGate', { intent: 'enterParent' })}
+              style={styles.emptyCta}
+            >
+              <AppText variant="body" style={styles.emptyCtaText}>
+                {uk.today.emptyCta}
+              </AppText>
+            </TapTarget>
           </View>
         }
       />
@@ -149,6 +170,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
+    flexWrap: 'wrap',
+    rowGap: spacing.sm,
     marginBottom: spacing.lg,
   },
   headerLandscape: {
@@ -156,9 +179,11 @@ const styles = StyleSheet.create({
   },
   titleArea: {
     flex: 1,
+    minWidth: 0,
   },
   titleText: {
     color: colors.text,
+    flexShrink: 1,
   },
   activeBadge: {
     marginTop: spacing.sm,
@@ -173,6 +198,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   parentButton: {
+    flexShrink: 1,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
     backgroundColor: colors.surface,
@@ -202,5 +228,25 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     color: colors.textSecondary,
+  },
+  emptyHintText: {
+    color: colors.textSecondary,
+    textAlign: 'center',
+    marginTop: spacing.sm,
+    marginBottom: spacing.lg,
+  },
+  emptyCta: {
+    alignSelf: 'center',
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 12,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.sm,
+    minHeight: 48,
+    minWidth: 48,
+  },
+  emptyCtaText: {
+    color: colors.primary,
   },
 });

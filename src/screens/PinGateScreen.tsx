@@ -6,13 +6,14 @@ import { useServices } from '../state/appServices';
 import { useTimerStore, timerStore } from '../state/timerStore';
 import { tasksStore } from '../state/tasksStore';
 import { parentSessionStore, useParentSessionStore } from '../state/parentSessionStore';
-import { ParentToken } from '../services/auth/authService';
+import { ParentToken, MAX_FAILED_ATTEMPTS } from '../services/auth/authService';
 import { AppText } from '../ui/components/AppText';
 import { PinPad } from '../ui/components/PinPad';
 import { TapTarget } from '../ui/components/TapTarget';
 import { useOrientation } from '../ui/hooks/useOrientation';
 import { uk } from '../i18n/uk';
 import { colors, spacing } from '../ui/theme';
+import { mapTimerError } from '../ui/timerErrors';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'PinGate'>;
 
@@ -49,42 +50,80 @@ export function PinGateScreen({ route, navigation }: Props) {
   const handleComplete = async (completedPin: string) => {
     if (isLocked) return;
 
-    const res = await parentSessionStore.attempt(completedPin, route.params);
+    try {
+      const res = await parentSessionStore.attempt(completedPin, route.params);
 
-    if (res.status === 'LOCKED') {
-      clearPinDraft();
-      setError(null);
-      const sec = Math.ceil((res.remainingMs ?? authService.lockoutRemainingMs()) / 1000);
-      setLockoutSec(sec);
-    } else if (res.status === 'INVALID') {
-      clearPinDraft();
-      setError(uk.pin.invalidPin);
-    } else if (res.ok && res.status === 'SUCCESS') {
-      clearPinDraft();
-      setError(null);
+      if (res.status === 'LOCKED') {
+        clearPinDraft();
+        setError(null);
+        const sec = Math.ceil((res.remainingMs ?? authService.lockoutRemainingMs()) / 1000);
+        setLockoutSec(sec);
+      } else if (res.status === 'INVALID') {
+        clearPinDraft();
+        let msg: string = uk.pin.invalidPin;
+        try {
+          const failed = await authService.failedAttempts();
+          const left = Math.max(0, MAX_FAILED_ATTEMPTS - failed);
+          if (left > 0) {
+            msg = `${uk.pin.invalidPin}. ${uk.pin.attemptsLeft(left)}`;
+          }
+        } catch {
+          // Guard with its own try/catch so a DB error cannot break the flow
+        }
+        setError(msg);
+      } else if (res.ok && res.status === 'SUCCESS') {
+        clearPinDraft();
+        setError(null);
 
-      if (route.params.intent === 'enterParent') {
-        parentSessionStore.touch(clock.now());
-        navigation.replace('ParentHome');
-      } else if (route.params.intent === 'verify') {
-        const token = res.token ?? authService.issueToken();
-        await timerStore.verify(route.params.sessionId, token);
-        await tasksStore.refreshToday();
-        navigation.goBack();
-      } else if (route.params.intent === 'abandon') {
-        const token = res.token ?? authService.issueToken();
-        setAbandonToken(token);
-        setShowAbandonDialog(true);
+        if (route.params.intent === 'enterParent') {
+          parentSessionStore.touch(clock.now());
+          navigation.replace('ParentHome');
+        } else if (route.params.intent === 'verify') {
+          const token = res.token;
+          const ok = await timerStore.verify(route.params.sessionId, token);
+          if (!ok) {
+            setError(mapTimerError(useTimerStore.getState().lastError));
+            return;
+          }
+          await tasksStore.refreshToday();
+          navigation.goBack();
+        } else if (route.params.intent === 'abandon') {
+          const token = res.token;
+          setAbandonToken(token ?? null);
+          setShowAbandonDialog(true);
+        }
       }
+    } catch {
+      clearPinDraft();
+      let errorMsg: string;
+      if (route.params.intent === 'verify') {
+        errorMsg = uk.pin.verifyFailed;
+      } else if (route.params.intent === 'abandon') {
+        errorMsg = uk.pin.abandonFailed;
+      } else {
+        errorMsg = uk.pin.operationFailed;
+      }
+      setError(errorMsg);
+      return;
     }
   };
 
   const handleConfirmAbandon = async () => {
-    if (abandonToken && route.params.intent === 'abandon') {
-      await timerStore.abandon(route.params.sessionId, abandonToken);
-      await tasksStore.refreshToday();
+    try {
+      if (abandonToken && route.params.intent === 'abandon') {
+        const ok = await timerStore.abandon(route.params.sessionId, abandonToken);
+        if (!ok) {
+          setError(uk.pin.abandonFailed);
+          setShowAbandonDialog(false);
+          return;
+        }
+        await tasksStore.refreshToday();
+      }
+      navigation.goBack();
+    } catch {
+      setError(uk.pin.abandonFailed);
+      setShowAbandonDialog(false);
     }
-    navigation.goBack();
   };
 
   const handleCancelAbandon = () => {
@@ -171,9 +210,18 @@ export function PinGateScreen({ route, navigation }: Props) {
             </View>
           ) : error ? (
             <View style={styles.errorContainer}>
-              <AppText variant="body" style={styles.errorText}>
-                {error}
-              </AppText>
+              {error.startsWith(uk.pin.invalidPin) && error.length > uk.pin.invalidPin.length ? (
+                <AppText variant="body" style={styles.errorText}>
+                  <AppText variant="body" style={styles.errorText}>
+                    {uk.pin.invalidPin}
+                  </AppText>
+                  {error.slice(uk.pin.invalidPin.length)}
+                </AppText>
+              ) : (
+                <AppText variant="body" style={styles.errorText}>
+                  {error}
+                </AppText>
+              )}
             </View>
           ) : null}
         </View>

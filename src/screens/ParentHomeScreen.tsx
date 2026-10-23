@@ -5,6 +5,7 @@ import { RootStackParamList } from '../navigation/routes';
 import { useServices } from '../state/appServices';
 import { parentSessionStore } from '../state/parentSessionStore';
 import { SessionRow } from '../services/repos/sessionsRepo';
+import { MAX_FAILED_ATTEMPTS } from '../services/auth/authService';
 import { Task } from '../domain/tasks/types';
 import { AppText } from '../ui/components/AppText';
 import { TapTarget } from '../ui/components/TapTarget';
@@ -32,6 +33,23 @@ export function ParentHomeScreen({ navigation }: Props) {
   const [pinDraft, setPinDraft] = useState('');
   const [pinStep, setPinStep] = useState<1 | 2>(1);
   const [pinError, setPinError] = useState<string | null>(null);
+  const [lockoutSec, setLockoutSec] = useState(0);
+
+  // Monitor lockout countdown via monotonic clock
+  useEffect(() => {
+    const updateLockout = () => {
+      const remMs = authService.lockoutRemainingMs();
+      const sec = Math.ceil(remMs / 1000);
+      setLockoutSec(sec);
+    };
+
+    updateLockout();
+    const interval = setInterval(updateLockout, 500);
+    interval.unref?.();
+    return () => clearInterval(interval);
+  }, [authService]);
+
+  const isLocked = lockoutSec > 0;
 
   const loadData = async () => {
     const completedSessions = await sessionsRepo.listCompleted();
@@ -71,6 +89,7 @@ export function ParentHomeScreen({ navigation }: Props) {
   };
 
   const handleChangePinComplete = async (entered: string) => {
+    if (isLocked) return;
     parentSessionStore.touch();
     setPinDraft('');
     if (pinStep === 1) {
@@ -78,14 +97,30 @@ export function ParentHomeScreen({ navigation }: Props) {
       setPinStep(2);
       setPinError(null);
     } else {
-      const ok = await authService.changePin(currentPinInput, entered);
-      if (ok) {
-        setChangingPin(false);
-        setPinStep(1);
-        setCurrentPinInput('');
-        setPinError(null);
-      } else {
-        setPinError(uk.pin.invalidPin);
+      try {
+        const ok = await authService.changePin(currentPinInput, entered);
+        if (ok) {
+          setChangingPin(false);
+          setPinStep(1);
+          setCurrentPinInput('');
+          setPinError(null);
+        } else {
+          let msg: string = uk.pin.invalidPin;
+          try {
+            const failed = await authService.failedAttempts();
+            const left = Math.max(0, MAX_FAILED_ATTEMPTS - failed);
+            if (left > 0) {
+              msg = `${uk.pin.invalidPin}. ${uk.pin.attemptsLeft(left)}`;
+            }
+          } catch {
+            // Guard with try/catch
+          }
+          setPinError(msg);
+          setPinStep(1);
+          setCurrentPinInput('');
+        }
+      } catch {
+        setPinError(uk.pin.operationFailed);
         setPinStep(1);
         setCurrentPinInput('');
       }
@@ -100,7 +135,12 @@ export function ParentHomeScreen({ navigation }: Props) {
       >
         {/* Header */}
         <View style={styles.header}>
-          <AppText variant="title" accessibilityRole="header" style={styles.title}>
+          <AppText
+            variant="title"
+            accessibilityRole="header"
+            numberOfLines={1}
+            style={styles.title}
+          >
             {uk.parentHome.title}
           </AppText>
           <TapTarget
@@ -169,12 +209,28 @@ export function ParentHomeScreen({ navigation }: Props) {
             <AppText variant="body" style={styles.changePinPrompt}>
               {pinStep === 1 ? uk.parentHome.enterCurrentPin : uk.parentHome.enterNewPin}
             </AppText>
-            {pinError ? (
-              <AppText variant="body" style={styles.errorText}>
-                {pinError}
-              </AppText>
+            {isLocked ? (
+              <View style={styles.lockoutBox}>
+                <AppText variant="body" style={styles.lockoutText}>
+                  {`${uk.pin.lockedRemaining} ${lockoutSec} ${uk.pin.seconds}`}
+                </AppText>
+              </View>
+            ) : pinError ? (
+              pinError.startsWith(uk.pin.invalidPin) && pinError.length > uk.pin.invalidPin.length ? (
+                <AppText variant="body" style={styles.errorText}>
+                  <AppText variant="body" style={styles.errorText}>
+                    {uk.pin.invalidPin}
+                  </AppText>
+                  {pinError.slice(uk.pin.invalidPin.length)}
+                </AppText>
+              ) : (
+                <AppText variant="body" style={styles.errorText}>
+                  {pinError}
+                </AppText>
+              )
             ) : null}
             <PinPad
+              disabled={isLocked}
               value={pinDraft}
               onChange={setPinDraft}
               onComplete={handleChangePinComplete}
@@ -199,6 +255,8 @@ export function ParentHomeScreen({ navigation }: Props) {
               data={awaitingItems}
               keyExtractor={(item) => String(item.session.id)}
               contentContainerStyle={styles.listContent}
+              onScroll={() => parentSessionStore.touch()}
+              scrollEventThrottle={1000}
               renderItem={({ item }) => (
                 <View style={styles.itemCard}>
                   <View style={styles.itemInfo}>
@@ -255,10 +313,15 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    flexWrap: 'wrap',
+    rowGap: spacing.sm,
     marginBottom: spacing.lg,
   },
   title: {
     color: colors.text,
+    flex: 1,
+    minWidth: 0,
+    flexShrink: 1,
   },
   exitButton: {
     paddingHorizontal: spacing.md,
@@ -298,6 +361,16 @@ const styles = StyleSheet.create({
   changePinPrompt: {
     color: colors.text,
     marginBottom: spacing.sm,
+  },
+  lockoutBox: {
+    backgroundColor: '#FEF3C7',
+    padding: spacing.md,
+    borderRadius: 8,
+    marginVertical: spacing.md,
+  },
+  lockoutText: {
+    color: colors.awaiting,
+    textAlign: 'center',
   },
   errorText: {
     color: colors.abandoned,

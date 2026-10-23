@@ -50,7 +50,7 @@ export function TaskListEditScreen({ navigation }: Props) {
     <ParentGuard navigation={navigation}>
       <View style={styles.container}>
         {/* Top bar */}
-        <View style={styles.topBar}>
+        <View testID="tasklistedit-topbar" style={styles.topBar}>
           <TapTarget
             accessibilityRole="button"
             accessibilityLabel={uk.timer.back}
@@ -65,7 +65,13 @@ export function TaskListEditScreen({ navigation }: Props) {
             </AppText>
           </TapTarget>
 
-          <AppText variant="title" accessibilityRole="header" style={styles.title}>
+          <AppText
+            testID="tasklistedit-title"
+            variant="title"
+            accessibilityRole="header"
+            numberOfLines={1}
+            style={styles.title}
+          >
             {uk.taskCrud.listTitle}
           </AppText>
 
@@ -86,6 +92,8 @@ export function TaskListEditScreen({ navigation }: Props) {
           data={tasks}
           keyExtractor={(item) => String(item.id)}
           contentContainerStyle={styles.listContent}
+          onScroll={() => parentSessionStore.touch()}
+          scrollEventThrottle={1000}
           renderItem={({ item, index }) => (
             <View style={styles.taskCard}>
               <View style={styles.taskInfo}>
@@ -154,8 +162,11 @@ const styles = StyleSheet.create({
   },
   topBar: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    flexWrap: 'wrap',
     alignItems: 'center',
+    rowGap: spacing.sm,
+    columnGap: spacing.sm,
+    width: '100%',
     marginBottom: spacing.lg,
   },
   backButton: {
@@ -166,8 +177,13 @@ const styles = StyleSheet.create({
   },
   title: {
     color: colors.text,
+    flex: 1,
+    minWidth: 0,
+    flexShrink: 1,
   },
   addButton: {
+    flexBasis: '100%',
+    alignSelf: 'stretch',
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
     backgroundColor: colors.primary,

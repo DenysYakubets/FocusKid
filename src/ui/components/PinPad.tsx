@@ -62,7 +62,7 @@ export function PinPad({
       </View>
 
       {/* Digits pad */}
-      <View style={styles.grid}>
+      <View testID="pinpad-grid" style={styles.grid}>
         <View style={styles.row}>
           {[1, 2, 3].map((d) => (
             <TapTarget
@@ -151,6 +151,9 @@ export function PinPad({
 
 const styles = StyleSheet.create({
   container: {
+    width: '100%',
+    flex: 1,
+    justifyContent: 'space-evenly',
     alignItems: 'center',
     paddingVertical: spacing.md,
   },
@@ -158,7 +161,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: spacing.xl,
+    marginBottom: spacing.sm,
     gap: spacing.lg,
   },
   dot: {
@@ -177,16 +180,21 @@ const styles = StyleSheet.create({
   grid: {
     width: '100%',
     maxWidth: 360,
+    flex: 1,
+    justifyContent: 'space-evenly',
     gap: spacing.md,
   },
   row: {
+    flex: 1,
+    maxHeight: 110,
     flexDirection: 'row',
     justifyContent: 'space-around',
-    alignItems: 'center',
+    alignItems: 'stretch',
   },
   keyButton: {
-    width: 72,
-    height: 72,
+    flex: 1,
+    maxWidth: 96,
+    minHeight: 48,
     borderRadius: 36,
     backgroundColor: colors.surface,
     borderWidth: 1,
@@ -198,8 +206,9 @@ const styles = StyleSheet.create({
     opacity: 0.4,
   },
   keyPlaceholder: {
-    width: 72,
-    height: 72,
+    flex: 1,
+    maxWidth: 96,
+    minHeight: 48,
   },
   keyText: {
     color: colors.text,
