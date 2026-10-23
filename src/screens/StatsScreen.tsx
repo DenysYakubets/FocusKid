@@ -78,7 +78,12 @@ export function StatsScreen({ navigation }: Props) {
             </AppText>
           </TapTarget>
 
-          <AppText variant="title" accessibilityRole="header" style={styles.title}>
+          <AppText
+            variant="title"
+            accessibilityRole="header"
+            numberOfLines={1}
+            style={styles.title}
+          >
             {uk.stats.title}
           </AppText>
         </View>
@@ -244,6 +249,8 @@ const styles = StyleSheet.create({
   topBar: {
     flexDirection: 'row',
     alignItems: 'center',
+    flexWrap: 'wrap',
+    rowGap: spacing.sm,
     marginBottom: spacing.lg,
     gap: spacing.md,
   },
@@ -255,6 +262,7 @@ const styles = StyleSheet.create({
   },
   title: {
     color: colors.text,
+    flexShrink: 1,
   },
   centerBox: {
     flex: 1,

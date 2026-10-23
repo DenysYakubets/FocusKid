@@ -128,7 +128,7 @@ export function TaskEditScreen({ route, navigation }: Props) {
     <ParentGuard navigation={navigation}>
       <ScrollView contentContainerStyle={styles.container}>
         {/* Top bar */}
-        <View style={styles.topBar}>
+        <View testID="taskedit-topbar" style={styles.topBar}>
           <TapTarget
             accessibilityRole="button"
             accessibilityLabel={uk.taskCrud.cancel}
@@ -143,7 +143,12 @@ export function TaskEditScreen({ route, navigation }: Props) {
             </AppText>
           </TapTarget>
 
-          <AppText variant="title" accessibilityRole="header" style={styles.screenTitle}>
+          <AppText
+            variant="title"
+            accessibilityRole="header"
+            numberOfLines={1}
+            style={styles.screenTitle}
+          >
             {isEditing ? uk.taskCrud.editTask : uk.taskCrud.createTask}
           </AppText>
 
@@ -212,7 +217,7 @@ export function TaskEditScreen({ route, navigation }: Props) {
           <AppText variant="body" style={styles.fieldLabel}>
             {uk.taskCrud.targetMinutesLabel}
           </AppText>
-          <View style={styles.stepperRow}>
+          <View testID="taskedit-stepper" style={styles.stepperRow}>
             <TapTarget
               accessibilityRole="button"
               accessibilityLabel={uk.taskCrud.stepLess5}
@@ -268,7 +273,7 @@ export function TaskEditScreen({ route, navigation }: Props) {
           <AppText variant="body" style={styles.fieldLabel}>
             {uk.taskCrud.weekdaysLabel}
           </AppText>
-          <View style={styles.weekdaysRow}>
+          <View testID="taskedit-weekdays" style={styles.weekdaysRow}>
             {WEEKDAYS.map((day) => {
               const isSelected = (daysMask & (1 << day.bit)) !== 0;
               return (
@@ -338,8 +343,11 @@ const styles = StyleSheet.create({
   },
   topBar: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    flexWrap: 'wrap',
     alignItems: 'center',
+    rowGap: spacing.sm,
+    columnGap: spacing.sm,
+    width: '100%',
   },
   cancelNavButton: {
     padding: spacing.sm,
@@ -349,8 +357,13 @@ const styles = StyleSheet.create({
   },
   screenTitle: {
     color: colors.text,
+    flex: 1,
+    minWidth: 0,
+    flexShrink: 1,
   },
   saveNavButton: {
+    flexBasis: '100%',
+    alignSelf: 'stretch',
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
     backgroundColor: colors.primary,
@@ -387,6 +400,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    flexWrap: 'wrap',
+    rowGap: spacing.sm,
     gap: spacing.sm,
   },
   stepperButton: {
@@ -411,6 +426,8 @@ const styles = StyleSheet.create({
   weekdaysRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    flexWrap: 'wrap',
+    rowGap: spacing.sm,
     gap: spacing.xs,
   },
   dayButton: {

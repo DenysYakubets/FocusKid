@@ -78,9 +78,17 @@ export function TodayScreen({ navigation }: Props) {
       testID={isLandscape ? 'today-layout-landscape' : 'today-layout-portrait'}
       style={[styles.container, isLandscape && styles.containerLandscape]}
     >
-      <View style={[styles.header, isLandscape && styles.headerLandscape]}>
+      <View
+        testID="today-header"
+        style={[styles.header, isLandscape && styles.headerLandscape]}
+      >
         <View style={styles.titleArea}>
-          <AppText variant="title" accessibilityRole="header" style={styles.titleText}>
+          <AppText
+            variant="title"
+            accessibilityRole="header"
+            numberOfLines={1}
+            style={styles.titleText}
+          >
             {uk.today.title}
           </AppText>
           {activeTask ? (
@@ -149,6 +157,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
+    flexWrap: 'wrap',
+    rowGap: spacing.sm,
     marginBottom: spacing.lg,
   },
   headerLandscape: {
@@ -156,9 +166,11 @@ const styles = StyleSheet.create({
   },
   titleArea: {
     flex: 1,
+    minWidth: 0,
   },
   titleText: {
     color: colors.text,
+    flexShrink: 1,
   },
   activeBadge: {
     marginTop: spacing.sm,
@@ -173,6 +185,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   parentButton: {
+    flexShrink: 1,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
     backgroundColor: colors.surface,

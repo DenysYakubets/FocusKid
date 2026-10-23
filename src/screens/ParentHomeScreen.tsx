@@ -100,7 +100,12 @@ export function ParentHomeScreen({ navigation }: Props) {
       >
         {/* Header */}
         <View style={styles.header}>
-          <AppText variant="title" accessibilityRole="header" style={styles.title}>
+          <AppText
+            variant="title"
+            accessibilityRole="header"
+            numberOfLines={1}
+            style={styles.title}
+          >
             {uk.parentHome.title}
           </AppText>
           <TapTarget
@@ -255,10 +260,15 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    flexWrap: 'wrap',
+    rowGap: spacing.sm,
     marginBottom: spacing.lg,
   },
   title: {
     color: colors.text,
+    flex: 1,
+    minWidth: 0,
+    flexShrink: 1,
   },
   exitButton: {
     paddingHorizontal: spacing.md,
