@@ -1,0 +1,40 @@
+FAIL src/ui/__tests__/theme.inv10.test.ts
+  ● INV-10 Theme & Typography › MIN_TOUCH_DP stays 48 and body text can reach the old 48sp need via font scaling
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 16
+    Received: 48
+
+      33 |   it('MIN_TOUCH_DP stays 48 and body text can reach the old 48sp need via font scaling', () => {
+      34 |     expect(MIN_TOUCH_DP).toBeGreaterThanOrEqual(48);
+    > 35 |     expect(typography.body).toBe(16);
+         |                             ^
+      36 |     expect(fontScaleMax.text * typography.body).toBeGreaterThanOrEqual(48); // 16 × 3.0 = 48
+      37 |   });
+      38 |
+
+      at Object.toBe (src/ui/__tests__/theme.inv10.test.ts:35:29)
+
+  ● INV-10 Theme & Typography › typography tokens follow the amended INV-10 scale (body 16, titles 20-24, timer 64-72, all 12..72)
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 16
+    Received: 48
+
+      38 |
+      39 |   it('typography tokens follow the amended INV-10 scale (body 16, titles 20-24, timer 64-72, all 12..72)', () => {
+    > 40 |     expect(typography.body).toBe(16);
+         |                             ^
+      41 |     expect(typography.title).toBeGreaterThanOrEqual(20);
+      42 |     expect(typography.title).toBeLessThanOrEqual(24);
+      43 |     expect(typography.timer).toBeGreaterThanOrEqual(64);
+
+      at Object.toBe (src/ui/__tests__/theme.inv10.test.ts:40:29)
+
+Test Suites: 1 failed, 1 total
+Tests:       2 failed, 2 passed, 4 total
+Snapshots:   0 total
+Time:        4.193 s
+Ran all test suites matching src/ui/__tests__/theme.inv10.test.ts.
