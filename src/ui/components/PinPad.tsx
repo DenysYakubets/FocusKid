@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { AppText } from './AppText';
 import { TapTarget } from './TapTarget';
-import { colors, spacing } from '../theme';
+import { colors, radius, spacing } from '../theme';
 import { uk } from '../../i18n/uk';
 
 export interface PinPadProps {
@@ -12,6 +12,12 @@ export interface PinPadProps {
   onChange?: (pin: string) => void;
 }
 
+/**
+ * 4-dot indicator + 3x4 keypad (spec §4.1). Keys are `flex: 1` with no
+ * maxWidth cap, `minHeight: 56`, `radius.lg` and a `borderStrong` outline, so
+ * all 10 digits + ⌫ fit at 320dp without scrolling; the grid keeps `flex: 1`
+ * (pinned by layoutResponsive.test) and the screen behind it scrolls instead.
+ */
 export function PinPad({
   onComplete,
   disabled = false,
@@ -42,6 +48,21 @@ export function PinPad({
     onChange?.(nextPin);
   };
 
+  const renderDigit = (d: number) => (
+    <TapTarget
+      key={d}
+      accessibilityRole="button"
+      accessibilityLabel={uk.pin.digit(d)}
+      disabled={disabled}
+      onPress={() => handleDigit(String(d))}
+      style={[styles.keyButton, disabled && styles.keyButtonDisabled]}
+    >
+      <AppText variant="heading" style={styles.keyText}>
+        {String(d)}
+      </AppText>
+    </TapTarget>
+  );
+
   return (
     <View style={styles.container}>
       {/* 4 dots indicator */}
@@ -63,72 +84,13 @@ export function PinPad({
 
       {/* Digits pad */}
       <View testID="pinpad-grid" style={styles.grid}>
-        <View style={styles.row}>
-          {[1, 2, 3].map((d) => (
-            <TapTarget
-              key={d}
-              accessibilityRole="button"
-              accessibilityLabel={uk.pin.digit(d)}
-              disabled={disabled}
-              onPress={() => handleDigit(String(d))}
-              style={[styles.keyButton, disabled && styles.keyButtonDisabled]}
-            >
-              <AppText variant="title" style={styles.keyText}>
-                {String(d)}
-              </AppText>
-            </TapTarget>
-          ))}
-        </View>
-
-        <View style={styles.row}>
-          {[4, 5, 6].map((d) => (
-            <TapTarget
-              key={d}
-              accessibilityRole="button"
-              accessibilityLabel={uk.pin.digit(d)}
-              disabled={disabled}
-              onPress={() => handleDigit(String(d))}
-              style={[styles.keyButton, disabled && styles.keyButtonDisabled]}
-            >
-              <AppText variant="title" style={styles.keyText}>
-                {String(d)}
-              </AppText>
-            </TapTarget>
-          ))}
-        </View>
-
-        <View style={styles.row}>
-          {[7, 8, 9].map((d) => (
-            <TapTarget
-              key={d}
-              accessibilityRole="button"
-              accessibilityLabel={uk.pin.digit(d)}
-              disabled={disabled}
-              onPress={() => handleDigit(String(d))}
-              style={[styles.keyButton, disabled && styles.keyButtonDisabled]}
-            >
-              <AppText variant="title" style={styles.keyText}>
-                {String(d)}
-              </AppText>
-            </TapTarget>
-          ))}
-        </View>
+        <View style={styles.row}>{[1, 2, 3].map(renderDigit)}</View>
+        <View style={styles.row}>{[4, 5, 6].map(renderDigit)}</View>
+        <View style={styles.row}>{[7, 8, 9].map(renderDigit)}</View>
 
         <View style={styles.row}>
           <View style={styles.keyPlaceholder} />
-
-          <TapTarget
-            accessibilityRole="button"
-            accessibilityLabel={uk.pin.digit(0)}
-            disabled={disabled}
-            onPress={() => handleDigit('0')}
-            style={[styles.keyButton, disabled && styles.keyButtonDisabled]}
-          >
-            <AppText variant="title" style={styles.keyText}>
-              0
-            </AppText>
-          </TapTarget>
-
+          {renderDigit(0)}
           <TapTarget
             accessibilityRole="button"
             accessibilityLabel={uk.pin.backspace}
@@ -139,7 +101,7 @@ export function PinPad({
               (disabled || currentPin.length === 0) && styles.keyButtonDisabled,
             ]}
           >
-            <AppText variant="title" style={styles.keyText}>
+            <AppText variant="heading" style={styles.keyText}>
               ⌫
             </AppText>
           </TapTarget>
@@ -162,12 +124,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: spacing.sm,
-    gap: spacing.lg,
+    gap: spacing.md,
   },
   dot: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
+    width: 16,
+    height: 16,
+    borderRadius: radius.full,
     borderWidth: 2,
     borderColor: colors.primary,
   },
@@ -179,26 +141,23 @@ const styles = StyleSheet.create({
   },
   grid: {
     width: '100%',
-    maxWidth: 360,
     flex: 1,
     justifyContent: 'space-evenly',
-    gap: spacing.md,
+    gap: spacing.s12,
   },
   row: {
-    flex: 1,
-    maxHeight: 110,
     flexDirection: 'row',
-    justifyContent: 'space-around',
+    gap: spacing.s12,
     alignItems: 'stretch',
   },
   keyButton: {
     flex: 1,
-    maxWidth: 96,
-    minHeight: 48,
-    borderRadius: 36,
+    minHeight: 56,
+    borderRadius: radius.lg,
+    borderCurve: 'continuous',
     backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: colors.borderStrong,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -207,8 +166,7 @@ const styles = StyleSheet.create({
   },
   keyPlaceholder: {
     flex: 1,
-    maxWidth: 96,
-    minHeight: 48,
+    minHeight: 56,
   },
   keyText: {
     color: colors.text,

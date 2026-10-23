@@ -6,25 +6,25 @@ import { useTasksStore } from '../state/tasksStore';
 import { useTimerStore } from '../state/timerStore';
 import { useServices } from '../state/appServices';
 import { TaskCard } from '../ui/components/TaskCard';
+import { AppButton } from '../ui/components/AppButton';
 import { AppText } from '../ui/components/AppText';
-import { TapTarget } from '../ui/components/TapTarget';
-import { useOrientation } from '../ui/hooks/useOrientation';
+import { NoticeBox } from '../ui/components/NoticeBox';
+import { StatusChip } from '../ui/components/StatusChip';
+import { CONTENT_MAX_WIDTH, useScreenGutter } from '../ui/hooks/useScreenGutter';
 import { uk } from '../i18n/uk';
-import { colors, spacing, statusColors } from '../ui/theme';
+import { colors, spacing } from '../ui/theme';
 import { TodayTaskView } from '../domain/tasks/types';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Today'>;
 
 export function TodayScreen({ navigation }: Props) {
   const services = useServices();
-  const orientation = useOrientation();
-  const isLandscape = orientation === 'landscape';
+  const { gutter, isLandscape } = useScreenGutter();
 
   const todayTasks = useTasksStore((s) => s.todayTasks);
   const refreshToday = useTasksStore((s) => s.refreshToday);
   const timerSnapshot = useTimerStore((s) => s.snapshot);
   const startTimer = useTimerStore((s) => s.start);
-  const lastError = useTimerStore((s) => s.lastError);
 
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [startPending, setStartPending] = useState(false);
@@ -76,51 +76,38 @@ export function TodayScreen({ navigation }: Props) {
   return (
     <View
       testID={isLandscape ? 'today-layout-landscape' : 'today-layout-portrait'}
-      style={[styles.container, isLandscape && styles.containerLandscape]}
+      style={[styles.container, { paddingHorizontal: gutter }]}
     >
-      <View
-        testID="today-header"
-        style={[styles.header, isLandscape && styles.headerLandscape]}
-      >
-        <View style={styles.titleArea}>
-          <AppText
-            variant="title"
-            accessibilityRole="header"
-            numberOfLines={1}
-            style={styles.titleText}
-          >
-            {uk.today.title}
-          </AppText>
-          {activeTask ? (
-            <View style={styles.activeBadge}>
-              <AppText variant="body" style={styles.activeBadgeText}>
-                {`⏱ ${uk.today.active}`}
-              </AppText>
-            </View>
-          ) : null}
-        </View>
-
-        <TapTarget
-          accessibilityRole="button"
-          accessibilityLabel={uk.today.parentButton}
-          onPress={handleParentPress}
-          style={styles.parentButton}
+      {/* Header is exactly <= 2 lines: Row 1 = title + parent chip,
+          Row 2 = active StatusChip (forced onto its own line). */}
+      <View testID="today-header" style={styles.header}>
+        <AppText
+          variant="title"
+          accessibilityRole="header"
+          numberOfLines={1}
+          style={styles.titleText}
         >
-          <AppText variant="body" style={styles.parentButtonText}>
-            {`🔒 ${uk.today.parentButton}`}
-          </AppText>
-        </TapTarget>
+          {uk.today.title}
+        </AppText>
+
+        <AppButton
+          label={uk.today.parentButton}
+          variant="secondary"
+          size="sm"
+          onPress={handleParentPress}
+        />
+
+        {activeTask ? (
+          <View style={styles.badgeRow}>
+            <StatusChip status="active" />
+          </View>
+        ) : null}
       </View>
 
-      {errorMessage ? (
-        <View style={styles.errorContainer}>
-          <AppText variant="body" style={styles.errorText}>
-            {errorMessage}
-          </AppText>
-        </View>
-      ) : null}
+      {errorMessage ? <NoticeBox tone="error" message={errorMessage} /> : null}
 
       <FlatList
+        style={[styles.list, isLandscape && styles.listLandscape]}
         data={todayTasks}
         keyExtractor={(item) => String(item.id)}
         renderItem={({ item }) => (
@@ -139,16 +126,12 @@ export function TodayScreen({ navigation }: Props) {
             <AppText variant="body" style={styles.emptyHintText}>
               {uk.today.emptyHint}
             </AppText>
-            <TapTarget
-              accessibilityRole="button"
-              accessibilityLabel={uk.today.emptyCta}
+            <AppButton
+              label={uk.today.emptyCta}
+              variant="secondary"
+              size="md"
               onPress={() => navigation.navigate('PinGate', { intent: 'enterParent' })}
-              style={styles.emptyCta}
-            >
-              <AppText variant="body" style={styles.emptyCtaText}>
-                {uk.today.emptyCta}
-              </AppText>
-            </TapTarget>
+            />
           </View>
         }
       />
@@ -161,92 +144,50 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background,
     paddingTop: spacing.xl,
-    paddingHorizontal: spacing.md,
-  },
-  containerLandscape: {
-    paddingHorizontal: spacing.xl,
   },
   header: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    flexWrap: 'wrap',
     rowGap: spacing.sm,
+    columnGap: spacing.sm,
     marginBottom: spacing.lg,
   },
-  headerLandscape: {
-    marginBottom: spacing.md,
-  },
-  titleArea: {
+  titleText: {
     flex: 1,
     minWidth: 0,
-  },
-  titleText: {
+    flexShrink: 1,
     color: colors.text,
-    flexShrink: 1,
   },
-  activeBadge: {
-    marginTop: spacing.sm,
-    alignSelf: 'flex-start',
-    backgroundColor: statusColors.active.bg,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs,
-    borderRadius: 9999,
+  badgeRow: {
+    flexBasis: '100%',
+    alignItems: 'flex-start',
   },
-  activeBadgeText: {
-    color: statusColors.active.text,
-    fontWeight: '600',
+  list: {
+    flex: 1,
+    width: '100%',
   },
-  parentButton: {
-    flexShrink: 1,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    backgroundColor: colors.surface,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: colors.border,
-    marginLeft: spacing.sm,
-  },
-  parentButtonText: {
-    color: colors.textSecondary,
-  },
-  errorContainer: {
-    backgroundColor: '#FEE2E2',
-    padding: spacing.md,
-    borderRadius: 12,
-    marginBottom: spacing.md,
-  },
-  errorText: {
-    color: '#991B1B',
+  listLandscape: {
+    maxWidth: CONTENT_MAX_WIDTH.list,
+    alignSelf: 'center',
   },
   listContent: {
+    gap: spacing.sm,
     paddingBottom: spacing.xxl,
   },
   emptyContainer: {
     paddingTop: spacing.xxl,
-    alignItems: 'center',
+    alignItems: 'stretch',
+    gap: spacing.sm,
   },
   emptyText: {
     color: colors.textSecondary,
+    textAlign: 'center',
   },
   emptyHintText: {
     color: colors.textSecondary,
     textAlign: 'center',
-    marginTop: spacing.sm,
-    marginBottom: spacing.lg,
-  },
-  emptyCta: {
-    alignSelf: 'center',
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 12,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.sm,
-    minHeight: 48,
-    minWidth: 48,
-  },
-  emptyCtaText: {
-    color: colors.primary,
+    marginBottom: spacing.md,
   },
 });
