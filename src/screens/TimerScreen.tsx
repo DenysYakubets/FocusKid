@@ -1,0 +1,367 @@
+import React, { useEffect, useRef, useState } from 'react';
+import {
+  AccessibilityInfo,
+  BackHandler,
+  StyleSheet,
+  View,
+} from 'react-native';
+import { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
+import { MAX_ADDED_MS } from '../domain/timer/constants';
+import { pauseBudgetLeft, remaining, runElapsed } from '../domain/timer/elapsed';
+import { Task } from '../domain/tasks/types';
+import { RootStackParamList } from '../navigation/routes';
+import { useServices } from '../state/appServices';
+import { useTimerStore, timerStore } from '../state/timerStore';
+import { AppText } from '../ui/components/AppText';
+import { ProgressBar } from '../ui/components/ProgressBar';
+import { TapTarget } from '../ui/components/TapTarget';
+import { formatMinutesUk } from '../ui/components/TaskCard';
+import { useOrientation } from '../ui/hooks/useOrientation';
+import { useTicker } from '../ui/hooks/useTicker';
+import { uk } from '../i18n/uk';
+import { colors, spacing, statusColors } from '../ui/theme';
+
+type Props = NativeStackScreenProps<RootStackParamList, 'Timer'>;
+
+export function TimerScreen({ route, navigation }: Props) {
+  const { clock, tasksRepo } = useServices();
+  useTicker();
+  const orientation = useOrientation();
+  const isLandscape = orientation === 'landscape';
+
+  const snapshot = useTimerStore((s) => s.snapshot);
+  const pause = useTimerStore((s) => s.pause);
+  const resume = useTimerStore((s) => s.resume);
+  const addTime = useTimerStore((s) => s.addTime);
+
+  const [task, setTask] = useState<Task | null>(null);
+
+  useEffect(() => {
+    let isMounted = true;
+    void tasksRepo.get(route.params.taskId).then((t) => {
+      if (isMounted) setTask(t);
+    });
+    return () => {
+      isMounted = false;
+    };
+  }, [tasksRepo, route.params.taskId]);
+
+  // BackHandler navigation to Today
+  useEffect(() => {
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      navigation.navigate('Today');
+      return true;
+    });
+    return () => sub.remove();
+  }, [navigation]);
+
+  // Keep awake while running
+  useEffect(() => {
+    if (snapshot.state.kind === 'Running') {
+      void activateKeepAwakeAsync();
+      return () => {
+        void deactivateKeepAwake();
+      };
+    } else {
+      void deactivateKeepAwake();
+    }
+  }, [snapshot.state.kind]);
+
+  const now = clock.now();
+  const remMs = remaining(snapshot.state, now);
+  const remSec = Math.ceil(remMs / 1000);
+  const minutes = Math.floor(remSec / 60);
+  const seconds = remSec % 60;
+  const timeString = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+
+  const totalMs =
+    snapshot.state.kind !== 'Idle' ? snapshot.state.targetMs + snapshot.state.addedMs : 0;
+  const elapsedMs = snapshot.state.kind !== 'Idle' ? runElapsed(snapshot.state, now) : 0;
+
+  // Accessibility announcements
+  const prevKindRef = useRef(snapshot.state.kind);
+  const lastAnnouncedMinuteRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    const prev = prevKindRef.current;
+    const current = snapshot.state.kind;
+    prevKindRef.current = current;
+
+    if (prev === 'Paused' && current === 'Running') {
+      AccessibilityInfo.announceForAccessibility(uk.timer.autoResumed);
+    } else if (prev !== 'Completed' && current === 'Completed') {
+      AccessibilityInfo.announceForAccessibility(uk.timer.completedAnnouncement);
+    }
+  }, [snapshot.state.kind]);
+
+  useEffect(() => {
+    if (snapshot.state.kind === 'Running') {
+      const mins = Math.floor(remSec / 60);
+      if (remSec > 0 && remSec % 60 === 0 && lastAnnouncedMinuteRef.current !== mins) {
+        lastAnnouncedMinuteRef.current = mins;
+        AccessibilityInfo.announceForAccessibility(`${mins} ${formatMinutesUk(mins)}`);
+      }
+    }
+  }, [remSec, snapshot.state.kind]);
+
+  const budgetLeftMs = pauseBudgetLeft(snapshot.state, now);
+  const isPauseDisabled = budgetLeftMs <= 0;
+  const isAddTimeDisabled =
+    snapshot.state.kind === 'Running' || snapshot.state.kind === 'Paused'
+      ? snapshot.state.addedMs >= MAX_ADDED_MS
+      : true;
+
+  const isCompleted = snapshot.state.kind === 'Completed';
+  const isVerified = snapshot.state.kind === 'Verified';
+
+  const handleBack = () => {
+    navigation.navigate('Today');
+  };
+
+  const handleShowParent = () => {
+    if (snapshot.sessionId) {
+      navigation.navigate('PinGate', {
+        intent: 'verify',
+        sessionId: snapshot.sessionId,
+      });
+    }
+  };
+
+  const layoutTestID = isLandscape ? 'timer-layout-landscape' : 'timer-layout-portrait';
+
+  return (
+    <View testID={layoutTestID} style={[styles.container, isLandscape && styles.containerLandscape]}>
+      <View style={styles.topBar}>
+        <TapTarget
+          accessibilityRole="button"
+          accessibilityLabel={uk.timer.back}
+          onPress={handleBack}
+          style={styles.backButton}
+        >
+          <AppText variant="body" style={styles.backButtonText}>
+            {`← ${uk.timer.back}`}
+          </AppText>
+        </TapTarget>
+
+        {task ? (
+          <AppText variant="title" style={styles.taskTitle}>
+            {task.emoji ? `${task.emoji} ${task.title}` : task.title}
+          </AppText>
+        ) : null}
+      </View>
+
+      <View style={[styles.content, isLandscape && styles.contentLandscape]}>
+        {/* Digits & Progress Bar Section */}
+        <View style={[styles.displaySection, isLandscape && styles.displaySectionLandscape]}>
+          <AppText
+            variant={isLandscape ? 'timerLandscape' : 'timer'}
+            accessibilityLiveRegion="polite"
+            style={styles.digits}
+          >
+            {timeString}
+          </AppText>
+
+          <ProgressBar total={totalMs} elapsed={elapsedMs} style={styles.progressBar} />
+        </View>
+
+        {/* Controls Section */}
+        <View style={[styles.controlsSection, isLandscape && styles.controlsSectionLandscape]}>
+          {isCompleted ? (
+            <View style={styles.completedBox}>
+              <AppText variant="title" style={styles.awaitingText}>
+                {uk.timer.awaiting}
+              </AppText>
+              <TapTarget
+                accessibilityRole="button"
+                accessibilityLabel={uk.timer.showParent}
+                onPress={handleShowParent}
+                style={styles.showParentButton}
+              >
+                <AppText variant="title" style={styles.showParentButtonText}>
+                  {uk.timer.showParent}
+                </AppText>
+              </TapTarget>
+            </View>
+          ) : isVerified ? (
+            <View style={styles.verifiedBox}>
+              <AppText variant="title" style={styles.verifiedText}>
+                {uk.timer.verified}
+              </AppText>
+            </View>
+          ) : (
+            <View style={[styles.buttonsRow, isLandscape && styles.buttonsColumnLandscape]}>
+              {snapshot.state.kind === 'Running' ? (
+                <TapTarget
+                  accessibilityRole="button"
+                  accessibilityLabel={uk.timer.pause}
+                  disabled={isPauseDisabled}
+                  onPress={() => void pause()}
+                  style={[styles.actionButton, isPauseDisabled && styles.disabledButton]}
+                >
+                  <AppText variant="title" style={styles.actionButtonText}>
+                    {uk.timer.pause}
+                  </AppText>
+                </TapTarget>
+              ) : snapshot.state.kind === 'Paused' ? (
+                <TapTarget
+                  accessibilityRole="button"
+                  accessibilityLabel={uk.timer.resume}
+                  onPress={() => void resume()}
+                  style={[styles.actionButton, styles.resumeButton]}
+                >
+                  <AppText variant="title" style={styles.actionButtonText}>
+                    {uk.timer.resume}
+                  </AppText>
+                </TapTarget>
+              ) : null}
+
+              <TapTarget
+                accessibilityRole="button"
+                accessibilityLabel={uk.timer.addTime}
+                disabled={isAddTimeDisabled}
+                onPress={() => void addTime()}
+                style={[styles.actionButton, styles.addTimeButton, isAddTimeDisabled && styles.disabledButton]}
+              >
+                <AppText variant="title" style={styles.actionButtonText}>
+                  {uk.timer.addTime}
+                </AppText>
+              </TapTarget>
+            </View>
+          )}
+        </View>
+      </View>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: colors.background,
+    paddingTop: spacing.xl,
+    paddingHorizontal: spacing.md,
+  },
+  containerLandscape: {
+    paddingTop: spacing.md,
+    paddingHorizontal: spacing.lg,
+  },
+  topBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: spacing.md,
+  },
+  backButton: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    backgroundColor: colors.surface,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  backButtonText: {
+    color: colors.textSecondary,
+  },
+  taskTitle: {
+    flex: 1,
+    marginLeft: spacing.md,
+    color: colors.text,
+  },
+  content: {
+    flex: 1,
+    justifyContent: 'space-around',
+    alignItems: 'center',
+    paddingBottom: spacing.xxl,
+  },
+  contentLandscape: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingBottom: spacing.md,
+  },
+  displaySection: {
+    width: '100%',
+    alignItems: 'center',
+  },
+  displaySectionLandscape: {
+    flex: 1,
+    marginRight: spacing.lg,
+  },
+  digits: {
+    color: colors.text,
+    textAlign: 'center',
+    marginBottom: spacing.md,
+  },
+  progressBar: {
+    width: '90%',
+    marginVertical: spacing.md,
+  },
+  controlsSection: {
+    width: '100%',
+    alignItems: 'center',
+  },
+  controlsSectionLandscape: {
+    flex: 1,
+    marginLeft: spacing.lg,
+  },
+  buttonsRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: spacing.md,
+    width: '100%',
+  },
+  buttonsColumnLandscape: {
+    flexDirection: 'column',
+    alignItems: 'center',
+  },
+  actionButton: {
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+    borderRadius: 16,
+    backgroundColor: colors.primary,
+    minWidth: 140,
+  },
+  resumeButton: {
+    backgroundColor: '#059669',
+  },
+  addTimeButton: {
+    backgroundColor: '#4B5563',
+  },
+  disabledButton: {
+    backgroundColor: colors.border,
+    opacity: 0.6,
+  },
+  actionButtonText: {
+    color: '#FFFFFF',
+    textAlign: 'center',
+  },
+  completedBox: {
+    alignItems: 'center',
+    width: '100%',
+  },
+  awaitingText: {
+    color: statusColors.awaiting.bg,
+    marginBottom: spacing.lg,
+    textAlign: 'center',
+  },
+  showParentButton: {
+    backgroundColor: statusColors.awaiting.bg,
+    paddingHorizontal: spacing.xl,
+    paddingVertical: spacing.md,
+    borderRadius: 16,
+  },
+  showParentButtonText: {
+    color: statusColors.awaiting.text,
+  },
+  verifiedBox: {
+    alignItems: 'center',
+    backgroundColor: statusColors.verified.bg,
+    paddingHorizontal: spacing.xl,
+    paddingVertical: spacing.lg,
+    borderRadius: 16,
+  },
+  verifiedText: {
+    color: statusColors.verified.text,
+    textAlign: 'center',
+  },
+});

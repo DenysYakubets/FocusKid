@@ -14,11 +14,33 @@ export const colors = {
   textSecondary: '#4B5563',
   primary: '#2563EB',
   border: '#E5E7EB',
-  idle: '#9CA3AF',
-  active: '#2563EB',
-  awaiting: '#D97706',
-  verified: '#16A34A',
+  idle: '#6B7280',
+  active: '#1D4ED8',
+  awaiting: '#92400E',
+  verified: '#15803D',
   abandoned: '#DC2626',
+  white: '#FFFFFF',
+  cardBg: '#FFFFFF',
+  surface: '#F9FAFB',
+} as const;
+
+export const statusColors = {
+  idle: {
+    bg: '#F3F4F6',
+    text: '#1F2937',
+  },
+  active: {
+    bg: '#1D4ED8',
+    text: '#FFFFFF',
+  },
+  awaiting: {
+    bg: '#92400E',
+    text: '#FFFFFF',
+  },
+  verified: {
+    bg: '#15803D',
+    text: '#FFFFFF',
+  },
 } as const;
 
 export const spacing = {

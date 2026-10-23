@@ -58,15 +58,11 @@ else
 fi
 
 # TSC-16: INV-10 Pressable only via TapTarget (static half)
-if test -e src/ui/components/TapTarget.tsx; then
-  if ! grep -rlE --include=*.tsx --exclude=TapTarget.tsx -e "<Pressable\b" -e "<Touchable[A-Za-z]*\b" -e "<Button\b" src; then
-    echo "PASS TSC-16"
-  else
-    echo "FAIL TSC-16"
-    exit 1
-  fi
+if ! grep -rlE --include=*.tsx --exclude=TapTarget.tsx -e "<Pressable\b" -e "<Touchable[A-Za-z]*\b" -e "<Button\b" src; then
+  echo "PASS TSC-16"
 else
-  echo "SKIP TSC-16 (stage 2)"
+  echo "FAIL TSC-16"
+  exit 1
 fi
 
 # TSC-17: Distribution binary hygiene
