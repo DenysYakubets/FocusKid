@@ -9,24 +9,25 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
 import { MAX_ADDED_MS } from '../domain/timer/constants';
 import { pauseBudgetLeft, remaining, runElapsed } from '../domain/timer/elapsed';
+import { TimerState } from '../domain/timer/types';
 import { Task } from '../domain/tasks/types';
 import { RootStackParamList } from '../navigation/routes';
+import { SessionRow } from '../services/repos/sessionsRepo';
+import { restore } from '../services/timer/timerService';
 import { useServices } from '../state/appServices';
-import { useTimerStore, timerStore } from '../state/timerStore';
+import { useTimerStore } from '../state/timerStore';
 import { AppText } from '../ui/components/AppText';
 import { ProgressBar } from '../ui/components/ProgressBar';
 import { TapTarget } from '../ui/components/TapTarget';
 import { formatMinutesUk } from '../ui/components/TaskCard';
 import { useOrientation } from '../ui/hooks/useOrientation';
-import { useTicker } from '../ui/hooks/useTicker';
 import { uk } from '../i18n/uk';
 import { colors, spacing, statusColors } from '../ui/theme';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Timer'>;
 
 export function TimerScreen({ route, navigation }: Props) {
-  const { clock, tasksRepo } = useServices();
-  useTicker();
+  const { clock, tasksRepo, sessionsRepo, wall } = useServices();
   const orientation = useOrientation();
   const isLandscape = orientation === 'landscape';
 
@@ -34,10 +35,9 @@ export function TimerScreen({ route, navigation }: Props) {
   const pause = useTimerStore((s) => s.pause);
   const resume = useTimerStore((s) => s.resume);
   const addTime = useTimerStore((s) => s.addTime);
-  const verify = useTimerStore((s) => s.verify);
-  const abandon = useTimerStore((s) => s.abandon);
 
   const [task, setTask] = useState<Task | null>(null);
+  const [routeSession, setRouteSession] = useState<SessionRow | null>(null);
 
   useEffect(() => {
     let isMounted = true;
@@ -49,6 +49,24 @@ export function TimerScreen({ route, navigation }: Props) {
     };
   }, [tasksRepo, route.params.taskId]);
 
+  useEffect(() => {
+    let isMounted = true;
+    async function loadSession() {
+      const todayDate = wall.todayLocalDate();
+      let s = await sessionsRepo.getTodayForTask(route.params.taskId, todayDate);
+      if (!s) {
+        s = await sessionsRepo.getLatestForTask(route.params.taskId);
+      }
+      if (isMounted) {
+        setRouteSession(s);
+      }
+    }
+    void loadSession();
+    return () => {
+      isMounted = false;
+    };
+  }, [sessionsRepo, wall, route.params.taskId]);
+
   // BackHandler navigation to Today
   useEffect(() => {
     const sub = BackHandler.addEventListener('hardwareBackPress', () => {
@@ -58,9 +76,31 @@ export function TimerScreen({ route, navigation }: Props) {
     return () => sub.remove();
   }, [navigation]);
 
+  let displayState: TimerState;
+  let displaySessionId: number | null;
+  let isLive: boolean;
+
+  if (
+    snapshot.sessionId !== null &&
+    snapshot.taskId === route.params.taskId &&
+    (routeSession === null || routeSession.id === snapshot.sessionId)
+  ) {
+    displayState = snapshot.state;
+    displaySessionId = snapshot.sessionId;
+    isLive = true;
+  } else if (routeSession !== null) {
+    displayState = restore(routeSession, clock.now());
+    displaySessionId = routeSession.id;
+    isLive = false;
+  } else {
+    displayState = { kind: 'Idle' };
+    displaySessionId = null;
+    isLive = false;
+  }
+
   // Keep awake while running
   useEffect(() => {
-    if (snapshot.state.kind === 'Running') {
+    if (isLive && displayState.kind === 'Running') {
       void activateKeepAwakeAsync();
       return () => {
         void deactivateKeepAwake();
@@ -68,26 +108,26 @@ export function TimerScreen({ route, navigation }: Props) {
     } else {
       void deactivateKeepAwake();
     }
-  }, [snapshot.state.kind]);
+  }, [isLive, displayState.kind]);
 
   const now = clock.now();
-  const remMs = remaining(snapshot.state, now);
+  const remMs = remaining(displayState, now);
   const remSec = Math.ceil(remMs / 1000);
   const minutes = Math.floor(remSec / 60);
   const seconds = remSec % 60;
   const timeString = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
 
   const totalMs =
-    snapshot.state.kind !== 'Idle' ? snapshot.state.targetMs + snapshot.state.addedMs : 0;
-  const elapsedMs = snapshot.state.kind !== 'Idle' ? runElapsed(snapshot.state, now) : 0;
+    displayState.kind !== 'Idle' ? displayState.targetMs + displayState.addedMs : 0;
+  const elapsedMs = displayState.kind !== 'Idle' ? runElapsed(displayState, now) : 0;
 
   // Accessibility announcements
-  const prevKindRef = useRef(snapshot.state.kind);
+  const prevKindRef = useRef(displayState.kind);
   const lastAnnouncedMinuteRef = useRef<number | null>(null);
 
   useEffect(() => {
     const prev = prevKindRef.current;
-    const current = snapshot.state.kind;
+    const current = displayState.kind;
     prevKindRef.current = current;
 
     if (prev === 'Paused' && current === 'Running') {
@@ -95,37 +135,38 @@ export function TimerScreen({ route, navigation }: Props) {
     } else if (prev !== 'Completed' && current === 'Completed') {
       AccessibilityInfo.announceForAccessibility(uk.timer.completedAnnouncement);
     }
-  }, [snapshot.state.kind]);
+  }, [displayState.kind]);
 
   useEffect(() => {
-    if (snapshot.state.kind === 'Running') {
+    if (displayState.kind === 'Running') {
       const mins = Math.floor(remSec / 60);
       if (remSec > 0 && remSec % 60 === 0 && lastAnnouncedMinuteRef.current !== mins) {
         lastAnnouncedMinuteRef.current = mins;
         AccessibilityInfo.announceForAccessibility(`${mins} ${formatMinutesUk(mins)}`);
       }
     }
-  }, [remSec, snapshot.state.kind]);
+  }, [remSec, displayState.kind]);
 
-  const budgetLeftMs = pauseBudgetLeft(snapshot.state, now);
+  const budgetLeftMs = pauseBudgetLeft(displayState, now);
   const isPauseDisabled = budgetLeftMs <= 0;
-  const isAddTimeDisabled =
-    snapshot.state.kind === 'Running' || snapshot.state.kind === 'Paused'
-      ? snapshot.state.addedMs >= MAX_ADDED_MS
-      : true;
+  const isAddTimeDisabled = !(
+    isLive &&
+    (displayState.kind === 'Running' || displayState.kind === 'Paused') &&
+    displayState.addedMs < MAX_ADDED_MS
+  );
 
-  const isCompleted = snapshot.state.kind === 'Completed';
-  const isVerified = snapshot.state.kind === 'Verified';
+  const isCompleted = displayState.kind === 'Completed';
+  const isVerified = displayState.kind === 'Verified';
 
   const handleBack = () => {
     navigation.navigate('Today');
   };
 
   const handleShowParent = () => {
-    if (snapshot.sessionId) {
+    if (displaySessionId !== null) {
       navigation.navigate('PinGate', {
         intent: 'verify',
-        sessionId: snapshot.sessionId,
+        sessionId: displaySessionId,
       });
     }
   };
@@ -158,7 +199,6 @@ export function TimerScreen({ route, navigation }: Props) {
         <View style={[styles.displaySection, isLandscape && styles.displaySectionLandscape]}>
           <AppText
             variant={isLandscape ? 'timerLandscape' : 'timer'}
-            accessibilityLiveRegion="polite"
             style={styles.digits}
           >
             {timeString}
@@ -177,8 +217,9 @@ export function TimerScreen({ route, navigation }: Props) {
               <TapTarget
                 accessibilityRole="button"
                 accessibilityLabel={uk.timer.showParent}
+                disabled={displaySessionId === null}
                 onPress={handleShowParent}
-                style={styles.showParentButton}
+                style={[styles.showParentButton, displaySessionId === null && styles.disabledButton]}
               >
                 <AppText variant="title" style={styles.showParentButtonText}>
                   {uk.timer.showParent}
@@ -193,23 +234,27 @@ export function TimerScreen({ route, navigation }: Props) {
             </View>
           ) : (
             <View style={[styles.buttonsRow, isLandscape && styles.buttonsColumnLandscape]}>
-              {snapshot.state.kind === 'Running' ? (
+              {isLive && displayState.kind === 'Running' ? (
                 <TapTarget
                   accessibilityRole="button"
                   accessibilityLabel={uk.timer.pause}
                   disabled={isPauseDisabled}
-                  onPress={() => void pause()}
+                  onPress={() => {
+                    if (isLive) void pause();
+                  }}
                   style={[styles.actionButton, isPauseDisabled && styles.disabledButton]}
                 >
                   <AppText variant="title" style={styles.actionButtonText}>
                     {uk.timer.pause}
                   </AppText>
                 </TapTarget>
-              ) : snapshot.state.kind === 'Paused' ? (
+              ) : isLive && displayState.kind === 'Paused' ? (
                 <TapTarget
                   accessibilityRole="button"
                   accessibilityLabel={uk.timer.resume}
-                  onPress={() => void resume()}
+                  onPress={() => {
+                    if (isLive) void resume();
+                  }}
                   style={[styles.actionButton, styles.resumeButton]}
                 >
                   <AppText variant="title" style={styles.actionButtonText}>
@@ -222,7 +267,9 @@ export function TimerScreen({ route, navigation }: Props) {
                 accessibilityRole="button"
                 accessibilityLabel={uk.timer.addTime}
                 disabled={isAddTimeDisabled}
-                onPress={() => void addTime()}
+                onPress={() => {
+                  if (isLive) void addTime();
+                }}
                 style={[styles.actionButton, styles.addTimeButton, isAddTimeDisabled && styles.disabledButton]}
               >
                 <AppText variant="title" style={styles.actionButtonText}>

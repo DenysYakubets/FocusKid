@@ -9,6 +9,7 @@ import { seedIfEmpty } from './src/services/db/seed';
 import { systemMonotonicClock } from './src/services/clock/monotonic';
 import { systemWallClock } from './src/services/clock/wallClock';
 import { AppServices, createAppServices, AppServicesProvider } from './src/state/appServices';
+import { AppLifecycle } from './src/state/AppLifecycle';
 import { timerStore } from './src/state/timerStore';
 import { tasksStore } from './src/state/tasksStore';
 import { parentSessionStore } from './src/state/parentSessionStore';
@@ -64,6 +65,7 @@ export default function App() {
 
   return (
     <AppServicesProvider services={services}>
+      <AppLifecycle />
       <SafeAreaProvider>
         <NavigationContainer>
           <ErrorBoundary>

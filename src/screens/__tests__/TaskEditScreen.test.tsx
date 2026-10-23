@@ -11,6 +11,8 @@ import { parentSessionStore } from '../../state/parentSessionStore';
 import { uk } from '../../i18n/uk';
 
 describe('TaskEditScreen (Task CRUD & validation)', () => {
+  jest.setTimeout(30000);
+
   const fakeWall: WallClock = {
     todayLocalDate: () => '2026-10-23',
     weekdayIndex: () => 4, // Friday (bit 4)

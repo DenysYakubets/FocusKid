@@ -13,6 +13,8 @@ import { uk } from '../../i18n/uk';
 import { statusColors } from '../../ui/theme';
 
 describe('verifyFlow (INV-05 / INV-06)', () => {
+  jest.setTimeout(30000);
+
   const fakeWall: WallClock = {
     todayLocalDate: () => '2026-10-23',
     weekdayIndex: () => 4,

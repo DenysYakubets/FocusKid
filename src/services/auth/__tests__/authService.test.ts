@@ -245,4 +245,33 @@ describe('authService', () => {
     expect(await service.attempt('1111')).toBe('INVALID');
     expect(await service.attempt('2222')).toBe('SUCCESS');
   });
+
+  it('prunes expired tokens and attempt() does not issue orphan tokens (F8)', async () => {
+    const db = createNodeDb();
+    await migrate(db);
+    const authRepo = createAuthRepo(db);
+    const clock = createFakeClock(1000);
+
+    const service = createAuthService({
+      authRepo,
+      clock,
+      wall: fakeWall,
+      iterations: 50_000,
+    });
+
+    await service.setupPin('1234');
+    expect(service.activeTokenCount()).toBe(0);
+
+    service.issueToken();
+    expect(service.activeTokenCount()).toBe(1);
+
+    clock.advance(30_001);
+    service.issueToken();
+    expect(service.activeTokenCount()).toBe(1);
+
+    const countBeforeAttempt = service.activeTokenCount();
+    const res = await service.attempt('1234');
+    expect(res).toBe('SUCCESS');
+    expect(service.activeTokenCount()).toBe(countBeforeAttempt);
+  });
 });

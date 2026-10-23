@@ -3,6 +3,7 @@ import { StyleSheet, View } from 'react-native';
 import { AppText } from './AppText';
 import { TapTarget } from './TapTarget';
 import { colors, spacing } from '../theme';
+import { uk } from '../../i18n/uk';
 
 export interface PinPadProps {
   onComplete: (pin: string) => void;
@@ -46,7 +47,7 @@ export function PinPad({
       {/* 4 dots indicator */}
       <View
         accessible={true}
-        accessibilityLabel={`Введено ${currentPin.length} з 4 цифр`}
+        accessibilityLabel={uk.pin.digitsEntered(currentPin.length)}
         style={styles.dotsContainer}
       >
         {[0, 1, 2, 3].map((idx) => {
@@ -67,7 +68,7 @@ export function PinPad({
             <TapTarget
               key={d}
               accessibilityRole="button"
-              accessibilityLabel={`Цифра ${d}`}
+              accessibilityLabel={uk.pin.digit(d)}
               disabled={disabled}
               onPress={() => handleDigit(String(d))}
               style={[styles.keyButton, disabled && styles.keyButtonDisabled]}
@@ -84,7 +85,7 @@ export function PinPad({
             <TapTarget
               key={d}
               accessibilityRole="button"
-              accessibilityLabel={`Цифра ${d}`}
+              accessibilityLabel={uk.pin.digit(d)}
               disabled={disabled}
               onPress={() => handleDigit(String(d))}
               style={[styles.keyButton, disabled && styles.keyButtonDisabled]}
@@ -101,7 +102,7 @@ export function PinPad({
             <TapTarget
               key={d}
               accessibilityRole="button"
-              accessibilityLabel={`Цифра ${d}`}
+              accessibilityLabel={uk.pin.digit(d)}
               disabled={disabled}
               onPress={() => handleDigit(String(d))}
               style={[styles.keyButton, disabled && styles.keyButtonDisabled]}
@@ -118,7 +119,7 @@ export function PinPad({
 
           <TapTarget
             accessibilityRole="button"
-            accessibilityLabel="Цифра 0"
+            accessibilityLabel={uk.pin.digit(0)}
             disabled={disabled}
             onPress={() => handleDigit('0')}
             style={[styles.keyButton, disabled && styles.keyButtonDisabled]}
@@ -130,7 +131,7 @@ export function PinPad({
 
           <TapTarget
             accessibilityRole="button"
-            accessibilityLabel="Видалити цифру"
+            accessibilityLabel={uk.pin.backspace}
             disabled={disabled || currentPin.length === 0}
             onPress={handleBackspace}
             style={[

@@ -102,4 +102,20 @@ describe('timerStore', () => {
     expect(restoredSnap.sessionId).toBe(sessionId);
     expect(restoredSnap.taskId).toBe(1);
   });
+
+  it('handles service throwing in start(): returns false and sets lastError', async () => {
+    const originalService = timerStore.getState().service!;
+    const throwingService = {
+      ...originalService,
+      start: jest.fn().mockRejectedValue(new Error('DB_LOCKED')),
+    };
+
+    timerStore.setService(throwingService);
+    const ok = await timerStore.start(1);
+
+    expect(ok).toBe(false);
+    expect(timerStore.getState().lastError).toBe('DB_LOCKED');
+
+    timerStore.setService(originalService);
+  });
 });

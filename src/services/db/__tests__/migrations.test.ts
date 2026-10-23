@@ -33,6 +33,7 @@ describe('Database migrations', () => {
     expect(indexNames).toContain('ix_tasks_active');
     expect(indexNames).toContain('ix_sessions_date');
     expect(indexNames).toContain('ux_sessions_task_day');
+    expect(indexNames).toContain('ux_sessions_one_active');
     expect(indexNames).toContain('ix_session_events_session');
 
     // Check triggers

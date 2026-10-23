@@ -31,87 +31,161 @@ export const useTimerStore = create<TimerStoreState>((set, get) => ({
   },
 
   start: async (taskId: number) => {
-    const service = get().service;
-    if (!service) throw new Error('TimerService not attached to timerStore');
-    const res = await service.start(taskId);
-    set({
-      snapshot: service.getSnapshot(),
-      lastError: res.ok ? null : res.error,
-    });
-    return res.ok;
+    try {
+      const service = get().service;
+      if (!service) throw new Error('TimerService not attached to timerStore');
+      const res = await service.start(taskId);
+      set({
+        snapshot: service.getSnapshot(),
+        lastError: res.ok ? null : res.error,
+      });
+      return res.ok;
+    } catch (err) {
+      const service = get().service;
+      set({
+        snapshot: service ? service.getSnapshot() : get().snapshot,
+        lastError: err instanceof Error ? err.message : 'OPERATION_FAILED',
+      });
+      return false;
+    }
   },
 
   pause: async () => {
-    const service = get().service;
-    if (!service) throw new Error('TimerService not attached to timerStore');
-    const res = await service.pause();
-    set({
-      snapshot: service.getSnapshot(),
-      lastError: res.ok ? null : res.error,
-    });
-    return res.ok;
+    try {
+      const service = get().service;
+      if (!service) throw new Error('TimerService not attached to timerStore');
+      const res = await service.pause();
+      set({
+        snapshot: service.getSnapshot(),
+        lastError: res.ok ? null : res.error,
+      });
+      return res.ok;
+    } catch (err) {
+      const service = get().service;
+      set({
+        snapshot: service ? service.getSnapshot() : get().snapshot,
+        lastError: err instanceof Error ? err.message : 'OPERATION_FAILED',
+      });
+      return false;
+    }
   },
 
   resume: async () => {
-    const service = get().service;
-    if (!service) throw new Error('TimerService not attached to timerStore');
-    const res = await service.resume();
-    set({
-      snapshot: service.getSnapshot(),
-      lastError: res.ok ? null : res.error,
-    });
-    return res.ok;
+    try {
+      const service = get().service;
+      if (!service) throw new Error('TimerService not attached to timerStore');
+      const res = await service.resume();
+      set({
+        snapshot: service.getSnapshot(),
+        lastError: res.ok ? null : res.error,
+      });
+      return res.ok;
+    } catch (err) {
+      const service = get().service;
+      set({
+        snapshot: service ? service.getSnapshot() : get().snapshot,
+        lastError: err instanceof Error ? err.message : 'OPERATION_FAILED',
+      });
+      return false;
+    }
   },
 
   addTime: async (ms?: number) => {
-    const service = get().service;
-    if (!service) throw new Error('TimerService not attached to timerStore');
-    const res = await service.addTime(ms);
-    set({
-      snapshot: service.getSnapshot(),
-      lastError: res.ok ? null : res.error,
-    });
-    return res.ok;
+    try {
+      const service = get().service;
+      if (!service) throw new Error('TimerService not attached to timerStore');
+      const res = await service.addTime(ms);
+      set({
+        snapshot: service.getSnapshot(),
+        lastError: res.ok ? null : res.error,
+      });
+      return res.ok;
+    } catch (err) {
+      const service = get().service;
+      set({
+        snapshot: service ? service.getSnapshot() : get().snapshot,
+        lastError: err instanceof Error ? err.message : 'OPERATION_FAILED',
+      });
+      return false;
+    }
   },
 
   tick: async () => {
-    const service = get().service;
-    if (!service) return;
-    await service.tick();
-    set({ snapshot: service.getSnapshot() });
+    try {
+      const service = get().service;
+      if (!service) return;
+      const res = await service.tick();
+      set({
+        snapshot: service.getSnapshot(),
+        lastError: res.ok ? null : res.error,
+      });
+    } catch (err) {
+      const service = get().service;
+      set({
+        snapshot: service ? service.getSnapshot() : get().snapshot,
+        lastError: err instanceof Error ? err.message : 'OPERATION_FAILED',
+      });
+    }
   },
 
   requestComplete: async () => {
-    const service = get().service;
-    if (!service) throw new Error('TimerService not attached to timerStore');
-    const res = await service.requestComplete();
-    set({
-      snapshot: service.getSnapshot(),
-      lastError: res.ok ? null : res.error,
-    });
-    return res.ok;
+    try {
+      const service = get().service;
+      if (!service) throw new Error('TimerService not attached to timerStore');
+      const res = await service.requestComplete();
+      set({
+        snapshot: service.getSnapshot(),
+        lastError: res.ok ? null : res.error,
+      });
+      return res.ok;
+    } catch (err) {
+      const service = get().service;
+      set({
+        snapshot: service ? service.getSnapshot() : get().snapshot,
+        lastError: err instanceof Error ? err.message : 'OPERATION_FAILED',
+      });
+      return false;
+    }
   },
 
   verify: async (sessionId: number, token?: unknown) => {
-    const service = get().service;
-    if (!service) throw new Error('TimerService not attached to timerStore');
-    const res = await service.verify(sessionId, token);
-    set({
-      snapshot: service.getSnapshot(),
-      lastError: res.ok ? null : res.error,
-    });
-    return res.ok;
+    try {
+      const service = get().service;
+      if (!service) throw new Error('TimerService not attached to timerStore');
+      const res = await service.verify(sessionId, token);
+      set({
+        snapshot: service.getSnapshot(),
+        lastError: res.ok ? null : res.error,
+      });
+      return res.ok;
+    } catch (err) {
+      const service = get().service;
+      set({
+        snapshot: service ? service.getSnapshot() : get().snapshot,
+        lastError: err instanceof Error ? err.message : 'OPERATION_FAILED',
+      });
+      return false;
+    }
   },
 
   abandon: async (sessionId: number, token?: unknown) => {
-    const service = get().service;
-    if (!service) throw new Error('TimerService not attached to timerStore');
-    const res = await service.abandon(sessionId, token);
-    set({
-      snapshot: service.getSnapshot(),
-      lastError: res.ok ? null : res.error,
-    });
-    return res.ok;
+    try {
+      const service = get().service;
+      if (!service) throw new Error('TimerService not attached to timerStore');
+      const res = await service.abandon(sessionId, token);
+      set({
+        snapshot: service.getSnapshot(),
+        lastError: res.ok ? null : res.error,
+      });
+      return res.ok;
+    } catch (err) {
+      const service = get().service;
+      set({
+        snapshot: service ? service.getSnapshot() : get().snapshot,
+        lastError: err instanceof Error ? err.message : 'OPERATION_FAILED',
+      });
+      return false;
+    }
   },
 
   hydrate: async (serviceOverride?: TimerService) => {

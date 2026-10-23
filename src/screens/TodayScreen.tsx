@@ -27,6 +27,7 @@ export function TodayScreen({ navigation }: Props) {
   const lastError = useTimerStore((s) => s.lastError);
 
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [startPending, setStartPending] = useState(false);
 
   useEffect(() => {
     void refreshToday(services);
@@ -45,17 +46,23 @@ export function TodayScreen({ navigation }: Props) {
     setErrorMessage(null);
 
     if (task.status === 'idle') {
-      const ok = await startTimer(task.id);
-      if (ok) {
-        await refreshToday(services);
-        navigation.navigate('Timer', { taskId: task.id });
-      } else {
-        const error = useTimerStore.getState().lastError;
-        if (error === 'ACTIVE_SESSION_EXISTS') {
-          setErrorMessage(uk.today.activeSessionError);
+      if (startPending) return;
+      setStartPending(true);
+      try {
+        const ok = await startTimer(task.id);
+        if (ok) {
+          await refreshToday(services);
+          navigation.navigate('Timer', { taskId: task.id });
         } else {
-          setErrorMessage(error ?? 'Error');
+          const error = useTimerStore.getState().lastError;
+          if (error === 'ACTIVE_SESSION_EXISTS') {
+            setErrorMessage(uk.today.activeSessionError);
+          } else {
+            setErrorMessage(error ?? 'Error');
+          }
         }
+      } finally {
+        setStartPending(false);
       }
     } else {
       navigation.navigate('Timer', { taskId: task.id });
@@ -109,7 +116,11 @@ export function TodayScreen({ navigation }: Props) {
         data={todayTasks}
         keyExtractor={(item) => String(item.id)}
         renderItem={({ item }) => (
-          <TaskCard task={item} onPress={() => void handleTaskPress(item)} />
+          <TaskCard
+            task={item}
+            onPress={() => void handleTaskPress(item)}
+            disabled={startPending}
+          />
         )}
         contentContainerStyle={styles.listContent}
         ListEmptyComponent={

@@ -97,6 +97,7 @@ export interface SessionsRepo {
   ): Promise<void>;
   getActive(): Promise<SessionRow | null>;
   getTodayForTask(taskId: number, localDate: string): Promise<SessionRow | null>;
+  getLatestForTask(taskId: number): Promise<SessionRow | null>;
   listCompleted(): Promise<SessionRow[]>;
   get(id: number): Promise<SessionRow | null>;
   appendEvent(event: {
@@ -185,6 +186,14 @@ export function createSessionsRepo(db: Db): SessionsRepo {
       const row = await db.get<DbSessionRow>(
         `SELECT * FROM sessions WHERE task_id = ? AND local_date = ? AND status <> 'abandoned' LIMIT 1;`,
         [taskId, localDate]
+      );
+      return row ? mapSession(row) : null;
+    },
+
+    async getLatestForTask(taskId: number): Promise<SessionRow | null> {
+      const row = await db.get<DbSessionRow>(
+        `SELECT * FROM sessions WHERE task_id = ? AND status <> 'abandoned' ORDER BY id DESC LIMIT 1;`,
+        [taskId]
       );
       return row ? mapSession(row) : null;
     },

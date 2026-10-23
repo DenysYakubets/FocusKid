@@ -121,6 +121,36 @@ describe('SessionsRepo', () => {
     expect(await repo.getTodayForTask(1, '2026-10-23')).toBeNull();
   });
 
+  it('getLatestForTask returns latest non-abandoned session', async () => {
+    const s1 = await repo.insertRunning({
+      taskId: 1,
+      localDate: '2026-10-22',
+      targetMs: 60000,
+      startedAt: '2026-10-22T10:00:00Z',
+      updatedAt: '2026-10-22T10:00:00Z',
+    });
+    await repo.setStatus(s1.id, 'completed', { updatedAt: '2026-10-22T10:01:00Z' });
+
+    const s2 = await repo.insertRunning({
+      taskId: 1,
+      localDate: '2026-10-23',
+      targetMs: 60000,
+      startedAt: '2026-10-23T10:00:00Z',
+      updatedAt: '2026-10-23T10:00:00Z',
+    });
+
+    const latest = await repo.getLatestForTask(1);
+    expect(latest?.id).toBe(s2.id);
+
+    // If latest is abandoned, falls back to previous non-abandoned
+    await repo.setStatus(s2.id, 'abandoned', { updatedAt: '2026-10-23T10:05:00Z' });
+    const fallback = await repo.getLatestForTask(1);
+    expect(fallback?.id).toBe(s1.id);
+
+    // Non-existent task returns null
+    expect(await repo.getLatestForTask(999)).toBeNull();
+  });
+
   it('listCompleted returns only completed sessions', async () => {
     const s1 = await repo.insertRunning({
       taskId: 1,

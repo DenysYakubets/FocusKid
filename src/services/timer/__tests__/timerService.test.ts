@@ -199,4 +199,99 @@ describe('TimerService', () => {
     expect(resAfterAbandon.ok).toBe(true);
     expect(service.getSnapshot().state.kind).toBe('Running');
   });
+
+  it('concurrent start(1) and start(2) results in one ok:true and one ok:false with error ACTIVE_SESSION_EXISTS', async () => {
+    const clock = createFakeClock(1000);
+    const sessionsRepo = createSessionsRepo(db);
+    const tasksRepo = createTasksRepo(db);
+
+    const service = createTimerService({
+      db,
+      clock,
+      wall: fakeWall,
+      sessionsRepo,
+      tasksRepo,
+    });
+
+    const results = await Promise.all([service.start(1), service.start(2)]);
+    const successes = results.filter((r) => r.ok);
+    const failures = results.filter((r) => !r.ok);
+
+    expect(successes).toHaveLength(1);
+    expect(failures).toHaveLength(1);
+    expect(failures[0]).toEqual({ ok: false, error: 'ACTIVE_SESSION_EXISTS' });
+  });
+
+  it('double start(1) results in one ok:true and other ok:false with SESSION_ALREADY_EXISTS_TODAY without throwing', async () => {
+    const clock = createFakeClock(1000);
+    const sessionsRepo = createSessionsRepo(db);
+    const tasksRepo = createTasksRepo(db);
+
+    const service = createTimerService({
+      db,
+      clock,
+      wall: fakeWall,
+      sessionsRepo,
+      tasksRepo,
+    });
+
+    const results = await Promise.all([service.start(1), service.start(1)]);
+    const successes = results.filter((r) => r.ok);
+    const failures = results.filter((r) => !r.ok);
+
+    expect(successes).toHaveLength(1);
+    expect(failures).toHaveLength(1);
+    expect(failures[0]).toEqual({ ok: false, error: 'SESSION_ALREADY_EXISTS_TODAY' });
+  });
+
+  it('DB-level: insertRunning twice for different tasks on same day rejects with UNIQUE constraint error', async () => {
+    const sessionsRepo = createSessionsRepo(db);
+    const nowIso = fakeWall.nowIso();
+    const today = fakeWall.todayLocalDate();
+
+    await sessionsRepo.insertRunning({
+      taskId: 1,
+      localDate: today,
+      targetMs: 60000,
+      startedAt: nowIso,
+      updatedAt: nowIso,
+    });
+
+    await expect(
+      sessionsRepo.insertRunning({
+        taskId: 2,
+        localDate: today,
+        targetMs: 60000,
+        startedAt: nowIso,
+        updatedAt: nowIso,
+      })
+    ).rejects.toThrow(/UNIQUE/);
+  });
+
+  it('concurrent mixed ops (pause, tick, addTime) all settle as resolved with a consistent final state', async () => {
+    const clock = createFakeClock(1000);
+    const sessionsRepo = createSessionsRepo(db);
+    const tasksRepo = createTasksRepo(db);
+
+    const service = createTimerService({
+      db,
+      clock,
+      wall: fakeWall,
+      sessionsRepo,
+      tasksRepo,
+    });
+
+    const startRes = await service.start(1);
+    expect(startRes.ok).toBe(true);
+
+    const results = await Promise.all([service.pause(), service.tick(), service.addTime()]);
+
+    for (const res of results) {
+      expect(typeof res.ok).toBe('boolean');
+    }
+
+    const snap = service.getSnapshot();
+    expect(['Running', 'Paused']).toContain(snap.state.kind);
+    expect(snap.sessionId).not.toBeNull();
+  });
 });

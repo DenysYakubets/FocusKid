@@ -24,6 +24,7 @@ export interface AuthService {
   endParentSession(): void;
   issueToken(): ParentToken;
   consumeToken(token: unknown): boolean;
+  activeTokenCount(): number;
 }
 
 export interface CreateAuthServiceOptions {
@@ -79,14 +80,26 @@ export function createAuthService(options: CreateAuthServiceOptions): AuthServic
     return remaining;
   }
 
+  function pruneExpiredTokens(now: number): void {
+    for (const [id, issuedAt] of activeTokens.entries()) {
+      const age = now - issuedAt;
+      if (age < 0 || age > 30_000) {
+        activeTokens.delete(id);
+      }
+    }
+  }
+
   function issueToken(): ParentToken {
+    const now = clock.now();
+    pruneExpiredTokens(now);
     const id = bytesToHex(nobleRandomBytes(16));
-    const issuedAt = clock.now();
-    activeTokens.set(id, issuedAt);
-    return { id, issuedAt };
+    activeTokens.set(id, now);
+    return { id, issuedAt: now };
   }
 
   function consumeToken(token: unknown): boolean {
+    const now = clock.now();
+    pruneExpiredTokens(now);
     if (!token || typeof token !== 'object') {
       return false;
     }
@@ -100,7 +113,7 @@ export function createAuthService(options: CreateAuthServiceOptions): AuthServic
     const issuedAt = activeTokens.get(t.id)!;
     activeTokens.delete(t.id);
 
-    const age = clock.now() - issuedAt;
+    const age = now - issuedAt;
     if (age < 0 || age > 30_000) {
       return false;
     }
@@ -131,7 +144,6 @@ export function createAuthService(options: CreateAuthServiceOptions): AuthServic
     if (isMatch) {
       lockedUntilMonotonic = null;
       await authRepo.setFailedAttempts(0, wall.nowIso());
-      issueToken();
       return 'SUCCESS';
     } else {
       const nextFailures = record.failedAttempts + 1;
@@ -206,5 +218,8 @@ export function createAuthService(options: CreateAuthServiceOptions): AuthServic
 
     issueToken,
     consumeToken,
+    activeTokenCount(): number {
+      return activeTokens.size;
+    },
   };
 }

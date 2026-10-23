@@ -29,6 +29,7 @@ CREATE TABLE sessions (
 );
 CREATE INDEX ix_sessions_date ON sessions (local_date);
 CREATE UNIQUE INDEX ux_sessions_task_day ON sessions (task_id, local_date) WHERE status <> 'abandoned';
+CREATE UNIQUE INDEX ux_sessions_one_active ON sessions ((1)) WHERE status IN ('running', 'paused');
 
 -- Defence in depth for the FSM (the service layer is the primary guard)
 CREATE TRIGGER trg_sessions_insert_running BEFORE INSERT ON sessions

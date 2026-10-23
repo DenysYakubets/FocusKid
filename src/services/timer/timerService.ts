@@ -94,57 +94,81 @@ export function createTimerService(deps: {
   let sessionId: number | null = null;
   let taskId: number | null = null;
 
-  return {
-    getSnapshot(): TimerSnapshot {
-      return { state, sessionId, taskId };
-    },
+  let opQueue: Promise<unknown> = Promise.resolve();
+  function enqueue<T>(op: () => Promise<T>): Promise<T> {
+    const run = opQueue.then(op, op);
+    opQueue = run.then(
+      () => undefined,
+      () => undefined
+    );
+    return run;
+  }
 
-    async hydrate(): Promise<TimerSnapshot> {
-      const active = await sessionsRepo.getActive();
-      if (active) {
-        state = restore(active, clock.now());
-        sessionId = active.id;
-        taskId = active.taskId;
-      } else {
-        state = { kind: 'Idle' };
-        sessionId = null;
-        taskId = null;
-      }
-      return this.getSnapshot();
-    },
+  function getSnapshot(): TimerSnapshot {
+    return { state, sessionId, taskId };
+  }
 
-    async start(newTaskId: number): Promise<TimerServiceResult> {
-      // AS-05: at most one active session
-      const active = await sessionsRepo.getActive();
-      if (active) {
-        return { ok: false, error: 'ACTIVE_SESSION_EXISTS' };
-      }
+  async function doHydrate(): Promise<TimerSnapshot> {
+    const active = await sessionsRepo.getActive();
+    if (active) {
+      state = restore(active, clock.now());
+      sessionId = active.id;
+      taskId = active.taskId;
+    } else {
+      state = { kind: 'Idle' };
+      sessionId = null;
+      taskId = null;
+    }
+    return getSnapshot();
+  }
 
-      // AS-04: one session per task per local calendar day
-      const today = wall.todayLocalDate();
-      const existingToday = await sessionsRepo.getTodayForTask(newTaskId, today);
-      if (existingToday) {
-        return { ok: false, error: 'SESSION_ALREADY_EXISTS_TODAY' };
-      }
+  async function doStart(newTaskId: number): Promise<TimerServiceResult> {
+    // AS-04: one session per task per local calendar day (fast-path pre-check)
+    const today = wall.todayLocalDate();
+    const existingToday = await sessionsRepo.getTodayForTask(newTaskId, today);
+    if (existingToday) {
+      return { ok: false, error: 'SESSION_ALREADY_EXISTS_TODAY' };
+    }
 
-      const task = await tasksRepo.get(newTaskId);
-      if (!task) {
-        return { ok: false, error: 'TASK_NOT_FOUND' };
-      }
+    // AS-05: at most one active session (fast-path pre-check)
+    const active = await sessionsRepo.getActive();
+    if (active) {
+      return { ok: false, error: 'ACTIVE_SESSION_EXISTS' };
+    }
 
-      const targetMs = task.targetMinutes * 60_000;
-      const now = clock.now();
-      const res = transition({ kind: 'Idle' }, { type: 'START', now, targetMs });
-      if (!res.ok) {
-        return { ok: false, error: res.error };
-      }
+    const task = await tasksRepo.get(newTaskId);
+    if (!task) {
+      return { ok: false, error: 'TASK_NOT_FOUND' };
+    }
 
-      const nowIso = wall.nowIso();
-      let createdSession: SessionRow;
+    const targetMs = task.targetMinutes * 60_000;
+    const now = clock.now();
+    const res = transition({ kind: 'Idle' }, { type: 'START', now, targetMs });
+    if (!res.ok) {
+      return { ok: false, error: res.error };
+    }
 
-      await db.transaction(async (tx) => {
+    const nowIso = wall.nowIso();
+    type TxResult =
+      | { ok: true; session: SessionRow }
+      | { ok: false; error: 'ACTIVE_SESSION_EXISTS' | 'SESSION_ALREADY_EXISTS_TODAY' };
+
+    let txRes: TxResult;
+    try {
+      txRes = await db.transaction<TxResult>(async (tx) => {
         const txSessionsRepo = createSessionsRepo(tx);
-        createdSession = await txSessionsRepo.insertRunning({
+
+        const inTxToday = await txSessionsRepo.getTodayForTask(newTaskId, today);
+        if (inTxToday) {
+          return { ok: false, error: 'SESSION_ALREADY_EXISTS_TODAY' };
+        }
+
+        const inTxActive = await txSessionsRepo.getActive();
+        if (inTxActive) {
+          return { ok: false, error: 'ACTIVE_SESSION_EXISTS' };
+        }
+
+        const createdSession = await txSessionsRepo.insertRunning({
           taskId: newTaskId,
           localDate: today,
           targetMs,
@@ -160,353 +184,399 @@ export function createTimerService(deps: {
           runMs: 0,
           createdAt: nowIso,
         });
+
+        return { ok: true, session: createdSession };
+      });
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      const code = (err as { code?: string | number })?.code;
+      const isUniqueConstraint =
+        msg.includes('UNIQUE constraint failed') ||
+        code === 'SQLITE_CONSTRAINT' ||
+        code === 'SQLITE_CONSTRAINT_UNIQUE' ||
+        code === 2067 ||
+        code === 19;
+
+      if (isUniqueConstraint) {
+        const existingAfter = await sessionsRepo.getTodayForTask(newTaskId, today);
+        if (existingAfter) {
+          return { ok: false, error: 'SESSION_ALREADY_EXISTS_TODAY' };
+        }
+        const activeAfter = await sessionsRepo.getActive();
+        if (activeAfter) {
+          return { ok: false, error: 'ACTIVE_SESSION_EXISTS' };
+        }
+        return { ok: false, error: 'SESSION_ALREADY_EXISTS_TODAY' };
+      }
+      return { ok: false, error: msg || 'START_FAILED' };
+    }
+
+    if (!txRes.ok) {
+      return { ok: false, error: txRes.error };
+    }
+
+    state = res.state;
+    sessionId = txRes.session.id;
+    taskId = newTaskId;
+
+    return { ok: true, state };
+  }
+
+  async function doPause(): Promise<TimerServiceResult> {
+    if (!sessionId || state.kind !== 'Running') {
+      return { ok: false, error: 'INVALID_TRANSITION' };
+    }
+
+    const now = clock.now();
+    const res = transition(state, { type: 'PAUSE', now });
+    if (!res.ok) {
+      return { ok: false, error: res.error };
+    }
+
+    const currentSessionId = sessionId;
+    const nowIso = wall.nowIso();
+
+    await db.transaction(async (tx) => {
+      const txSessionsRepo = createSessionsRepo(tx);
+      await txSessionsRepo.setStatus(currentSessionId, 'paused', {
+        elapsedRunMs: res.state.kind === 'Paused' ? res.state.runAccumMs : 0,
+        pausedTotalMs: res.state.kind === 'Paused' ? res.state.pausedTotalMs : 0,
+        pauseCount: res.state.kind === 'Paused' ? res.state.pauseCount : 0,
+        updatedAt: nowIso,
       });
 
-      state = res.state;
-      sessionId = createdSession!.id;
-      taskId = newTaskId;
+      await txSessionsRepo.appendEvent({
+        sessionId: currentSessionId,
+        event: 'PAUSE',
+        fromState: 'running',
+        toState: 'paused',
+        runMs: res.state.kind === 'Paused' ? res.state.runAccumMs : 0,
+        createdAt: nowIso,
+      });
+    });
 
-      return { ok: true, state };
-    },
+    state = res.state;
+    return { ok: true, state };
+  }
 
-    async pause(): Promise<TimerServiceResult> {
-      if (!sessionId || state.kind !== 'Running') {
-        return { ok: false, error: 'INVALID_TRANSITION' };
-      }
+  async function doResume(): Promise<TimerServiceResult> {
+    if (!sessionId || state.kind !== 'Paused') {
+      return { ok: false, error: 'INVALID_TRANSITION' };
+    }
 
-      const now = clock.now();
-      const res = transition(state, { type: 'PAUSE', now });
-      if (!res.ok) {
-        return { ok: false, error: res.error };
-      }
+    const now = clock.now();
+    const res = transition(state, { type: 'RESUME', now });
+    if (!res.ok) {
+      return { ok: false, error: res.error };
+    }
 
-      const currentSessionId = sessionId;
-      const nowIso = wall.nowIso();
+    const currentSessionId = sessionId;
+    const nowIso = wall.nowIso();
+    const targetState = res.state;
 
-      await db.transaction(async (tx) => {
-        const txSessionsRepo = createSessionsRepo(tx);
-        await txSessionsRepo.setStatus(currentSessionId, 'paused', {
-          elapsedRunMs: res.state.kind === 'Paused' ? res.state.runAccumMs : 0,
-          pausedTotalMs: res.state.kind === 'Paused' ? res.state.pausedTotalMs : 0,
-          pauseCount: res.state.kind === 'Paused' ? res.state.pauseCount : 0,
+    await db.transaction(async (tx) => {
+      const txSessionsRepo = createSessionsRepo(tx);
+      if (targetState.kind === 'Completed') {
+        await txSessionsRepo.setStatus(currentSessionId, 'completed', {
+          elapsedRunMs: targetState.runAccumMs,
+          pausedTotalMs: targetState.pausedTotalMs,
+          completedAt: nowIso,
           updatedAt: nowIso,
         });
-
         await txSessionsRepo.appendEvent({
           sessionId: currentSessionId,
-          event: 'PAUSE',
-          fromState: 'running',
-          toState: 'paused',
-          runMs: res.state.kind === 'Paused' ? res.state.runAccumMs : 0,
+          event: 'COMPLETE',
+          fromState: 'paused',
+          toState: 'completed',
+          runMs: targetState.runAccumMs,
           createdAt: nowIso,
         });
+      } else if (targetState.kind === 'Running') {
+        await txSessionsRepo.setStatus(currentSessionId, 'running', {
+          elapsedRunMs: targetState.runAccumMs,
+          pausedTotalMs: targetState.pausedTotalMs,
+          updatedAt: nowIso,
+        });
+        await txSessionsRepo.appendEvent({
+          sessionId: currentSessionId,
+          event: 'RESUME',
+          fromState: 'paused',
+          toState: 'running',
+          runMs: targetState.runAccumMs,
+          createdAt: nowIso,
+        });
+      }
+    });
+
+    state = res.state;
+    return { ok: true, state };
+  }
+
+  async function doAddTime(ms: number = ADD_TIME_STEP_MS): Promise<TimerServiceResult> {
+    if (!sessionId || (state.kind !== 'Running' && state.kind !== 'Paused')) {
+      return { ok: false, error: 'INVALID_TRANSITION' };
+    }
+
+    const now = clock.now();
+    const fromState = state.kind.toLowerCase();
+    const res = transition(state, { type: 'ADD_TIME', now, ms });
+    if (!res.ok) {
+      return { ok: false, error: res.error };
+    }
+
+    const currentSessionId = sessionId;
+    const nowIso = wall.nowIso();
+    const targetAddedMs = res.state.kind !== 'Idle' ? res.state.addedMs : 0;
+    const currentRunMs = runElapsed(state, now);
+
+    await db.transaction(async (tx) => {
+      const txSessionsRepo = createSessionsRepo(tx);
+      await txSessionsRepo.setStatus(
+        currentSessionId,
+        res.state.kind === 'Running' ? 'running' : 'paused',
+        {
+          elapsedRunMs: currentRunMs,
+          addedMs: targetAddedMs,
+          updatedAt: nowIso,
+        }
+      );
+
+      await txSessionsRepo.appendEvent({
+        sessionId: currentSessionId,
+        event: 'ADD_TIME',
+        fromState,
+        toState: res.state.kind.toLowerCase(),
+        runMs: currentRunMs,
+        createdAt: nowIso,
       });
+    });
 
-      state = res.state;
-      return { ok: true, state };
-    },
+    state = res.state;
+    return { ok: true, state };
+  }
 
-    async resume(): Promise<TimerServiceResult> {
-      if (!sessionId || state.kind !== 'Paused') {
-        return { ok: false, error: 'INVALID_TRANSITION' };
+  async function doTick(): Promise<TimerServiceResult> {
+    if (!sessionId || (state.kind !== 'Running' && state.kind !== 'Paused')) {
+      if (state.kind === 'Completed') {
+        return { ok: true, state };
       }
+      return { ok: false, error: 'INVALID_TRANSITION' };
+    }
 
-      const now = clock.now();
-      const res = transition(state, { type: 'RESUME', now });
-      if (!res.ok) {
-        return { ok: false, error: res.error };
-      }
+    const now = clock.now();
+    const prevKind = state.kind;
+    const res = transition(state, { type: 'TICK', now });
+    if (!res.ok) {
+      return { ok: false, error: res.error };
+    }
 
-      const currentSessionId = sessionId;
-      const nowIso = wall.nowIso();
-      const targetState = res.state;
+    const currentSessionId = sessionId;
+    const nowIso = wall.nowIso();
 
+    if (res.effects.includes('AUTO_RESUMED') || res.effects.includes('COMPLETED')) {
       await db.transaction(async (tx) => {
         const txSessionsRepo = createSessionsRepo(tx);
-        if (targetState.kind === 'Completed') {
-          await txSessionsRepo.setStatus(currentSessionId, 'completed', {
-            elapsedRunMs: targetState.runAccumMs,
-            pausedTotalMs: targetState.pausedTotalMs,
-            completedAt: nowIso,
-            updatedAt: nowIso,
-          });
+
+        if (res.effects.includes('AUTO_RESUMED')) {
           await txSessionsRepo.appendEvent({
             sessionId: currentSessionId,
-            event: 'COMPLETE',
-            fromState: 'paused',
-            toState: 'completed',
-            runMs: targetState.runAccumMs,
-            createdAt: nowIso,
-          });
-        } else if (targetState.kind === 'Running') {
-          await txSessionsRepo.setStatus(currentSessionId, 'running', {
-            pausedTotalMs: targetState.pausedTotalMs,
-            updatedAt: nowIso,
-          });
-          await txSessionsRepo.appendEvent({
-            sessionId: currentSessionId,
-            event: 'RESUME',
+            event: 'AUTO_RESUMED',
             fromState: 'paused',
             toState: 'running',
-            runMs: targetState.runAccumMs,
+            runMs: res.state.kind !== 'Idle' ? res.state.runAccumMs : 0,
             createdAt: nowIso,
           });
         }
-      });
 
-      state = res.state;
-      return { ok: true, state };
-    },
-
-    async addTime(ms: number = ADD_TIME_STEP_MS): Promise<TimerServiceResult> {
-      if (!sessionId || (state.kind !== 'Running' && state.kind !== 'Paused')) {
-        return { ok: false, error: 'INVALID_TRANSITION' };
-      }
-
-      const now = clock.now();
-      const fromState = state.kind.toLowerCase();
-      const res = transition(state, { type: 'ADD_TIME', now, ms });
-      if (!res.ok) {
-        return { ok: false, error: res.error };
-      }
-
-      const currentSessionId = sessionId;
-      const nowIso = wall.nowIso();
-      const targetAddedMs = res.state.kind !== 'Idle' ? res.state.addedMs : 0;
-      const currentRunMs = runElapsed(state, now);
-
-      await db.transaction(async (tx) => {
-        const txSessionsRepo = createSessionsRepo(tx);
-        await txSessionsRepo.setStatus(
-          currentSessionId,
-          res.state.kind === 'Running' ? 'running' : 'paused',
-          {
-            addedMs: targetAddedMs,
-            updatedAt: nowIso,
-          }
-        );
-
-        await txSessionsRepo.appendEvent({
-          sessionId: currentSessionId,
-          event: 'ADD_TIME',
-          fromState,
-          toState: res.state.kind.toLowerCase(),
-          runMs: currentRunMs,
-          createdAt: nowIso,
-        });
-      });
-
-      state = res.state;
-      return { ok: true, state };
-    },
-
-    async tick(): Promise<TimerServiceResult> {
-      if (!sessionId || (state.kind !== 'Running' && state.kind !== 'Paused')) {
-        if (state.kind === 'Completed') {
-          return { ok: true, state };
-        }
-        return { ok: false, error: 'INVALID_TRANSITION' };
-      }
-
-      const now = clock.now();
-      const prevKind = state.kind;
-      const res = transition(state, { type: 'TICK', now });
-      if (!res.ok) {
-        return { ok: false, error: res.error };
-      }
-
-      const currentSessionId = sessionId;
-      const nowIso = wall.nowIso();
-
-      if (res.effects.includes('AUTO_RESUMED') || res.effects.includes('COMPLETED')) {
-        await db.transaction(async (tx) => {
-          const txSessionsRepo = createSessionsRepo(tx);
-
-          if (res.effects.includes('AUTO_RESUMED')) {
+        if (res.effects.includes('COMPLETED')) {
+          const targetState = res.state;
+          if (targetState.kind === 'Completed') {
+            await txSessionsRepo.setStatus(currentSessionId, 'completed', {
+              elapsedRunMs: targetState.runAccumMs,
+              pausedTotalMs: targetState.pausedTotalMs,
+              completedAt: nowIso,
+              updatedAt: nowIso,
+            });
             await txSessionsRepo.appendEvent({
               sessionId: currentSessionId,
-              event: 'AUTO_RESUMED',
-              fromState: 'paused',
-              toState: 'running',
-              runMs: res.state.kind !== 'Idle' ? res.state.runAccumMs : 0,
+              event: 'COMPLETE',
+              fromState: prevKind.toLowerCase(),
+              toState: 'completed',
+              runMs: targetState.runAccumMs,
               createdAt: nowIso,
             });
           }
-
-          if (res.effects.includes('COMPLETED')) {
-            const targetState = res.state;
-            if (targetState.kind === 'Completed') {
-              await txSessionsRepo.setStatus(currentSessionId, 'completed', {
-                elapsedRunMs: targetState.runAccumMs,
-                pausedTotalMs: targetState.pausedTotalMs,
-                completedAt: nowIso,
-                updatedAt: nowIso,
-              });
-              await txSessionsRepo.appendEvent({
-                sessionId: currentSessionId,
-                event: 'COMPLETE',
-                fromState: prevKind.toLowerCase(),
-                toState: 'completed',
-                runMs: targetState.runAccumMs,
-                createdAt: nowIso,
-              });
-            }
-          } else if (res.effects.includes('AUTO_RESUMED')) {
-            if (res.state.kind === 'Running') {
-              await txSessionsRepo.setStatus(currentSessionId, 'running', {
-                pausedTotalMs: res.state.pausedTotalMs,
-                updatedAt: nowIso,
-              });
-            }
+        } else if (res.effects.includes('AUTO_RESUMED')) {
+          if (res.state.kind === 'Running') {
+            await txSessionsRepo.setStatus(currentSessionId, 'running', {
+              pausedTotalMs: res.state.pausedTotalMs,
+              updatedAt: nowIso,
+            });
           }
-        });
-      }
+        }
+      });
+    }
 
-      state = res.state;
-      return { ok: true, state };
-    },
+    state = res.state;
+    return { ok: true, state };
+  }
 
-    async requestComplete(): Promise<TimerServiceResult> {
-      if (!sessionId || state.kind !== 'Running') {
-        return { ok: false, error: 'INVALID_TRANSITION' };
-      }
+  async function doRequestComplete(): Promise<TimerServiceResult> {
+    if (!sessionId || state.kind !== 'Running') {
+      return { ok: false, error: 'INVALID_TRANSITION' };
+    }
 
-      const now = clock.now();
-      const res = transition(state, { type: 'COMPLETE', now });
-      if (!res.ok) {
-        return { ok: false, error: res.error };
-      }
+    const now = clock.now();
+    const res = transition(state, { type: 'COMPLETE', now });
+    if (!res.ok) {
+      return { ok: false, error: res.error };
+    }
 
-      const currentSessionId = sessionId;
-      const nowIso = wall.nowIso();
-      const targetState = res.state;
+    const currentSessionId = sessionId;
+    const nowIso = wall.nowIso();
+    const targetState = res.state;
 
-      if (targetState.kind === 'Completed') {
-        await db.transaction(async (tx) => {
-          const txSessionsRepo = createSessionsRepo(tx);
-          await txSessionsRepo.setStatus(currentSessionId, 'completed', {
-            elapsedRunMs: targetState.runAccumMs,
-            completedAt: nowIso,
-            updatedAt: nowIso,
-          });
-
-          await txSessionsRepo.appendEvent({
-            sessionId: currentSessionId,
-            event: 'COMPLETE',
-            fromState: 'running',
-            toState: 'completed',
-            runMs: targetState.runAccumMs,
-            createdAt: nowIso,
-          });
-        });
-      }
-
-      state = res.state;
-      return { ok: true, state };
-    },
-
-    async checkpoint(): Promise<void> {
-      if (!sessionId || (state.kind !== 'Running' && state.kind !== 'Paused')) {
-        return;
-      }
-      const now = clock.now();
-      const currentRunMs = runElapsed(state, now);
-      const currentPausedMs = Math.min(PAUSE_BUDGET_MS, pausedElapsed(state, now));
-      await sessionsRepo.checkpoint(sessionId, currentRunMs, currentPausedMs, wall.nowIso());
-    },
-
-    async verify(targetSessionId: number, token?: ParentToken): Promise<TimerServiceResult> {
-      const authorized = consumeToken(token);
-      if (!authorized) {
-        return { ok: false, error: 'PARENT_AUTH_REQUIRED' };
-      }
-
-      const row = await sessionsRepo.get(targetSessionId);
-      if (!row) {
-        return { ok: false, error: 'INVALID_SESSION' };
-      }
-      if (row.status === 'verified') {
-        return { ok: false, error: 'VERIFIED_IMMUTABLE' };
-      }
-      if (row.status !== 'completed') {
-        return { ok: false, error: 'NOT_COMPLETED' };
-      }
-
-      const nowIso = wall.nowIso();
+    if (targetState.kind === 'Completed') {
       await db.transaction(async (tx) => {
         const txSessionsRepo = createSessionsRepo(tx);
-        await txSessionsRepo.setStatus(targetSessionId, 'verified', {
-          verifiedAt: nowIso,
+        await txSessionsRepo.setStatus(currentSessionId, 'completed', {
+          elapsedRunMs: targetState.runAccumMs,
+          completedAt: nowIso,
           updatedAt: nowIso,
         });
 
         await txSessionsRepo.appendEvent({
-          sessionId: targetSessionId,
-          event: 'VERIFY',
-          fromState: 'completed',
-          toState: 'verified',
-          runMs: row.elapsedRunMs,
+          sessionId: currentSessionId,
+          event: 'COMPLETE',
+          fromState: 'running',
+          toState: 'completed',
+          runMs: targetState.runAccumMs,
           createdAt: nowIso,
         });
       });
+    }
 
-      const verifiedState: TimerState = {
-        kind: 'Verified',
-        targetMs: row.targetMs,
-        addedMs: row.addedMs,
-        runAccumMs: row.elapsedRunMs,
-        pausedTotalMs: row.pausedTotalMs,
-        pauseCount: row.pauseCount,
-      };
+    state = res.state;
+    return { ok: true, state };
+  }
 
-      if (sessionId === targetSessionId) {
-        state = verifiedState;
-      }
+  async function doCheckpoint(): Promise<void> {
+    if (!sessionId || (state.kind !== 'Running' && state.kind !== 'Paused')) {
+      return;
+    }
+    const now = clock.now();
+    const currentRunMs = runElapsed(state, now);
+    const currentPausedMs = Math.min(PAUSE_BUDGET_MS, pausedElapsed(state, now));
+    await sessionsRepo.checkpoint(sessionId, currentRunMs, currentPausedMs, wall.nowIso());
+  }
 
-      return { ok: true, state: verifiedState };
-    },
+  async function doVerify(targetSessionId: number, token?: ParentToken): Promise<TimerServiceResult> {
+    const authorized = consumeToken(token);
+    if (!authorized) {
+      return { ok: false, error: 'PARENT_AUTH_REQUIRED' };
+    }
 
-    async abandon(targetSessionId: number, token?: ParentToken): Promise<TimerServiceResult> {
-      const authorized = consumeToken(token);
-      if (!authorized) {
-        return { ok: false, error: 'PARENT_AUTH_REQUIRED' };
-      }
+    const row = await sessionsRepo.get(targetSessionId);
+    if (!row) {
+      return { ok: false, error: 'INVALID_SESSION' };
+    }
+    if (row.status === 'verified') {
+      return { ok: false, error: 'VERIFIED_IMMUTABLE' };
+    }
+    if (row.status !== 'completed') {
+      return { ok: false, error: 'NOT_COMPLETED' };
+    }
 
-      const row = await sessionsRepo.get(targetSessionId);
-      if (!row) {
-        return { ok: false, error: 'INVALID_SESSION' };
-      }
-      if (row.status === 'verified') {
-        return { ok: false, error: 'VERIFIED_IMMUTABLE' };
-      }
-      if (row.status === 'abandoned') {
-        return { ok: true, state: { kind: 'Idle' } };
-      }
-
-      const nowIso = wall.nowIso();
-      await db.transaction(async (tx) => {
-        const txSessionsRepo = createSessionsRepo(tx);
-        await txSessionsRepo.setStatus(targetSessionId, 'abandoned', {
-          updatedAt: nowIso,
-        });
-
-        await txSessionsRepo.appendEvent({
-          sessionId: targetSessionId,
-          event: 'PARENT_ABANDON',
-          fromState: row.status,
-          toState: 'abandoned',
-          runMs: row.elapsedRunMs,
-          createdAt: nowIso,
-        });
+    const nowIso = wall.nowIso();
+    await db.transaction(async (tx) => {
+      const txSessionsRepo = createSessionsRepo(tx);
+      await txSessionsRepo.setStatus(targetSessionId, 'verified', {
+        verifiedAt: nowIso,
+        updatedAt: nowIso,
       });
 
-      if (sessionId === targetSessionId) {
-        state = { kind: 'Idle' };
-        sessionId = null;
-        taskId = null;
-      }
+      await txSessionsRepo.appendEvent({
+        sessionId: targetSessionId,
+        event: 'VERIFY',
+        fromState: 'completed',
+        toState: 'verified',
+        runMs: row.elapsedRunMs,
+        createdAt: nowIso,
+      });
+    });
 
+    const verifiedState: TimerState = {
+      kind: 'Verified',
+      targetMs: row.targetMs,
+      addedMs: row.addedMs,
+      runAccumMs: row.elapsedRunMs,
+      pausedTotalMs: row.pausedTotalMs,
+      pauseCount: row.pauseCount,
+    };
+
+    if (sessionId === targetSessionId) {
+      state = verifiedState;
+    }
+
+    return { ok: true, state: verifiedState };
+  }
+
+  async function doAbandon(targetSessionId: number, token?: ParentToken): Promise<TimerServiceResult> {
+    const authorized = consumeToken(token);
+    if (!authorized) {
+      return { ok: false, error: 'PARENT_AUTH_REQUIRED' };
+    }
+
+    const row = await sessionsRepo.get(targetSessionId);
+    if (!row) {
+      return { ok: false, error: 'INVALID_SESSION' };
+    }
+    if (row.status === 'verified') {
+      return { ok: false, error: 'VERIFIED_IMMUTABLE' };
+    }
+    if (row.status === 'abandoned') {
       return { ok: true, state: { kind: 'Idle' } };
-    },
+    }
+
+    const nowIso = wall.nowIso();
+    await db.transaction(async (tx) => {
+      const txSessionsRepo = createSessionsRepo(tx);
+      await txSessionsRepo.setStatus(targetSessionId, 'abandoned', {
+        updatedAt: nowIso,
+      });
+
+      await txSessionsRepo.appendEvent({
+        sessionId: targetSessionId,
+        event: 'PARENT_ABANDON',
+        fromState: row.status,
+        toState: 'abandoned',
+        runMs: row.elapsedRunMs,
+        createdAt: nowIso,
+      });
+    });
+
+    if (sessionId === targetSessionId) {
+      state = { kind: 'Idle' };
+      sessionId = null;
+      taskId = null;
+    }
+
+    return { ok: true, state: { kind: 'Idle' } };
+  }
+
+  return {
+    getSnapshot,
+    hydrate: () => enqueue(() => doHydrate()),
+    start: (newTaskId: number) => enqueue(() => doStart(newTaskId)),
+    pause: () => enqueue(() => doPause()),
+    resume: () => enqueue(() => doResume()),
+    addTime: (ms?: number) => enqueue(() => doAddTime(ms)),
+    tick: () => enqueue(() => doTick()),
+    requestComplete: () => enqueue(() => doRequestComplete()),
+    verify: (targetSessionId: number, token?: ParentToken) =>
+      enqueue(() => doVerify(targetSessionId, token)),
+    abandon: (targetSessionId: number, token?: ParentToken) =>
+      enqueue(() => doAbandon(targetSessionId, token)),
+    checkpoint: () => enqueue(() => doCheckpoint()),
   };
 }

@@ -29,7 +29,7 @@ export function ParentHomeScreen({ navigation }: Props) {
   const [awaitingItems, setAwaitingItems] = useState<AwaitingItem[]>([]);
   const [changingPin, setChangingPin] = useState(false);
   const [currentPinInput, setCurrentPinInput] = useState('');
-  const [newPinInput, setNewPinInput] = useState('');
+  const [pinDraft, setPinDraft] = useState('');
   const [pinStep, setPinStep] = useState<1 | 2>(1);
   const [pinError, setPinError] = useState<string | null>(null);
 
@@ -72,6 +72,7 @@ export function ParentHomeScreen({ navigation }: Props) {
 
   const handleChangePinComplete = async (entered: string) => {
     parentSessionStore.touch();
+    setPinDraft('');
     if (pinStep === 1) {
       setCurrentPinInput(entered);
       setPinStep(2);
@@ -82,13 +83,11 @@ export function ParentHomeScreen({ navigation }: Props) {
         setChangingPin(false);
         setPinStep(1);
         setCurrentPinInput('');
-        setNewPinInput('');
         setPinError(null);
       } else {
         setPinError(uk.pin.invalidPin);
         setPinStep(1);
         setCurrentPinInput('');
-        setNewPinInput('');
       }
     }
   };
@@ -154,6 +153,7 @@ export function ParentHomeScreen({ navigation }: Props) {
               setChangingPin(!changingPin);
               setPinStep(1);
               setPinError(null);
+              setPinDraft('');
             }}
             style={styles.navButton}
           >
@@ -167,14 +167,18 @@ export function ParentHomeScreen({ navigation }: Props) {
         {changingPin ? (
           <View style={styles.changePinBox}>
             <AppText variant="body" style={styles.changePinPrompt}>
-              {pinStep === 1 ? 'Введіть поточний PIN-код' : 'Введіть новий PIN-код'}
+              {pinStep === 1 ? uk.parentHome.enterCurrentPin : uk.parentHome.enterNewPin}
             </AppText>
             {pinError ? (
               <AppText variant="body" style={styles.errorText}>
                 {pinError}
               </AppText>
             ) : null}
-            <PinPad onComplete={handleChangePinComplete} />
+            <PinPad
+              value={pinDraft}
+              onChange={setPinDraft}
+              onComplete={handleChangePinComplete}
+            />
           </View>
         ) : null}
 
@@ -201,7 +205,7 @@ export function ParentHomeScreen({ navigation }: Props) {
                     <AppText variant="title" style={styles.itemTitle}>
                       {item.task?.emoji
                         ? `${item.task.emoji} ${item.task.title}`
-                        : item.task?.title ?? 'Завдання'}
+                        : item.task?.title ?? uk.parentHome.taskFallback}
                     </AppText>
                   </View>
 

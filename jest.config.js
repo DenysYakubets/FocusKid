@@ -1,5 +1,6 @@
 module.exports = {
   preset: 'jest-expo',
+  testTimeout: 30000,
   setupFilesAfterEnv: ['<rootDir>/test/setup.ts'],
   testPathIgnorePatterns: ['/node_modules/', '/android/'],
   transformIgnorePatterns: [

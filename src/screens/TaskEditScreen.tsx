@@ -14,15 +14,7 @@ import { colors, spacing } from '../ui/theme';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'TaskEdit'>;
 
-const WEEKDAYS = [
-  { label: 'Пн', bit: 0 },
-  { label: 'Вт', bit: 1 },
-  { label: 'Ср', bit: 2 },
-  { label: 'Чт', bit: 3 },
-  { label: 'Пт', bit: 4 },
-  { label: 'Сб', bit: 5 },
-  { label: 'Нд', bit: 6 },
-];
+const WEEKDAYS = uk.taskCrud.weekdays.map((label, bit) => ({ label, bit }));
 
 export function TaskEditScreen({ route, navigation }: Props) {
   const { tasksRepo, sessionsRepo, wall, db } = useServices();
@@ -223,7 +215,7 @@ export function TaskEditScreen({ route, navigation }: Props) {
           <View style={styles.stepperRow}>
             <TapTarget
               accessibilityRole="button"
-              accessibilityLabel="-5 хвилин"
+              accessibilityLabel={uk.taskCrud.stepLess5}
               onPress={() => handleAdjustMinutes(-5)}
               style={styles.stepperButton}
             >
@@ -234,7 +226,7 @@ export function TaskEditScreen({ route, navigation }: Props) {
 
             <TapTarget
               accessibilityRole="button"
-              accessibilityLabel="-1 хвилина"
+              accessibilityLabel={uk.taskCrud.stepLess1}
               onPress={() => handleAdjustMinutes(-1)}
               style={styles.stepperButton}
             >
@@ -249,7 +241,7 @@ export function TaskEditScreen({ route, navigation }: Props) {
 
             <TapTarget
               accessibilityRole="button"
-              accessibilityLabel="+1 хвилина"
+              accessibilityLabel={uk.taskCrud.stepMore1}
               onPress={() => handleAdjustMinutes(1)}
               style={styles.stepperButton}
             >
@@ -260,7 +252,7 @@ export function TaskEditScreen({ route, navigation }: Props) {
 
             <TapTarget
               accessibilityRole="button"
-              accessibilityLabel="+5 хвилин"
+              accessibilityLabel={uk.taskCrud.stepMore5}
               onPress={() => handleAdjustMinutes(5)}
               style={styles.stepperButton}
             >
@@ -283,7 +275,7 @@ export function TaskEditScreen({ route, navigation }: Props) {
                 <TapTarget
                   key={day.bit}
                   accessibilityRole="button"
-                  accessibilityLabel={`${day.label}: ${isSelected ? 'вибрано' : 'не вибрано'}`}
+                  accessibilityLabel={`${day.label}: ${isSelected ? uk.taskCrud.daySelected : uk.taskCrud.dayUnselected}`}
                   onPress={() => toggleDay(day.bit)}
                   style={[
                     styles.dayButton,
