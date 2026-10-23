@@ -16,11 +16,14 @@ import { parentSessionStore } from './src/state/parentSessionStore';
 import { RootNavigator } from './src/navigation/RootNavigator';
 import { ErrorBoundary } from './src/ui/components/ErrorBoundary';
 import { AppText } from './src/ui/components/AppText';
+import { TapTarget } from './src/ui/components/TapTarget';
 import { uk } from './src/i18n/uk';
-import { colors } from './src/ui/theme';
+import { colors, spacing } from './src/ui/theme';
 
-export default function App() {
+export function AppBootstrap() {
   const [services, setServices] = useState<AppServices | null>(null);
+  const [initError, setInitError] = useState<unknown>(null);
+  const [initAttempt, setInitAttempt] = useState(0);
 
   useEffect(() => {
     let mounted = true;
@@ -47,13 +50,43 @@ export default function App() {
         }
       } catch (err) {
         console.error('Failed to initialize app', err);
+        if (mounted) {
+          setInitError(err);
+        }
       }
     }
     void init();
     return () => {
       mounted = false;
     };
-  }, []);
+  }, [initAttempt]);
+
+  if (initError) {
+    const cause = initError instanceof Error ? initError.message : String(initError);
+    return (
+      <View style={styles.errorContainer}>
+        <AppText variant="title" accessibilityRole="header" style={styles.errorTitle}>
+          {uk.errorBoundary.title}
+        </AppText>
+        <AppText variant="body" style={styles.errorCause}>
+          {cause}
+        </AppText>
+        <TapTarget
+          accessibilityRole="button"
+          accessibilityLabel={uk.errorBoundary.retry}
+          onPress={() => {
+            setInitError(null);
+            setInitAttempt((n) => n + 1);
+          }}
+          style={styles.retryButton}
+        >
+          <AppText variant="body" style={styles.retryText}>
+            {uk.errorBoundary.retry}
+          </AppText>
+        </TapTarget>
+      </View>
+    );
+  }
 
   if (!services) {
     return (
@@ -78,11 +111,49 @@ export default function App() {
   );
 }
 
+export default function App() {
+  return (
+    <ErrorBoundary>
+      <AppBootstrap />
+    </ErrorBoundary>
+  );
+}
+
 const styles = StyleSheet.create({
   loadingContainer: {
     flex: 1,
     backgroundColor: colors.background,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  errorContainer: {
+    flex: 1,
+    backgroundColor: colors.background,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: spacing.xl,
+    gap: spacing.lg,
+  },
+  errorTitle: {
+    color: colors.text,
+    textAlign: 'center',
+  },
+  errorCause: {
+    color: colors.textSecondary,
+    textAlign: 'center',
+  },
+  retryButton: {
+    minWidth: 160,
+    minHeight: 48,
+    backgroundColor: colors.primary,
+    paddingHorizontal: spacing.xl,
+    paddingVertical: spacing.md,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  retryText: {
+    color: colors.white,
+    textAlign: 'center',
   },
 });

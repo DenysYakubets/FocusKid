@@ -92,6 +92,8 @@ export function TaskListEditScreen({ navigation }: Props) {
           data={tasks}
           keyExtractor={(item) => String(item.id)}
           contentContainerStyle={styles.listContent}
+          onScroll={() => parentSessionStore.touch()}
+          scrollEventThrottle={1000}
           renderItem={({ item, index }) => (
             <View style={styles.taskCard}>
               <View style={styles.taskInfo}>

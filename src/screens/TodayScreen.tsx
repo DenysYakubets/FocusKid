@@ -136,6 +136,19 @@ export function TodayScreen({ navigation }: Props) {
             <AppText variant="body" style={styles.emptyText}>
               {uk.today.empty}
             </AppText>
+            <AppText variant="body" style={styles.emptyHintText}>
+              {uk.today.emptyHint}
+            </AppText>
+            <TapTarget
+              accessibilityRole="button"
+              accessibilityLabel={uk.today.emptyCta}
+              onPress={() => navigation.navigate('PinGate', { intent: 'enterParent' })}
+              style={styles.emptyCta}
+            >
+              <AppText variant="body" style={styles.emptyCtaText}>
+                {uk.today.emptyCta}
+              </AppText>
+            </TapTarget>
           </View>
         }
       />
@@ -215,5 +228,25 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     color: colors.textSecondary,
+  },
+  emptyHintText: {
+    color: colors.textSecondary,
+    textAlign: 'center',
+    marginTop: spacing.sm,
+    marginBottom: spacing.lg,
+  },
+  emptyCta: {
+    alignSelf: 'center',
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 12,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.sm,
+    minHeight: 48,
+    minWidth: 48,
+  },
+  emptyCtaText: {
+    color: colors.primary,
   },
 });

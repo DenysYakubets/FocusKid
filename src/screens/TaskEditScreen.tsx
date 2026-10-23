@@ -126,7 +126,11 @@ export function TaskEditScreen({ route, navigation }: Props) {
 
   return (
     <ParentGuard navigation={navigation}>
-      <ScrollView contentContainerStyle={styles.container}>
+      <ScrollView
+        contentContainerStyle={styles.container}
+        onScroll={() => parentSessionStore.touch()}
+        scrollEventThrottle={1000}
+      >
         {/* Top bar */}
         <View testID="taskedit-topbar" style={styles.topBar}>
           <TapTarget

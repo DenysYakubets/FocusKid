@@ -3,6 +3,7 @@ import { ScrollView, StyleSheet, View } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/routes';
 import { useServices } from '../state/appServices';
+import { parentSessionStore } from '../state/parentSessionStore';
 import { ParentGuard } from '../navigation/ParentGuard';
 import { WeekSummary, TaskStat } from '../domain/stats/aggregate';
 import { AppText } from '../ui/components/AppText';
@@ -22,6 +23,15 @@ export function StatsScreen({ navigation }: Props) {
   const [loading, setLoading] = useState(true);
   const [summary, setSummary] = useState<WeekSummary | null>(null);
   const [taskStats, setTaskStats] = useState<TaskStat[]>([]);
+
+  useEffect(() => {
+    parentSessionStore.touch();
+    const interval = setInterval(() => {
+      parentSessionStore.touch();
+    }, 60_000);
+    interval.unref?.();
+    return () => clearInterval(interval);
+  }, []);
 
   useEffect(() => {
     let isMounted = true;
@@ -45,6 +55,7 @@ export function StatsScreen({ navigation }: Props) {
 
     void loadStats();
     const unsub = navigation.addListener('focus', () => {
+      parentSessionStore.touch();
       void loadStats();
     });
     return () => {
@@ -108,6 +119,8 @@ export function StatsScreen({ navigation }: Props) {
               style={styles.column}
               contentContainerStyle={styles.scrollContent}
               showsVerticalScrollIndicator={false}
+              onScroll={() => parentSessionStore.touch()}
+              scrollEventThrottle={1000}
             >
               <View style={styles.totalsContainer}>
                 <View style={styles.totalCard}>
@@ -152,6 +165,8 @@ export function StatsScreen({ navigation }: Props) {
               style={styles.column}
               contentContainerStyle={styles.scrollContent}
               showsVerticalScrollIndicator={false}
+              onScroll={() => parentSessionStore.touch()}
+              scrollEventThrottle={1000}
             >
               <AppText variant="title" accessibilityRole="header" style={styles.sectionHeader}>
                 {uk.stats.tasksHeader}
@@ -176,6 +191,8 @@ export function StatsScreen({ navigation }: Props) {
             style={styles.singleScroll}
             contentContainerStyle={styles.scrollContent}
             showsVerticalScrollIndicator={false}
+            onScroll={() => parentSessionStore.touch()}
+            scrollEventThrottle={1000}
           >
             <View style={styles.totalsContainer}>
               <View style={styles.totalCard}>

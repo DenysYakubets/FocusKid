@@ -254,6 +254,8 @@ export function ParentHomeScreen({ navigation }: Props) {
               data={awaitingItems}
               keyExtractor={(item) => String(item.session.id)}
               contentContainerStyle={styles.listContent}
+              onScroll={() => parentSessionStore.touch()}
+              scrollEventThrottle={1000}
               renderItem={({ item }) => (
                 <View style={styles.itemCard}>
                   <View style={styles.itemInfo}>
