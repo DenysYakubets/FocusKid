@@ -30,6 +30,12 @@ export interface AppButtonProps {
   fullWidth?: boolean;
   /** Merged last — layout overrides only (callers never change colors). */
   style?: StyleProp<ViewStyle>;
+  /**
+   * Optional TalkBack name when the visible label must stay the plain action
+   * name (§4.5/§4.6) while the a11y name keeps per-task context — round-1
+   * review finding 2. Falls back to `label`.
+   */
+  a11yLabel?: string;
 }
 
 const variantStyles: Record<AppButtonVariant, ViewStyle> = {
@@ -83,6 +89,7 @@ export function AppButton({
   loading = false,
   fullWidth,
   style,
+  a11yLabel,
 }: AppButtonProps) {
   const isDisabled = disabled || loading;
   const resolvedFullWidth = fullWidth ?? size !== 'sm';
@@ -90,7 +97,7 @@ export function AppButton({
   return (
     <TapTarget
       accessibilityRole="button"
-      accessibilityLabel={label}
+      accessibilityLabel={a11yLabel ?? label}
       disabled={isDisabled}
       onPress={onPress}
       style={(state) => [

@@ -12,16 +12,13 @@ import { NoticeBox } from '../ui/components/NoticeBox';
 import { ScreenTopBar } from '../ui/components/ScreenTopBar';
 import { TapTarget } from '../ui/components/TapTarget';
 import { ParentGuard } from '../navigation/ParentGuard';
-import { useScreenGutter } from '../ui/hooks/useScreenGutter';
+import { CONTENT_MAX_WIDTH, useScreenGutter } from '../ui/hooks/useScreenGutter';
 import { uk } from '../i18n/uk';
 import { colors, radius, spacing, typography } from '../ui/theme';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'TaskEdit'>;
 
 const WEEKDAYS = uk.taskCrud.weekdays.map((label, bit) => ({ label, bit }));
-
-/** Forms never stretch across wide/landscape viewports (spec §4.4). */
-const FORM_MAX_WIDTH = 560;
 
 export function TaskEditScreen({ route, navigation }: Props) {
   const { tasksRepo, sessionsRepo, wall, db } = useServices();
@@ -321,7 +318,7 @@ const styles = StyleSheet.create({
   container: {
     flexGrow: 1,
     width: '100%',
-    maxWidth: FORM_MAX_WIDTH,
+    maxWidth: CONTENT_MAX_WIDTH.form, // forms never stretch across wide viewports (§4.4)
     alignSelf: 'center',
     backgroundColor: colors.background,
     gap: spacing.lg,

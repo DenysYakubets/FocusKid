@@ -1,0 +1,10 @@
+
+> focuskid@0.1.0 test
+> jest --ci src/screens/__tests__/landscapeParity.inv08.test.tsx src/screens/__tests__/listActionTalkBackContext.test.tsx src/screens/__tests__/uiRedesignLayout.test.tsx
+
+
+Test Suites: 3 passed, 3 total
+Tests:       13 passed, 13 total
+Snapshots:   0 total
+Time:        2.829 s, estimated 3 s
+Ran all test suites matching src/screens/__tests__/landscapeParity.inv08.test.tsx|src/screens/__tests__/listActionTalkBackContext.test.tsx|src/screens/__tests__/uiRedesignLayout.test.tsx.

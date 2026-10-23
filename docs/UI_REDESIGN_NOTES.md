@@ -95,3 +95,33 @@ Everything else in that file (pressable label/role, 48x48dp flattening) unchange
 - `.agents/` remains untracked (not this stage's artifact); the spec
   `docs/UI_REDESIGN_SPEC.md` is committed with this stage so the branch is
   self-contained.
+
+## 7. Round-1 review findings (all 4 fixed; INV-10 amendment untouched)
+
+- **F1 HIGH / INV-08 landscape collapse.** `styles.header` carried
+  `width: '100%'` inside the `contentLandscape` row, and with RN's default
+  `flexShrink: 0` the right PinPad column resolved to **0dp** at every width.
+  Spec §4.1 wins: the style is split into `headerPortrait { width: '100%' }`
+  (portrait unchanged) and `headerLandscape { flex: 1, minWidth: 0 }`, so both
+  columns are flex-basis-0 and share the row (the reviewer's suggested fix).
+  Layout pin: `landscapeParity.inv08.test.tsx` resolves the two children's
+  widths with RN flex semantics at 640/732/826dp and requires the keypad
+  column ≥30% of the row.
+- **F2 MINOR / TalkBack per-task context.** Spec §5.2 defines `label` as both
+  visible and a11y text, which leaves no compliant way to restore the
+  baseline composite labels — resolved with the reviewer's recommended
+  §5.2 follow-up: an **optional `a11yLabel` prop on `AppButton`**
+  (`accessibilityLabel = a11yLabel ?? label`). Visible labels stay the plain
+  §4.5/§4.6 action names; the three affected call sites (TaskListEdit edit,
+  ParentHome verify/abandon) pass the exact base-`85f762c` composites
+  `` `<action>: <task title>` ``. No uk.ts changes. Behavioral fix with
+  RED evidence: `src/screens/__tests__/listActionTalkBackContext.test.tsx`.
+- **F3 MINOR / duplicated layout token.** `TaskEditScreen` now imports
+  `CONTENT_MAX_WIDTH.form` instead of its own `560` literal (§1.1 one source
+  of truth); pinned in `uiRedesignLayout.test.tsx` (no `560` in the screen +
+  rendered `maxWidth` still equals `CONTENT_MAX_WIDTH.form`).
+- **F4 MINOR / hardcoded literal in a test.** `uiRedesignLayout.test.tsx` now
+  uses `uk.pin.digit(d)` instead of `` `Цифра ${d}` ``.
+- Evidence: `docs/evidence/round1-review-red.log` (4 failed / 9 passed on the
+  pre-fix tree; failures at exactly the four fixed assertions) →
+  `docs/evidence/round1-review-green.log` (13 passed).

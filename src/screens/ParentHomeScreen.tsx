@@ -241,6 +241,7 @@ export function ParentHomeScreen({ navigation }: Props) {
               <View style={styles.itemActions}>
                 <AppButton
                   label={uk.parentHome.verify}
+                  a11yLabel={`${uk.parentHome.verify}: ${item.task?.title ?? ''}`}
                   variant="primary"
                   size="md"
                   onPress={() => handleVerify(item.session.id)}
@@ -248,6 +249,7 @@ export function ParentHomeScreen({ navigation }: Props) {
                 />
                 <AppButton
                   label={uk.parentHome.abandon}
+                  a11yLabel={`${uk.parentHome.abandon}: ${item.task?.title ?? ''}`}
                   variant="danger"
                   size="md"
                   onPress={() => handleAbandon(item.session.id)}

@@ -184,7 +184,12 @@ export function PinGateScreen({ route, navigation }: Props) {
         <ScreenTopBar onBack={() => navigation.goBack()} />
 
         <View style={isLandscape ? styles.contentLandscape : styles.contentPortrait}>
-          <View style={styles.header}>
+          <View
+            style={[
+              styles.header,
+              isLandscape ? styles.headerLandscape : styles.headerPortrait,
+            ]}
+          >
             <AppText
               variant="title"
               accessibilityRole="header"
@@ -249,9 +254,18 @@ const styles = StyleSheet.create({
     gap: spacing.lg,
   },
   header: {
-    width: '100%',
     alignItems: 'center',
     gap: spacing.sm,
+  },
+  headerPortrait: {
+    width: '100%',
+  },
+  // §4.1 landscape two-column: the left column must shrink instead of claiming
+  // 100% of the row — with RN's default flexShrink 0 that left the right keypad
+  // column 0dp wide (INV-08 regression).
+  headerLandscape: {
+    flex: 1,
+    minWidth: 0,
   },
   title: {
     color: colors.text,

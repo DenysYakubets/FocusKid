@@ -8,6 +8,7 @@ import { NoticeBox } from '../../ui/components/NoticeBox';
 import { StatusChip } from '../../ui/components/StatusChip';
 import { PinPad } from '../../ui/components/PinPad';
 import { TimerScreen } from '../TimerScreen';
+import { TaskEditScreen } from '../TaskEditScreen';
 import {
   colors,
   fontScaleMax,
@@ -21,6 +22,8 @@ import { systemWallClock } from '../../services/clock/wallClock';
 import { renderWithApp } from '../../../test/helpers/renderWithApp';
 import { timerStore } from '../../state/timerStore';
 import { uk } from '../../i18n/uk';
+import { CONTENT_MAX_WIDTH } from '../../ui/hooks/useScreenGutter';
+import { readFileSync } from 'fs';
 
 function flat(node: any) {
   const styleProp = node.props.style;
@@ -55,7 +58,7 @@ describe('UI redesign layout pins (UI_REDESIGN_SPEC §4-§5)', () => {
     );
 
     for (let d = 0; d <= 9; d++) {
-      const keyStyle = flat(screen.getByLabelText(`Цифра ${d}`));
+      const keyStyle = flat(screen.getByLabelText(uk.pin.digit(d)));
       expect(keyStyle.maxWidth).toBeUndefined(); // §0.2 root cause: no cap
       expect(keyStyle.minHeight ?? 0).toBeGreaterThanOrEqual(48);
       expect(keyStyle.minWidth ?? 0).toBeGreaterThanOrEqual(48);
@@ -137,5 +140,34 @@ describe('UI redesign layout pins (UI_REDESIGN_SPEC §4-§5)', () => {
       expect(style.minWidth ?? 0).toBeLessThanOrEqual(48);
       expect(style.minHeight ?? 0).toBeGreaterThanOrEqual(48);
     }
+  });
+
+  it('TaskEdit form max-width has a single source of truth in CONTENT_MAX_WIDTH.form (round-1 finding 3)', async () => {
+    // Spec §1.1: one source of truth — no second 560 constant in a screen.
+    const src = readFileSync('src/screens/TaskEditScreen.tsx', 'utf8');
+    expect(src).not.toMatch(/\b560\b/);
+    expect(src).toContain('CONTENT_MAX_WIDTH.form');
+
+    // The rendered form still caps at the §3.6 forms width.
+    const db = createNodeDb();
+    const clock = createFakeClock(1000);
+    const setup = await renderWithApp(<></>, { db, clock, wall: systemWallClock });
+    await setup.services.authService.setupPin('1234');
+    setup.services.authService.startParentSession();
+
+    const screen = await renderWithApp(
+      <TaskEditScreen
+        navigation={{ goBack: jest.fn(), replace: jest.fn() } as any}
+        route={{ params: {} } as any}
+      />,
+      { db, clock, wall: systemWallClock, services: setup.services }
+    );
+
+    let node: any = screen.getByLabelText(uk.taskCrud.save);
+    while (node && node.props.contentContainerStyle === undefined) node = node.parent;
+    expect(node).toBeTruthy();
+    const formStyle = StyleSheet.flatten(node.props.contentContainerStyle);
+    expect(formStyle.maxWidth).toBe(CONTENT_MAX_WIDTH.form);
+    expect(CONTENT_MAX_WIDTH.form).toBe(560); // §3.6 forms cap
   });
 });

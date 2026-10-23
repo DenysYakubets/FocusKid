@@ -124,6 +124,7 @@ export function TaskListEditScreen({ navigation }: Props) {
 
                 <AppButton
                   label={uk.taskCrud.editTask}
+                  a11yLabel={`${uk.taskCrud.editTask}: ${item.title}`}
                   variant="ghost"
                   size="sm"
                   onPress={() => handleEdit(item.id)}
