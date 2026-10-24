@@ -15,6 +15,7 @@ import { tasksStore } from './src/state/tasksStore';
 import { parentSessionStore } from './src/state/parentSessionStore';
 import { RootNavigator } from './src/navigation/RootNavigator';
 import { ErrorBoundary } from './src/ui/components/ErrorBoundary';
+import { AppFrame } from './src/ui/components/AppFrame';
 import { AppText } from './src/ui/components/AppText';
 import { TapTarget } from './src/ui/components/TapTarget';
 import { uk } from './src/i18n/uk';
@@ -100,11 +101,13 @@ export function AppBootstrap() {
     <AppServicesProvider services={services}>
       <AppLifecycle />
       <SafeAreaProvider>
-        <NavigationContainer>
-          <ErrorBoundary>
-            <RootNavigator />
-          </ErrorBoundary>
-        </NavigationContainer>
+        <AppFrame>
+          <NavigationContainer>
+            <ErrorBoundary>
+              <RootNavigator />
+            </ErrorBoundary>
+          </NavigationContainer>
+        </AppFrame>
         <StatusBar style="auto" />
       </SafeAreaProvider>
     </AppServicesProvider>
