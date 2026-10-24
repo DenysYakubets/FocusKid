@@ -215,3 +215,117 @@ Gates (direct runs, no pipes): `npx tsc --noEmit` → `TSC_EXIT=0`;
 
 Commits: `test(review): … (RED)` → `fix(timer):` → `fix(tasks):` → `fix(mascot):` → `chore:`. Branch
 pushed only — no PR, no merge.
+
+
+## Celebration round (`feat/celebration`) — C9 + C6
+
+RED evidence: `docs/evidence/celebration-red.log` — 2 suites / 4 tests failed on the
+pre-fix tree (`JEST_EXIT=1`), one failing test per assertion. GREEN:
+`docs/evidence/celebration-green-1.log` / `-green-2.log` — **73 suites / 282 tests**,
+`JEST_EXIT=0` twice (direct runs, no pipes/tee). `npx tsc --noEmit` → `TSC_EXIT=0`;
+`bash scripts/check-invariants.sh` → `INV_EXIT=0` (`celebration-invariants.log`).
+
+### C9 — mascot celebration flight (INV-04 gentle, non-jarring)
+- New `src/ui/components/MascotCelebration.tsx`: one-shot overlay, `pointerEvents="box-none"`
+  (passes every touch through — never blocks Timer buttons), 1.8s ease-in-out arc across the
+  screen and back to the resting corner with a scale/rotate pulse on the `excited` mood.
+  Skipped entirely under `AccessibilityInfo.isReduceMotionEnabled()` (the overlay still renders
+  so the trigger is observable, but no Animated work runs) and under `NODE_ENV=test` (same gate
+  as `MascotFloating`, so jest never sees async Animated updates).
+- Trigger: `TimerScreen` mounts the overlay only when a **LIVE** session (`isLive=true`, i.e.
+  the store snapshot, not the cold-start `routeSession` restore) reaches `Completed`/`Verified`.
+  The `celebratedRef`/`celebratedSessionId` pair makes it **exactly once per session** — re-renders
+  while still `Completed` keep the same instance (keyed by sessionId), and a second completion of
+  the same session would need a new sessionId. After the flight finishes the overlay unmounts.
+- INV-05: `PinGateScreen` / `ParentHomeScreen` never mount `MascotCelebration` (asserted by
+  `queryByTestId('mascot-celebration') === null` in the RED test).
+
+### C6 — pluggable timer-complete jingle hook (volume from settings)
+- New `src/audio/celebrationSound.ts`:
+  - `getJingleVolume(settingsRepo)` reads the `jingle_volume` key from the SQLite `settings`
+    table (INV-07), default **0.5** when the row is absent or malformed, clamped to `[0, 1]`.
+  - `onTimerComplete(cb)` / `emitTimerComplete(payload)` — a module-level `Set` of listeners;
+    returns an unsubscribe. `timerStore` subscribes once and fires **exactly once per Completed
+    transition** (`prev.kind !== 'Completed' && next.kind === 'Completed'`), so hydrate/setService
+    (which start FROM `Completed`) never re-emit. Listener errors are swallowed so a broken
+    listener can never break the completion path (INV-04).
+  - `playCelebrationSound(mascot, volume)` — pluggable player, default impl is a guarded dynamic
+    `require('expo-audio')` → `require('expo-av')` behind nested try/catch. **Zero new deps**: neither
+    module is installed on this branch (both are in `expo`'s `bundledNativeModules.json` but not in
+    `package.json`), so the default is a silent no-op and the app never crashes. The follow-up
+    commit drops in WAV assets per `docs/JINGLE_DESIGN.md` (absent on this branch) and swaps the impl.
+- Wired: `timerStore` subscribes to `onTimerComplete` at module scope; `TimerScreen` mounts
+  `MascotCelebration` on the same transition. The two are independent — the jingle fires even
+  if the animation is skipped (reduce motion), and vice versa.
+
+### Tests (RED → GREEN)
+- `src/screens/__tests__/mascotCelebration.test.tsx` — celebration fires exactly once on
+  `Completed` (not `Running`/`Paused`), overlay is `box-none`, re-render does not spawn a second,
+  and the overlay is absent on `PinGate`/`ParentHome` (INV-05).
+- `src/screens/__tests__/jingleHook.test.tsx` — `getJingleVolume` returns 0.5 when the row is
+  absent and the custom `0.75` when set; `onTimerComplete` emits exactly once on `Completed`
+  (not on `Running`/`Paused`); `playCelebrationSound` and `onTimerComplete` are functions
+  (pluggable interface).
+- Both suites share the `mockNavigation` pattern with `addListener: jest.fn(() => () => {})`
+  (the previous `mockNavigation` lacked it, causing `ParentHomeScreen`'s focus listener to throw).
+
+Commits: `test(celebration): RED` → `feat(celebration): C9 flight + C6 jingle hook`. Branch
+pushed only — no PR, no merge.
+
+
+## C8 — mascot jingles + volume settings (integration round, `feat/celebration`)
+
+Baseline `feat/celebration @ c4360a5` (C9 flight + C6 jingle stub already on the branch).
+Contract + assets imported from the isolated design clone: `sfx/jingles/` (7 ×
+`<Mascot>-complete.wav` + `INDEX.json` + `PATTERNS.json`) and `docs/JINGLE_DESIGN.md`
+(408 lines — §3 is the integration spec this round implements).
+
+- **One new dependency: `expo-audio` `~58.0.10`** (`npx expo install expo-audio`, SDK-58
+  aligned; the config plugin was auto-registered in `app.json`). The owner asked for real
+  sound and `package.json` had **neither `expo-av` nor `expo-audio`** (JINGLE_DESIGN §3.2
+  checked both) — this is the single new native module, so hearing it on a device needs a
+  native rebuild (`npx expo run:android`); JS/unit gates are unaffected. Nothing else was
+  added: the volume control is a `TapTarget` stepper (no slider dependency).
+- **Migration V6** (`src/services/db/schema.ts`) — spec §3.1 SQL verbatim: `INSERT OR IGNORE`
+  seeds `@focuskid/jingle_volume = 0.5` and `@focuskid/jingle_enabled = true`.
+  `MIGRATIONS.length` 5 → 6; the migration tests compare against `MIGRATIONS.length`
+  symbolically, so no assertion changed (V6 inserts rows — tables/indexes/triggers untouched).
+- **Storage** — `src/state/jingleStore.ts` + `src/ui/hooks/useJingle.ts` mirror
+  `mascotStore`/`useMascot`: optimistic value, rollback + throw on a failed settings write,
+  volume clamped to `[0,1]` and rounded to 2 decimals (a 10% step never persists
+  `0.30000000000000004`). `getJingleVolume()` reads the C6 stub's bare `jingle_volume` key
+  first (so anything written against the stub still applies), then the V6 key (default 0.5).
+- **Playback** — `src/ui/jingleSources.ts` is the Metro-safe static `require` map (one
+  literal per roster member, mirrors `mascotImages.ts`). `playJingle(mascot, volume)` in
+  `src/audio/celebrationSound.ts` (the C6 stub is now the real player; `playCelebrationSound`
+  keeps its name) creates an `expo-audio` player from that source, sets `volume`, plays once
+  and `remove()`s on `didJustFinish`; a 4s `unref`'d fallback timer frees the player if the
+  status event never lands. Every failure path (missing module, unknown mascot, volume 0,
+  throw) degrades to silence, never a crash (INV-04); `jingle_enabled = false` short-circuits
+  inside `playCompletionJingle()`.
+- **Trigger** — `TimerScreen`'s existing `displayState.kind` effect: play on the **live**
+  `Completed` and `Verified` transitions only. Parent/PIN screens never mount `TimerScreen`,
+  so the screen boundary is the guard (INV-05); the cold-start restore path is excluded by
+  `isLive` (opening an already-completed session stays silent).
+- **UI** — `MascotSelectScreen` gains the §3.3 row right under the preview panel:
+  `jingle-volume` container, `jingle-volume-value` readout (`Гучність мелодії: NN%`, also the
+  a11y label), `jingle-volume-down` / `jingle-volume-up` in 10% steps, `jingle-test` playing
+  the **currently previewed** mascot at the chosen volume (disabled when jingles are off or
+  volume is 0), `jingle-save-error` `NoticeBox` when the write fails. All three controls are
+  `TapTarget size="sm"` → ≥48dp (INV-10), every string from `uk.ts` exactly as spec'd.
+- **Tests (RED → GREEN)** — `docs/evidence/jingle-red.log` (exit 1: the `jingleVolume` suite
+  failed to load on the missing store, `jinglePlayback` had 2 failing tests) → 9 new tests.
+  `src/screens/__tests__/jingleVolume.test.tsx`: default 50% readout, ±10 steps, restart
+  persistence, Test button → `createAudioPlayer(source)` at the chosen volume, disabled when
+  jingles are off, save-error rollback. `src/screens/__tests__/jinglePlayback.test.tsx`:
+  exactly-once on a live Completed with the right mascot + volume and unload on
+  `didJustFinish`, custom `0.8`/Stella honoured, `jingle_enabled=false` ⇒ silent, the 7-entry
+  map verified against `INDEX.json` (literal require paths read back from the source file),
+  and INV-05: a completion while only parent/PIN screens are mounted stays silent.
+  `test/setup.ts` mocks `expo-audio` (the native module must never load in Jest).
+- **Gates** — `npx tsc --noEmit`, `npm test -- --ci` ×2, `bash scripts/check-invariants.sh`:
+  **75 suites / 291 tests** (was 73 / 282), all exit 0. Zero drift re-checked:
+  `grep -rnE '#[0-9a-fA-F]{3,8}' src/` → only `theme.ts`.
+
+Commits: `chore(celebration)` assets+dep → `test(celebration): RED` →
+`feat(celebration): integration`. Branch pushed only — no PR, no merge.

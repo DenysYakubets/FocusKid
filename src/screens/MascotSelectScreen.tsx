@@ -3,8 +3,10 @@ import { Image, ScrollView, StyleSheet, View, ViewStyle } from 'react-native';
 import { AppText } from '../ui/components/AppText';
 import { NoticeBox } from '../ui/components/NoticeBox';
 import { TapTarget } from '../ui/components/TapTarget';
+import { useJingle } from '../ui/hooks/useJingle';
 import { useMascot } from '../ui/hooks/useMascot';
 import { useScreenGutter } from '../ui/hooks/useScreenGutter';
+import { playJingle } from '../audio/celebrationSound';
 import { mascotImages } from '../ui/mascotImages';
 import { MASCOTS, MascotName, mascotColor } from '../ui/mascotRoster';
 import { colors, radius, shadows, spacing } from '../ui/theme';
@@ -22,6 +24,7 @@ import { uk } from '../i18n/uk';
  */
 export function MascotSelectScreen() {
   const { mascot, select } = useMascot();
+  const { volume, enabled, setVolume } = useJingle();
   const { width, gutter } = useScreenGutter();
 
   const columns = width < 340 ? 1 : 2;
@@ -32,7 +35,10 @@ export function MascotSelectScreen() {
   // shown (it may still be hydrating from the settings store).
   const [tapped, setTapped] = useState<MascotName | null>(null);
   const [saveError, setSaveError] = useState(false);
+  // C8: jingle volume write failures get their own box (JINGLE_DESIGN §3.3).
+  const [jingleSaveError, setJingleSaveError] = useState(false);
   const shown = tapped ?? mascot;
+  const pct = Math.round(volume * 100);
 
   const handlePick = (name: MascotName) => {
     setTapped(name);
@@ -41,6 +47,18 @@ export function MascotSelectScreen() {
     // here (the store already rolled the visible choice back) instead of
     // leaving an unhandled rejection.
     void select(name).catch(() => setSaveError(true));
+  };
+
+  // C8: 10% stepper steps, clamped by the store; the store rolls the visible
+  // value back and rethrows if the settings write fails.
+  const handleVolumeStep = (delta: number) => {
+    setJingleSaveError(false);
+    void setVolume(volume + delta).catch(() => setJingleSaveError(true));
+  };
+
+  // Test previews the mascot currently shown in the panel at the chosen volume.
+  const handleJingleTest = () => {
+    playJingle(shown, volume);
   };
 
   return (
@@ -80,6 +98,76 @@ export function MascotSelectScreen() {
           {uk.mascot.personalities[shown]}
         </AppText>
       </View>
+
+      {/* C8 (JINGLE_DESIGN §3.3): jingle volume stepper + Test preview, right
+          under the preview panel so it sits "near mascot selection". TapTarget
+          steppers = zero new deps and the 48dp INV-10 floor for free. */}
+      <View testID="jingle-volume" style={styles.jingleRow}>
+        <AppText
+          variant="body"
+          testID="jingle-volume-value"
+          accessibilityRole="text"
+          accessibilityLabel={uk.mascot.jingleVolume(pct)}
+          style={styles.jingleValue}
+        >
+          {uk.mascot.jingleVolume(pct)}
+        </AppText>
+        <View style={styles.jingleControls}>
+          <TapTarget
+            accessibilityRole="button"
+            accessibilityLabel={uk.mascot.jingleVolumeStepDown}
+            testID="jingle-volume-down"
+            size="sm"
+            style={styles.jingleButton}
+            onPress={() => handleVolumeStep(-0.1)}
+          >
+            <AppText variant="bodyLarge">−</AppText>
+          </TapTarget>
+          <TapTarget
+            accessibilityRole="button"
+            accessibilityLabel={uk.mascot.jingleVolumeStepUp}
+            testID="jingle-volume-up"
+            size="sm"
+            style={styles.jingleButton}
+            onPress={() => handleVolumeStep(0.1)}
+          >
+            <AppText variant="bodyLarge">+</AppText>
+          </TapTarget>
+          {/* JINGLE_DESIGN §3.3 testID table: Test is disabled ONLY when
+              `jingle_enabled === false` (round-1 LOW — the extra volume === 0
+              gate was an undocumented deviation; volume 0 simply plays
+              silence). */}
+          <TapTarget
+            accessibilityRole="button"
+            accessibilityLabel={uk.mascot.jingleTest}
+            testID="jingle-test"
+            size="sm"
+            style={styles.jingleButton}
+            disabled={!enabled}
+            onPress={handleJingleTest}
+          >
+            <AppText variant="bodyLarge">{uk.mascot.jingleTest}</AppText>
+          </TapTarget>
+        </View>
+      </View>
+
+      {/* Round-1 LOW: the disabled-jingle state gets a visible notice —
+          `uk.mascot.jingleDisabled` was a dead string until now. */}
+      {!enabled ? (
+        <NoticeBox
+          testID="jingle-disabled"
+          tone="info"
+          message={uk.mascot.jingleDisabled}
+        />
+      ) : null}
+
+      {jingleSaveError ? (
+        <NoticeBox
+          testID="jingle-save-error"
+          tone="error"
+          message={uk.mascot.jingleSaveError}
+        />
+      ) : null}
 
       <View style={styles.grid}>
         {MASCOTS.map((name) => {
@@ -187,5 +275,33 @@ const styles = StyleSheet.create({
   },
   cardSelectedText: {
     color: colors.verified,
+  },
+  jingleRow: {
+    gap: spacing.sm,
+    padding: spacing.md,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.lg,
+    borderCurve: 'continuous',
+  },
+  jingleValue: {
+    color: colors.text,
+    textAlign: 'center',
+  },
+  jingleControls: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.sm,
+  },
+  jingleButton: {
+    paddingHorizontal: spacing.md,
+    backgroundColor: colors.cardBg,
+    borderWidth: 1,
+    borderColor: colors.borderStrong,
+    borderRadius: radius.md,
+    borderCurve: 'continuous',
   },
 });

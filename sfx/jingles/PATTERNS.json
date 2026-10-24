@@ -1,0 +1,9 @@
+{
+  "Bubblo": "C5\u2192E5\u2192G5\u2192C6 ascending arpeggio (160ms steps), sine pluck + C6 octave shimmer",
+  "Stella": "C6\u2192G6\u2192C7 sparkle chime (120/140ms steps), fast-decay sine bells",
+  "Wobble": "G5\u2192D5\u2192G5\u2192B5 bouncy bounce (140ms steps) + soft triangle boing tail",
+  "Aqua": "C5\u2192G5\u2192E5 gentle wave sweep (sustained, overlapping sine tones)",
+  "Bud": "F4 soft pluck (with F5 octave) \u2192 C5 echo, warm short decay",
+  "Glow": "C4+E4+G4 major triad swell (staggered attack) + C5 top note",
+  "Spark": "D5\u2192G5\u2192B5 quick zap fanfare (100ms steps, soft-square) + D6 sine tail"
+}

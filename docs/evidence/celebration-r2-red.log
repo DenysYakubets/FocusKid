@@ -1,0 +1,390 @@
+FAIL src/ui/__tests__/mascotCelebrationMotion.test.tsx
+  ● C9 - MascotCelebration reduced motion + a11y (round-1 findings) › round-1 HIGH: commits no animation until the reduce-motion answer resolves, then flies when motion is allowed
+
+    expect(jest.fn()).not.toHaveBeenCalled()
+
+    Expected number of calls: 0
+    Received number of calls: 1
+
+    1: [{"_isUsingNativeDriver": [Function _isUsingNativeDriver], "_startNativeLoop": [Function _startNativeLoop], "reset": [Function reset], "start": [Function start], "stop": [Function stop]}, {"_isUsingNativeDriver": [Function _isUsingNativeDriver], "_startNativeLoop": [Function _startNativeLoop], "reset": [Function reset], "start": [Function start], "stop": [Function stop]}, {"_isUsingNativeDriver": [Function _isUsingNativeDriver], "_startNativeLoop": [Function _startNativeLoop], "reset": [Function reset], "start": [Function start], "stop": [Function stop]}]
+
+      77 |     // The answer is still in flight: nothing may be committed yet — no arc,
+      78 |     // and the parent is not told the celebration is over either.
+    > 79 |     expect(parallelSpy).not.toHaveBeenCalled();
+         |                             ^
+      80 |     expect(onFinished).not.toHaveBeenCalled();
+      81 |
+      82 |     // Motion allowed -> the flight starts only now.
+
+      at Object.toHaveBeenCalled (src/ui/__tests__/mascotCelebrationMotion.test.tsx:79:29)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+  ● C9 - MascotCelebration reduced motion + a11y (round-1 findings) › round-1 HIGH: reduce-motion ON -> no flight at all, but the parent still settles (onFinished fires)
+
+    expect(jest.fn()).not.toHaveBeenCalled()
+
+    Expected number of calls: 0
+    Received number of calls: 1
+
+    1: [{"_isUsingNativeDriver": [Function _isUsingNativeDriver], "_startNativeLoop": [Function _startNativeLoop], "reset": [Function reset], "start": [Function start], "stop": [Function stop]}, {"_isUsingNativeDriver": [Function _isUsingNativeDriver], "_startNativeLoop": [Function _startNativeLoop], "reset": [Function reset], "start": [Function start], "stop": [Function stop]}, {"_isUsingNativeDriver": [Function _isUsingNativeDriver], "_startNativeLoop": [Function _startNativeLoop], "reset": [Function reset], "start": [Function start], "stop": [Function stop]}]
+
+      100 |     await flush();
+      101 |
+    > 102 |     expect(parallelSpy).not.toHaveBeenCalled();
+          |                             ^
+      103 |     expect(onFinished).toHaveBeenCalledTimes(1);
+      104 |
+      105 |     screen.unmount();
+
+      at Object.toHaveBeenCalled (src/ui/__tests__/mascotCelebrationMotion.test.tsx:102:29)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+  ● C9 - MascotCelebration reduced motion + a11y (round-1 findings) › round-1 LOW: the overlay is exposed to assistive tech with the celebration label
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: "Святкування завершення"
+    Received: undefined
+
+      114 |     const overlay = screen.getByTestId(CELEBRATION_TEST_ID);
+      115 |
+    > 116 |     expect(overlay.props.accessibilityLabel).toBe(uk.mascot.celebrationLabel);
+          |                                              ^
+      117 |     expect(overlay.props.accessible).toBe(true);
+      118 |     // Non-blocking stays (INV-04 gentle): touches pass straight through.
+      119 |     expect(overlay.props.pointerEvents).toBe('box-none');
+
+      at Object.toBe (src/ui/__tests__/mascotCelebrationMotion.test.tsx:116:46)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+FAIL src/screens/__tests__/mascotCelebration.test.tsx
+  ● C9 - mascot celebration fires exactly once on Completed › runs the celebration exactly once when the timer reaches Completed, not while Running/Paused, and unmounts the overlay once the flight settles (round-1 MED)
+
+    expect(received).toBeNull()
+
+    Received: <View pointerEvents="box-none" style={[{"pointerEvents": "box-none", "position": "absolute", "zIndex": 40}, {"right": 16, "top": 104}]} testID="mascot-celebration"><View collapsable={false} style={{"transform": [{"translateX": 0}, {"translateY": 0}, {"scale": 1}, {"rotate": "0deg"}]}}><View accessible={false} pointerEvents="none" style={[{"alignItems": "center", "backgroundColor": "rgba(255,255,255,0.92)", "borderCurve": "continuous", "borderRadius": 9999, "borderWidth": 2, "height": 64, "justifyContent": "center", "width": 64}, {"borderColor": "#3B82F6"}]}><Image accessible={false} collapsable={false} resizeMode="contain" source={{"testUri": "../../../assets/mascots/Bubblo/excited.png"}} style={{"height": 52, "width": 52}} testID="mascot-celebration-image" /></View></View></View>
+
+      123 |     // ...and gone again once the flight settles: no static duplicate mascot
+      124 |     // parked on MascotFloating's corner for the whole Completed state.
+    > 125 |     expect(screen.queryByTestId('mascot-celebration')).toBeNull();
+          |                                                        ^
+      126 |
+      127 |     // A further tick while still Completed must not spawn a second flight.
+      128 |     await act(async () => {
+
+      at Object.toBeNull (src/screens/__tests__/mascotCelebration.test.tsx:125:56)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+  ● C9 - mascot celebration fires exactly once on Completed › round-1 LOW: a TimerScreen remount while the snapshot is still Completed does not replay the flight
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 1
+    Received: 2
+
+      193 |     await flush();
+      194 |     expect(second.queryByTestId('timer-layout-portrait')).toBeTruthy();
+    > 195 |     expect(celebration.__mounts.count).toBe(1);
+          |                                        ^
+      196 |     expect(second.queryByTestId('mascot-celebration')).toBeNull();
+      197 |     second.unmount();
+      198 |   });
+
+      at Object.toBe (src/screens/__tests__/mascotCelebration.test.tsx:195:40)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+FAIL src/screens/__tests__/jingleVolume.test.tsx
+  ● C8 - jingle volume stepper + Test preview (JINGLE_DESIGN §3.3) › round-1 LOW: jingle_enabled=false surfaces the uk.mascot.jingleDisabled notice
+
+    Unable to find an element with testID: jingle-disabled
+
+    [36m<RCTScrollView[39m
+      [33mtestID[39m=[32m"mascot-select"[39m
+    [36m>[39m
+      [36m<View>[39m
+        [36m<View>[39m
+          [36m<Text[39m
+            [33maccessibilityRole[39m=[32m"header"[39m
+          [36m>[39m
+            [0mОбери персонажа[0m
+          [36m</Text>[39m
+          [36m<Text>[39m
+            [0mТапни, щоб пограти[0m
+          [36m</Text>[39m
+        [36m</View>[39m
+        [36m<View[39m
+          [33maccessibilityLabel[39m=[32m"Обраний персонаж: Spark"[39m
+          [33mtestID[39m=[32m"mascot-preview"[39m
+        [36m>[39m
+          [36m<Image[39m
+            [33maccessible[39m=[32m{false}[39m
+            [33mtestID[39m=[32m"mascot-preview-image"[39m
+          [36m/>[39m
+          [36m<Text>[39m
+            [0mSpark[0m
+          [36m</Text>[39m
+          [36m<Text>[39m
+            [0mМаленька зірка, що запалює мотивацію у складні моменти[0m
+          [36m</Text>[39m
+        [36m</View>[39m
+        [36m<View[39m
+          [33mtestID[39m=[32m"jingle-volume"[39m
+        [36m>[39m
+          [36m<Text[39m
+            [33maccessibilityLabel[39m=[32m"Гучність мелодії: 50%"[39m
+            [33maccessibilityRole[39m=[32m"text"[39m
+            [33mtestID[39m=[32m"jingle-volume-value"[39m
+          [36m>[39m
+            [0mГучність мелодії: 50%[0m
+          [36m</Text>[39m
+          [36m<View>[39m
+            [36m<View[39m
+              [33maccessibilityLabel[39m=[32m"Зменшити гучність мелодії"[39m
+              [33maccessibilityRole[39m=[32m"button"[39m
+              [33maccessibilityState[39m=[32m{
+                {
+                  "disabled": false,
+                }
+              }[39m
+              [33maccessible[39m=[32m{true}[39m
+              [33mtestID[39m=[32m"jingle-volume-down"[39m
+            [36m>[39m
+              [36m<Text>[39m
+                [0m−[0m
+              [36m</Text>[39m
+            [36m</View>[39m
+            [36m<View[39m
+              [33maccessibilityLabel[39m=[32m"Збільшити гучність мелодії"[39m
+              [33maccessibilityRole[39m=[32m"button"[39m
+              [33maccessibilityState[39m=[32m{
+                {
+                  "disabled": false,
+                }
+              }[39m
+              [33maccessible[39m=[32m{true}[39m
+              [33mtestID[39m=[32m"jingle-volume-up"[39m
+            [36m>[39m
+              [36m<Text>[39m
+                [0m+[0m
+              [36m</Text>[39m
+            [36m</View>[39m
+            [36m<View[39m
+              [33maccessibilityLabel[39m=[32m"Тест"[39m
+              [33maccessibilityRole[39m=[32m"button"[39m
+              [33maccessibilityState[39m=[32m{
+                {
+                  "disabled": true,
+                }
+              }[39m
+              [33maccessible[39m=[32m{true}[39m
+              [33mtestID[39m=[32m"jingle-test"[39m
+            [36m>[39m
+              [36m<Text>[39m
+                [0mТест[0m
+              [36m</Text>[39m
+            [36m</View>[39m
+          [36m</View>[39m
+        [36m</View>[39m
+        [36m<View>[39m
+          [36m<View[39m
+            [33maccessibilityLabel[39m=[32m"Bubblo — персонаж"[39m
+            [33maccessibilityRole[39m=[32m"button"[39m
+            [33maccessibilityState[39m=[32m{
+              {
+                "disabled": false,
+                "selected": false,
+              }
+            }[39m
+            [33maccessible[39m=[32m{true}[39m
+          [36m>[39m
+            [36m<Image[39m
+              [33maccessible[39m=[32m{false}[39m
+              [33mtestID[39m=[32m"mascot-card-Bubblo"[39m
+            [36m/>[39m
+            [36m<Text>[39m
+              [0mBubblo[0m
+            [36m</Text>[39m
+            [36m<Text>[39m
+              [0mВесела краплинка води, якій подобається, коли діти фокусуються[0m
+            [36m</Text>[39m
+          [36m</View>[39m
+          [36m<View[39m
+            [33maccessibilityLabel[39m=[32m"Stella — персонаж"[39m
+            [33maccessibilityRole[39m=[32m"button"[39m
+            [33maccessibilityState[39m=[32m{
+              {
+                "disabled": false,
+                "selected": false,
+              }
+            }[39m
+            [33maccessible[39m=[32m{true}[39m
+          [36m>[39m
+            [36m<Image[39m
+              [33maccessible[39m=[32m{false}[39m
+              [33mtestID[39m=[32m"mascot-card-Stella"[39m
+            [36m/>[39m
+            [36m<Text>[39m
+              [0mStella[0m
+            [36m</Text>[39m
+            [36m<Text>[39m
+              [0mЯскрава зірка, що веде дитину протягом дня[0m
+            [36m</Text>[39m
+          [36m</View>[39m
+          [36m<View[39m
+            [33maccessibilityLabel[39m=[32m"Wobble — персонаж"[39m
+            [33maccessibilityRole[39m=[32m"button"[39m
+            [33maccessibilityState[39m=[32m{
+              {
+                "disabled": false,
+                "selected": false,
+              }
+            }[39m
+            [33maccessible[39m=[32m{true}[39m
+          [36m>[39m
+            [36m<Image[39m
+              [33maccessible[39m=[32m{false}[39m
+              [33mtestID[39m=[32m"mascot-card-Wobble"[39m
+            [36m/>[39m
+            [36m<Text>[39m
+              [0mWobble[0m
+            [36m</Text>[39m
+            [36m<Text>[39m
+              [0mПухкенький бульбаш, що радіє кожній маленькій перемозі[0m
+            [36m</Text>[39m
+          [36m</View>[39m
+          [36m<View[39m
+            [33maccessibilityLabel[39m=[32m"Aqua — персонаж"[39m
+            [33maccessibilityRole[39m=[32m"button"[39m
+            [33maccessibilityState[39m=[32m{
+              {
+                "disabled": false,
+                "selected": false,
+              }
+            }[39m
+            [33maccessible[39m=[32m{true}[39m
+          [36m>[39m
+            [36m<Image[39m
+              [33maccessible[39m=[32m{false}[39m
+              [33mtestID[39m=[32m"mascot-card-Aqua"[39m
+            [36m/>[39m
+            [36m<Text>[39m
+              [0mAqua[0m
+            [36m</Text>[39m
+            [36m<Text>[39m
+              [0mСпокійна кулька, що пильнує час під час фокусу[0m
+            [36m</Text>[39m
+          [36m</View>[39m
+          [36m<View[39m
+            [33maccessibilityLabel[39m=[32m"Bud — персонаж"[39m
+            [33maccessibilityRole[39m=[32m"button"[39m
+            [33maccessibilityState[39m=[32m{
+              {
+                "disabled": false,
+                "selected": false,
+              }
+            }[39m
+            [33maccessible[39m=[32m{true}[39m
+          [36m>[39m
+            [36m<Image[39m
+              [33maccessible[39m=[32m{false}[39m
+              [33mtestID[39m=[32m"mascot-card-Bud"[39m
+            [36m/>[39m
+            [36m<Text>[39m
+              [0mBud[0m
+            [36m</Text>[39m
+            [36m<Text>[39m
+              [0mДружний листочок, що росте разом із прогресом[0m
+            [36m</Text>[39m
+          [36m</View>[39m
+          [36m<View[39m
+            [33maccessibilityLabel[39m=[32m"Glow — персонаж"[39m
+            [33maccessibilityRole[39m=[32m"button"[39m
+            [33maccessibilityState[39m=[32m{
+              {
+                "disabled": false,
+                "selected": false,
+              }
+            }[39m
+            [33maccessible[39m=[32m{true}[39m
+          [36m>[39m
+            [36m<Image[39m
+              [33maccessible[39m=[32m{false}[39m
+              [33mtestID[39m=[32m"mascot-card-Glow"[39m
+            [36m/>[39m
+            [36m<Text>[39m
+              [0mGlow[0m
+            [36m</Text>[39m
+            [36m<Text>[39m
+              [0mМ’яке світіння, що освітлює статистику й досягнення[0m
+            [36m</Text>[39m
+          [36m</View>[39m
+          [36m<View[39m
+            [33maccessibilityLabel[39m=[32m"Spark — персонаж"[39m
+            [33maccessibilityRole[39m=[32m"button"[39m
+            [33maccessibilityState[39m=[32m{
+              {
+                "disabled": false,
+                "selected": true,
+              }
+            }[39m
+            [33maccessible[39m=[32m{true}[39m
+          [36m>[39m
+            [36m<Image[39m
+              [33maccessible[39m=[32m{false}[39m
+              [33mtestID[39m=[32m"mascot-card-Spark"[39m
+            [36m/>[39m
+            [36m<Text>[39m
+              [0mSpark[0m
+            [36m</Text>[39m
+            [36m<Text>[39m
+              [0mМаленька зірка, що запалює мотивацію у складні моменти[0m
+            [36m</Text>[39m
+            [36m<Text>[39m
+              [0m✓ Обрано[0m
+            [36m</Text>[39m
+          [36m</View>[39m
+        [36m</View>[39m
+      [36m</View>[39m
+    [36m</RCTScrollView>[39m
+
+      245 |     await flush();
+      246 |
+    > 247 |     expect(await screen.findByTestId('jingle-disabled')).toBeTruthy();
+          |                         ^
+      248 |     expect(screen.getByText(uk.mascot.jingleDisabled)).toBeTruthy();
+      249 |     // ...and the Test button is disabled in the same state.
+      250 |     expect(screen.getByTestId('jingle-test').props.accessibilityState?.disabled).toBe(true);
+
+      at Object.findByTestId (src/screens/__tests__/jingleVolume.test.tsx:247:25)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+  ● C8 - jingle volume stepper + Test preview (JINGLE_DESIGN §3.3) › round-1 LOW: Test stays ENABLED at volume 0 (JINGLE_DESIGN disables only on jingle_enabled=false)
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: false
+    Received: true
+
+      270 |       uk.mascot.jingleVolume(0)
+      271 |     );
+    > 272 |     expect(screen.getByTestId('jingle-test').props.accessibilityState?.disabled).toBe(false);
+          |                                                                                  ^
+      273 |     expect(screen.queryByTestId('jingle-disabled')).toBeNull();
+      274 |
+      275 |     // Pressing it must be a silent no-op at volume 0, never a crash.
+
+      at Object.toBe (src/screens/__tests__/jingleVolume.test.tsx:272:82)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+Test Suites: 3 failed, 3 total
+Tests:       7 failed, 5 passed, 12 total
+Snapshots:   0 total
+Time:        3.219 s
+Ran all test suites matching src/screens/__tests__/mascotCelebration.test.tsx|src/ui/__tests__/mascotCelebrationMotion.test.tsx|src/screens/__tests__/jingleVolume.test.tsx.

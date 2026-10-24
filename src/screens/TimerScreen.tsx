@@ -16,12 +16,15 @@ import { SessionRow } from '../services/repos/sessionsRepo';
 import { restore } from '../services/timer/timerService';
 import { useServices } from '../state/appServices';
 import { useTimerStore } from '../state/timerStore';
+import { useMascotStore } from '../state/mascotStore';
+import { playCompletionJingle } from '../audio/celebrationSound';
 import { AppButton } from '../ui/components/AppButton';
 import { AppText } from '../ui/components/AppText';
 import { NoticeBox } from '../ui/components/NoticeBox';
 import { ProgressBar } from '../ui/components/ProgressBar';
 import { AppToolbar } from '../ui/components/AppToolbar';
 import { MascotFloating } from '../ui/components/MascotFloating';
+import { MascotCelebration } from '../ui/components/MascotCelebration';
 import { formatMinutesUk } from '../ui/components/TaskCard';
 import { useScreenGutter } from '../ui/hooks/useScreenGutter';
 import { uk } from '../i18n/uk';
@@ -34,7 +37,7 @@ type Props = NativeStackScreenProps<RootStackParamList, 'Timer'>;
 const STACK_ACTION_COLUMN_DP = 260;
 
 export function TimerScreen({ route, navigation }: Props) {
-  const { clock, tasksRepo, sessionsRepo, wall } = useServices();
+  const { clock, tasksRepo, sessionsRepo, settingsRepo, wall } = useServices();
   const { width, gutter, isLandscape } = useScreenGutter();
 
   const snapshot = useTimerStore((s) => s.snapshot);
@@ -52,6 +55,18 @@ export function TimerScreen({ route, navigation }: Props) {
   const [showStopDialog, setShowStopDialog] = useState(false);
   const loadSeqRef = useRef(0);
   const restoredBaseRef = useRef<{ key: string; base: number }>({ key: '', base: 0 });
+  // C9: celebration fires exactly once per live Completed/Verified transition.
+  //  - `celebratedSessionId` drives the overlay (non-null = mounted);
+  //  - `celebratedRef` remembers WHICH session already flew — `onFinished`
+  //    clears only the state, never this ref, so the render-phase block cannot
+  //    re-arm the overlay after the flight (round-1 MED);
+  //  - `celebrationInitRef` makes the FIRST render record-only: a screen that
+  //    mounts onto an already-Completed/Verified snapshot never flies again
+  //    (round-1 LOW — mirrors how the jingle's prev-kind ref init prevents a
+  //    re-fire on remount).
+  const [celebratedSessionId, setCelebratedSessionId] = useState<number | null>(null);
+  const celebratedRef = useRef<number | null>(null);
+  const celebrationInitRef = useRef(false);
 
   useEffect(() => {
     let isMounted = true;
@@ -192,8 +207,20 @@ export function TimerScreen({ route, navigation }: Props) {
       AccessibilityInfo.announceForAccessibility(uk.timer.autoResumed);
     } else if (prev !== 'Completed' && current === 'Completed') {
       AccessibilityInfo.announceForAccessibility(uk.timer.completedAnnouncement);
+      // C8 (JINGLE_DESIGN §3.2): the mascot's jingle on a LIVE completion.
+      // This child screen is the only place the trigger exists — parent/PIN
+      // screens never mount TimerScreen, so playback can't fire there (INV-05).
+      if (isLive) {
+        void playCompletionJingle(settingsRepo, useMascotStore.getState().mascot);
+      }
+    } else if (prev !== 'Verified' && current === 'Verified') {
+      // Verified lands while the child's Timer is mounted too (parent approval
+      // of the very session being watched) — same jingle, still child-only.
+      if (isLive) {
+        void playCompletionJingle(settingsRepo, useMascotStore.getState().mascot);
+      }
     }
-  }, [displayState.kind]);
+  }, [displayState.kind, isLive, settingsRepo]);
 
   useEffect(() => {
     if (displayState.kind === 'Running') {
@@ -216,6 +243,40 @@ export function TimerScreen({ route, navigation }: Props) {
   const isCompleted = displayState.kind === 'Completed';
   const isVerified = displayState.kind === 'Verified';
   const isPaused = displayState.kind === 'Paused';
+
+  // C9: fire the celebration once when a LIVE session reaches Completed/Verified.
+  // `isLive` excludes the cold-start restore path (routeSession), so a prior-day
+  // Completed row never re-triggers the flight. The sessionId guard makes it
+  // exactly-once per session even across re-renders while still Completed.
+  const liveCelebration = isLive && (isCompleted || isVerified);
+  const celebrateSessionId = liveCelebration ? displaySessionId : null;
+  // Trigger synchronously during render (not in useEffect) so the overlay is
+  // present in the same commit the state flips to Completed — the test queries
+  // right after `await timerStore.tick()` inside act().
+  if (!celebrationInitRef.current) {
+    // First render: RECORD only, never fire. A screen mounted while the
+    // snapshot is already Completed/Verified (leaving to Today and back)
+    // must not replay a flight that already happened (round-1 LOW).
+    celebrationInitRef.current = true;
+    celebratedRef.current = celebrateSessionId;
+  } else if (celebrateSessionId !== null && celebratedRef.current !== celebrateSessionId) {
+    celebratedRef.current = celebrateSessionId;
+    setCelebratedSessionId(celebrateSessionId);
+  } else if (celebrateSessionId === null && celebratedRef.current !== null) {
+    celebratedRef.current = null;
+    setCelebratedSessionId(null);
+  }
+
+  const handleCelebrationFinished = useCallback(() => {
+    // Round-1 MED: unmount the overlay after the flight. `celebratedRef` keeps
+    // the session id on purpose — the render-phase block above then sees
+    // "already celebrated" and does NOT re-arm it (it used to, which parked a
+    // static duplicate mascot on MascotFloating's corner for the whole
+    // Completed/Verified state, permanently so for reduce-motion users).
+    setCelebratedSessionId(null);
+  }, []);
+
+  const isCelebrating = celebratedSessionId !== null;
   // C3/C4 (round-1 HIGH): READY = no ACTIVE session on this route AND today's
   // target not reached yet.
   //  - a prior-day session never blocks (it is not in routeSession at all);
@@ -456,6 +517,15 @@ export function TimerScreen({ route, navigation }: Props) {
         {/* C5: companion goes top-right (below the toolbar) so it never sits
             on the countdown digits or the action buttons (MASCOT_DESIGN §6). */}
         <MascotFloating corner="top-right" />
+
+        {/* C9: celebration flight — one-shot overlay on a live Completed/Verified
+            transition; box-none so it never blocks touches (INV-04 gentle). */}
+        {isCelebrating ? (
+          <MascotCelebration
+            key={`celebration-${celebratedSessionId}`}
+            onFinished={handleCelebrationFinished}
+          />
+        ) : null}
       </View>
 
       {/* F3 confirm dialog: full-screen card, the same shape as PinGate's. */}

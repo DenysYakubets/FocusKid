@@ -209,5 +209,14 @@ export const uk = {
       Glow: 'М’яке світіння, що освітлює статистику й досягнення',
       Spark: 'Маленька зірка, що запалює мотивацію у складні моменти',
     },
+    // C9: celebration flight a11y label (INV-04 gentle — announced once).
+    celebrationLabel: 'Святкування завершення',
+    // C8: jingle volume + test preview
+    jingleVolume: (pct: number) => `Гучність мелодії: ${pct}%`,
+    jingleVolumeStepDown: 'Зменшити гучність мелодії',
+    jingleVolumeStepUp: 'Збільшити гучність мелодії',
+    jingleTest: 'Тест',
+    jingleDisabled: 'Мелодію вимкнено',
+    jingleSaveError: 'Не вдалося зберегти гучність мелодії. Спробуйте ще раз.',
   },
 } as const;

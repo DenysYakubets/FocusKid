@@ -130,4 +130,24 @@ const V5_SQL = `
 DROP INDEX ux_sessions_task_day;
 `;
 
-export const MIGRATIONS: readonly string[] = [V1_SQL, V2_SQL, V3_SQL, V4_SQL, V5_SQL];
+/**
+ * V6 (C8): seed the jingle preferences from `docs/JINGLE_DESIGN.md` §3.1 so
+ * every install starts with an explicit default instead of relying on the
+ * store's fallback. Key/value rows only (no column add), idempotent by virtue
+ * of INSERT OR IGNORE — `updated_at` uses SQLite's UTC ISO-8601 with
+ * milliseconds, the same contract as the `WallClock.nowIso()` writes.
+ */
+const V6_SQL = `
+INSERT OR IGNORE INTO settings (key, value, updated_at) VALUES
+  ('@focuskid/jingle_volume', '0.5', strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+  ('@focuskid/jingle_enabled', 'true', strftime('%Y-%m-%dT%H:%M:%fZ','now'));
+`;
+
+export const MIGRATIONS: readonly string[] = [
+  V1_SQL,
+  V2_SQL,
+  V3_SQL,
+  V4_SQL,
+  V5_SQL,
+  V6_SQL,
+];

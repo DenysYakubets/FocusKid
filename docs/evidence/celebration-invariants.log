@@ -1,0 +1,24 @@
+PASS TSC-2
+PASS TSC-3
+PASS TSC-4
+PASS TSC-5
+PASS TSC-6
+PASS TSC-12
+PASS TSC-14
+PASS TSC-15
+PASS TSC-16
+PASS TSC-17
+
+> focuskid@0.1.0 test
+> jest --ci test/config
+
+
+Test Suites: 2 passed, 2 total
+Tests:       4 passed, 4 total
+Snapshots:   0 total
+Time:        1.01 s
+Ran all test suites matching test/config.
+PASS TSC-18
+SKIP TSC-19 (requires Gradle build)
+SKIP TSC-20 (requires published release)
+INV_EXIT=0

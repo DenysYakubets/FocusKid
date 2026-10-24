@@ -1,0 +1,210 @@
+FAIL src/screens/__tests__/jingleHook.test.tsx
+  ● C6 - pluggable timer-complete jingle hook with volume from settings › reads jingle_volume from settings: default 0.5 when absent, custom value respected
+
+    Cannot find module '../../audio/celebrationSound' from 'src/screens/__tests__/jingleHook.test.tsx'
+
+      46 |
+      47 |     // Import the pluggable hook module (does not exist on the pre-fix tree -> RED).
+    > 48 |     const { getJingleVolume, onTimerComplete, playCelebrationSound } = require('../../audio/celebrationSound');
+         |                                                                        ^
+      49 |
+      50 |     // Default: no jingle_volume row -> 0.5.
+      51 |     const defaultVol = await getJingleVolume(screen.services.settingsRepo);
+
+      at Resolver._throwModNotFoundError (node_modules/jest-resolve/build/index.js:1031:11)
+      at Object.require (src/screens/__tests__/jingleHook.test.tsx:48:72)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+  ● C6 - pluggable timer-complete jingle hook with volume from settings › emits onTimerComplete exactly once when the timer reaches Completed (not Running/Paused)
+
+    Cannot find module '../../audio/celebrationSound' from 'src/screens/__tests__/jingleHook.test.tsx'
+
+      74 |     );
+      75 |
+    > 76 |     const { onTimerComplete } = require('../../audio/celebrationSound');
+         |                                 ^
+      77 |
+      78 |     const spy = jest.fn();
+      79 |     const unsubscribe = onTimerComplete(spy);
+
+      at Resolver._throwModNotFoundError (node_modules/jest-resolve/build/index.js:1031:11)
+      at Object.require (src/screens/__tests__/jingleHook.test.tsx:76:33)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+FAIL src/screens/__tests__/mascotCelebration.test.tsx
+  ● C9 - mascot celebration fires exactly once on Completed › runs the celebration exactly once when the timer reaches Completed, not while Running/Paused, and the overlay is box-none
+
+    Unable to find an element with testID: mascot-celebration
+
+    [36m<View[39m
+      [33mtestID[39m=[32m"timer-layout-portrait"[39m
+    [36m>[39m
+      [36m<View>[39m
+        [36m<View[39m
+          [33maccessibilityLabel[39m=[32m"Назад"[39m
+          [33maccessibilityRole[39m=[32m"button"[39m
+          [33maccessibilityState[39m=[32m{
+            {
+              "disabled": false,
+            }
+          }[39m
+          [33maccessible[39m=[32m{true}[39m
+        [36m>[39m
+          [36m<Text>[39m
+            [0m← Назад[0m
+          [36m</Text>[39m
+        [36m</View>[39m
+        [36m<Text[39m
+          [33maccessibilityRole[39m=[32m"header"[39m
+        [36m>[39m
+          [0m📚 Читання[0m
+        [36m</Text>[39m
+      [36m</View>[39m
+      [36m<View>[39m
+        [36m<Text>[39m
+          [0m00:00[0m
+        [36m</Text>[39m
+        [36m<View[39m
+          [33maccessibilityRole[39m=[32m"progressbar"[39m
+          [33maccessibilityValue[39m=[32m{
+            {
+              "max": 900000,
+              "min": 0,
+              "now": 900000,
+            }
+          }[39m
+          [33maccessible[39m=[32m{true}[39m
+        [36m>[39m
+          [36m<View />[39m
+        [36m</View>[39m
+      [36m</View>[39m
+      [36m<View>[39m
+        [36m<Text>[39m
+          [0mОчікує перевірки[0m
+        [36m</Text>[39m
+        [36m<View>[39m
+          [36m<View[39m
+            [33maccessibilityLabel[39m=[32m"Покажи батькам"[39m
+            [33maccessibilityRole[39m=[32m"button"[39m
+            [33maccessibilityState[39m=[32m{
+              {
+                "disabled": false,
+              }
+            }[39m
+            [33maccessible[39m=[32m{true}[39m
+          [36m>[39m
+            [36m<Text>[39m
+              [0mПокажи батькам[0m
+            [36m</Text>[39m
+          [36m</View>[39m
+        [36m</View>[39m
+      [36m</View>[39m
+      [36m<View[39m
+        [33mpointerEvents[39m=[32m"box-none"[39m
+        [33mtestID[39m=[32m"mascot-floating"[39m
+      [36m>[39m
+        [36m<View>[39m
+          [36m<View[39m
+            [33maccessibilityLabel[39m=[32m"Bubblo, Щасливий"[39m
+            [33maccessibilityRole[39m=[32m"button"[39m
+            [33maccessibilityState[39m=[32m{
+              {
+                "disabled": false,
+              }
+            }[39m
+            [33maccessible[39m=[32m{true}[39m
+          [36m>[39m
+            [36m<Image[39m
+              [33maccessible[39m=[32m{false}[39m
+              [33mtestID[39m=[32m"mascot-image"[39m
+            [36m/>[39m
+          [36m</View>[39m
+        [36m</View>[39m
+      [36m</View>[39m
+    [36m</View>[39m
+
+      72 |
+      73 |     // Celebration overlay must now be present exactly once.
+    > 74 |     const celebrations = screen.getAllByTestId('mascot-celebration');
+         |                                 ^
+      75 |     expect(celebrations).toHaveLength(1);
+      76 |
+      77 |     // Non-blocking: pointerEvents box-none so touches pass through (INV-04 gentle).
+
+      at Object.getAllByTestId (src/screens/__tests__/mascotCelebration.test.tsx:74:33)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+  ● C9 - mascot celebration fires exactly once on Completed › INV-05: never rendered on parent/PIN screens (celebration lives only on the child Timer)
+
+    TypeError: navigation.addListener is not a function
+
+      66 |   useEffect(() => {
+      67 |     void loadData();
+    > 68 |     const unsub = navigation.addListener('focus', () => {
+         |                              ^
+      69 |       void loadData();
+      70 |     });
+      71 |     return unsub;
+
+      at addListener (src/screens/ParentHomeScreen.tsx:68:30)
+      at Object.react_stack_bottom_frame (node_modules/react-reconciler/cjs/react-reconciler.development.js:19289:20)
+      at runWithFiberInDEV (node_modules/react-reconciler/cjs/react-reconciler.development.js:2663:13)
+      at commitHookEffectListMount (node_modules/react-reconciler/cjs/react-reconciler.development.js:11240:29)
+      at commitHookPassiveMountEffects (node_modules/react-reconciler/cjs/react-reconciler.development.js:11327:11)
+      at commitPassiveMountOnFiber (node_modules/react-reconciler/cjs/react-reconciler.development.js:14285:13)
+      at recursivelyTraversePassiveMountEffects (node_modules/react-reconciler/cjs/react-reconciler.development.js:14230:13)
+      at commitPassiveMountOnFiber (node_modules/react-reconciler/cjs/react-reconciler.development.js:14551:11)
+      at recursivelyTraversePassiveMountEffects (node_modules/react-reconciler/cjs/react-reconciler.development.js:14230:13)
+      at commitPassiveMountOnFiber (node_modules/react-reconciler/cjs/react-reconciler.development.js:14277:11)
+      at recursivelyTraversePassiveMountEffects (node_modules/react-reconciler/cjs/react-reconciler.development.js:14230:13)
+      at commitPassiveMountOnFiber (node_modules/react-reconciler/cjs/react-reconciler.development.js:14551:11)
+      at recursivelyTraversePassiveMountEffects (node_modules/react-reconciler/cjs/react-reconciler.development.js:14230:13)
+      at commitPassiveMountOnFiber (node_modules/react-reconciler/cjs/react-reconciler.development.js:14277:11)
+      at recursivelyTraversePassiveMountEffects (node_modules/react-reconciler/cjs/react-reconciler.development.js:14230:13)
+      at commitPassiveMountOnFiber (node_modules/react-reconciler/cjs/react-reconciler.development.js:14551:11)
+      at recursivelyTraversePassiveMountEffects (node_modules/react-reconciler/cjs/react-reconciler.development.js:14230:13)
+      at commitPassiveMountOnFiber (node_modules/react-reconciler/cjs/react-reconciler.development.js:14551:11)
+      at recursivelyTraversePassiveMountEffects (node_modules/react-reconciler/cjs/react-reconciler.development.js:14230:13)
+      at commitPassiveMountOnFiber (node_modules/react-reconciler/cjs/react-reconciler.development.js:14551:11)
+      at recursivelyTraversePassiveMountEffects (node_modules/react-reconciler/cjs/react-reconciler.development.js:14230:13)
+      at commitPassiveMountOnFiber (node_modules/react-reconciler/cjs/react-reconciler.development.js:14551:11)
+      at recursivelyTraversePassiveMountEffects (node_modules/react-reconciler/cjs/react-reconciler.development.js:14230:13)
+      at commitPassiveMountOnFiber (node_modules/react-reconciler/cjs/react-reconciler.development.js:14551:11)
+      at recursivelyTraversePassiveMountEffects (node_modules/react-reconciler/cjs/react-reconciler.development.js:14230:13)
+      at commitPassiveMountOnFiber (node_modules/react-reconciler/cjs/react-reconciler.development.js:14551:11)
+      at recursivelyTraversePassiveMountEffects (node_modules/react-reconciler/cjs/react-reconciler.development.js:14230:13)
+      at commitPassiveMountOnFiber (node_modules/react-reconciler/cjs/react-reconciler.development.js:14551:11)
+      at recursivelyTraversePassiveMountEffects (node_modules/react-reconciler/cjs/react-reconciler.development.js:14230:13)
+      at commitPassiveMountOnFiber (node_modules/react-reconciler/cjs/react-reconciler.development.js:14551:11)
+      at recursivelyTraversePassiveMountEffects (node_modules/react-reconciler/cjs/react-reconciler.development.js:14230:13)
+      at commitPassiveMountOnFiber (node_modules/react-reconciler/cjs/react-reconciler.development.js:14277:11)
+      at recursivelyTraversePassiveMountEffects (node_modules/react-reconciler/cjs/react-reconciler.development.js:14230:13)
+      at commitPassiveMountOnFiber (node_modules/react-reconciler/cjs/react-reconciler.development.js:14551:11)
+      at recursivelyTraversePassiveMountEffects (node_modules/react-reconciler/cjs/react-reconciler.development.js:14230:13)
+      at commitPassiveMountOnFiber (node_modules/react-reconciler/cjs/react-reconciler.development.js:14551:11)
+      at recursivelyTraversePassiveMountEffects (node_modules/react-reconciler/cjs/react-reconciler.development.js:14230:13)
+      at commitPassiveMountOnFiber (node_modules/react-reconciler/cjs/react-reconciler.development.js:14277:11)
+      at recursivelyTraversePassiveMountEffects (node_modules/react-reconciler/cjs/react-reconciler.development.js:14230:13)
+      at commitPassiveMountOnFiber (node_modules/react-reconciler/cjs/react-reconciler.development.js:14277:11)
+      at recursivelyTraversePassiveMountEffects (node_modules/react-reconciler/cjs/react-reconciler.development.js:14230:13)
+      at commitPassiveMountOnFiber (node_modules/react-reconciler/cjs/react-reconciler.development.js:14551:11)
+      at recursivelyTraversePassiveMountEffects (node_modules/react-reconciler/cjs/react-reconciler.development.js:14230:13)
+      at commitPassiveMountOnFiber (node_modules/react-reconciler/cjs/react-reconciler.development.js:14277:11)
+      at recursivelyTraversePassiveMountEffects (node_modules/react-reconciler/cjs/react-reconciler.development.js:14230:13)
+      at commitPassiveMountOnFiber (node_modules/react-reconciler/cjs/react-reconciler.development.js:14277:11)
+      at recursivelyTraversePassiveMountEffects (node_modules/react-reconciler/cjs/react-reconciler.development.js:14230:13)
+      at commitPassiveMountOnFiber (node_modules/react-reconciler/cjs/react-reconciler.development.js:14320:11)
+      at flushPassiveEffects (node_modules/react-reconciler/cjs/react-reconciler.development.js:17533:9)
+      at node_modules/react-reconciler/cjs/react-reconciler.development.js:17057:13
+      at flushActQueue (node_modules/react/cjs/react.development.js:664:34)
+      at node_modules/react/cjs/react.development.js:923:21
+
+Test Suites: 2 failed, 2 total
+Tests:       4 failed, 4 total
+Snapshots:   0 total
+Time:        2.115 s
+Ran all test suites matching src/screens/__tests__/mascotCelebration.test.tsx|src/screens/__tests__/jingleHook.test.tsx.
+JEST_EXIT=1
