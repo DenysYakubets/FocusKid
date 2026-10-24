@@ -1,0 +1,155 @@
+{
+  "project_id": "focuskid",
+  "query": "How does the child STOP dialog interact with INV-03 parent PIN verification?",
+  "error_signature": null,
+  "sections": {
+    "patterns": [
+      {
+        "knowledge_type": "learning",
+        "content": "\n# `getLatestForTask` fallback must be today-only or it dead-ends the explicit start\n\n## Symptom\n\nAfter any prior-day session (yesterday's Verified/Completed row), the Timer screen rendered a dead\nVerified/Completed box with no «Почати» and could route the child to `PinGate {intent: verify}` for a\nstale row — the child could never start today's run. RED evidence:\n`docs/evidence/companion-round-r2-red.log` (\"a task verified YESTERDAY + a free today shows\n«Почати»…\").\n\n## Cause\n\n`TimerScreen.refreshRouteSession` fed its display state from\n`sessionsRepo.getLatestForTask(taskId)`, which returns the latest non-abandoned session **of any\nlocal date**. A row from yesterday therefore impersonated today's state, and the literal\n\"no session with local_date = today\" READY formula additionally let today's *completed* run block\nStart forever (a '2/3' day could never begin run 2).\n\n## Resolution\n\n- Use `getLatestForTask` **only when `latest.localDate === wall.todayLocalDate()`**; a prior-day row\n  is ignored (`src/screens/TimerScreen.tsx#L70-L76`), so yesterday's state never drives today's UI\n  and a stale Completed row no longer reaches PinGate verify.\n- Documented READY extension (needed for C4 to be reachable):\n  `READY = no ACTIVE session AND todayRuns < target_per_day`. Today's Completed/Verified state is\n  still rendered; an explicit «Почати» appears next to «Покажи батькам» only while\n  `runs < target`, and disappears at the cap.\n- `refreshRouteSession` is re-run on store mutation, navigation focus, and verification, with an\n  in-flight sequence guard (`loadSeqRef`) so a stale async load can never overwrite a fresh one.\n\n## Evidence\n\n`src/screens/__tests__/timerReadyToday.test.tsx` (4 pinned READY cases, including verified-yesterday\n→ free today), `src/screens/__tests__/routeSessionRefresh.test.tsx` (refresh on store mutation and\nfocus after verify), `src/services/repos/__tests__/sessionsRepo.test.ts` (`getLatestForTask` returns\nthe latest non-abandoned session, `null` for unknown task), and `docs/UX_FIXES_NOTES.md` §\"READY\ncomes from TODAY's sessions\" (lines 173–182).",
+        "source_ref": "docs/wiki/patterns/route-session-stale-fallback-dead-ends-explicit-start.md#L21",
+        "score": 0.7333333333333334,
+        "provenance": {
+          "project_id": "focuskid",
+          "knowledge_status": "accepted",
+          "learning_id": "route-session-stale-fallback-dead-ends-explicit-start",
+          "reviewed_by": "owner",
+          "reviewed_at": "2026-10-24",
+          "source_refs": [
+            "src/screens/TimerScreen.tsx#L66-L83",
+            "src/services/repos/sessionsRepo.ts#L203-L209",
+            "src/screens/__tests__/timerReadyToday.test.tsx"
+          ],
+          "changed_path_match": true,
+          "commit": "8c6a2e8715445e014efe3e4bbb1baae2f4c85c30"
+        }
+      },
+      {
+        "knowledge_type": "learning",
+        "content": "\n# A partial UNIQUE index cannot express \"N per day\" — enforce it in the service layer\n\n## Symptom\n\nWith `tasks.target_per_day = 2`, starting a second session for the same task on the same local day\nfailed with `UNIQUE constraint failed: sessions.task_id, sessions.local_date` (AS-04 behaviour)\nwhile the product rule allows up to N non-abandoned runs per day. RED evidence:\n`docs/evidence/companion-round-r2-red.log` (\"V5: two non-abandoned sessions can share a task/day…\").\n\n## Cause\n\nMigration V1 created `CREATE UNIQUE INDEX ux_sessions_task_day ON sessions (task_id, local_date)\nWHERE status <> 'abandoned'` — a partial index that can only express **one** row per key. N-per-day\ncannot be expressed as `UNIQUE` at all, because N varies per row (`target_per_day`), so no fixed\nindex can encode the rule.\n\n## Resolution\n\n- **Migration V5** drops `ux_sessions_task_day` (fresh installs create it in V1 and drop it in V5;\n  the upgrade path runs the same statement) and deliberately leaves `ux_sessions_one_active`\n  (AS-05, one *active* session) untouched.\n- The rule moves into `timerService.doStart`: reject when\n  `sessionsRepo.countForTaskOnDay(taskId, today) >= task.targetPerDay` with the error code\n  `SESSION_LIMIT_REACHED_TODAY`, and **repeat the check inside the same transaction** as the insert.\n  AS-05 keeps precedence except when the day is full.\n- `tasksRepo.listToday` LEFT JOINs the *latest* of today's runs through a correlated subquery so\n  several runs on one day cannot duplicate the task card; `TaskCard` clamps `completedToday` to the\n  target (never renders `4/3`).\n\n## Evidence\n\n`src/services/db/__tests__/migrations.test.ts` §V5 (two non-abandoned sessions share a task/day,\none ACTIVE session stays unique, upgrade path V1→V5), `src/services/timer/__tests__/timerServiceDailyLimit.test.ts`\n(2nd run allowed pre-fix RED, 3rd rejected for `target_per_day = 2`, default 1 keeps its cap),\n`docs/UX_FIXES_NOTES.md` §\"C4 is now enforced end to end\" (lines 158–171).",
+        "source_ref": "docs/wiki/patterns/partial-unique-index-blocks-n-per-day.md#L20",
+        "score": 0.5666666666666667,
+        "provenance": {
+          "project_id": "focuskid",
+          "knowledge_status": "accepted",
+          "learning_id": "partial-unique-index-blocks-n-per-day",
+          "reviewed_by": "owner",
+          "reviewed_at": "2026-10-24",
+          "source_refs": [
+            "src/services/db/schema.ts#L122-L131",
+            "src/services/timer/timerService.ts#L141-L149",
+            "src/services/db/__tests__/migrations.test.ts#L57-L73"
+          ],
+          "changed_path_match": true,
+          "commit": "8c6a2e8715445e014efe3e4bbb1baae2f4c85c30"
+        }
+      }
+    ],
+    "knowledge": [
+      {
+        "knowledge_type": "wiki",
+        "content": "\nThe project scope is fixed to `focuskid`. The CLI does not retrieve another project, tenant,\ncustomer, production, credential, or personal data.\n\n## Retrieval contract\n\nNo installation is required. At task intake, query with the task and every relevant changed path:\n\n```bash\npython3 scripts/knowledge.py retrieve \"How does the child STOP dialog interact with INV-03?\" \\\n  --changed-path src/services/timer/timerService.ts \\\n  --max-context-chars 12000\n```\n\nAfter a test or lint failure, pass the concise sanitized signature separately so it contributes to ranking:\n\n```bash\npython3 scripts/knowledge.py retrieve \"Fix the daily session limit regression\" \\\n  --error-signature \"UNIQUE constraint failed: sessions.task_id\" \\\n  --changed-path src/services/timer/timerService.ts\n```\n\nThe JSON response has a fixed `project_id` (`focuskid`) and three explicit groups under `sections`:\n`patterns` contains only accepted learning records, `knowledge` contains Wiki/ADR pages, and\n`graphify` contains derived code context. Every item carries a repository-relative `source_ref` and\nsource-specific provenance. `degraded_sources` identifies adapters that failed (an absent\n`graphify-out/graph.json` degrades `graphify-code-index`). `context_chars` bounds the serialized\n`sections` object in characters; it is not a model-token count. A stale index or a dirty working\ntree is returned with `stale_index: true` — rebuild the index and validate paths against the\ncheckout before relying on code relationships.\n\nThe package contract can be embedded from Python (`KnowledgeRequest`, `KnowledgeStore`,\n`KnowledgeResult` from `packages/engineering_knowledge/`). Other agents call the same local CLI and\nconsume its JSON. No HTTP service is exposed.\n\n## Learning lifecycle\n\n1. After a verified fix, capture a focused reusable lesson with\n   `python3 scripts/knowledge.py propose-learning` (symptom, cause, resolution, evidence, and\n   existing repository-relative source references).\n2. The CLI creates a `candidate`; candidates are never retrieved and the command cannot mark a\n   record accepted.\n3. A human reviews the code/test evidence, scope, privacy, and duplicates in a Git change and\n   records the decision.\n4. Set the status to `accepted`, `rejected`, or `superseded`. Accepted records require a stable\n   ID, reviewer, review date, and source references. Superseded records name their replacement.\n5. Accepted retrieval includes the record's provenance. A correction creates a new record that\n   supersedes the previous one; it never silently rewrites history.\n\nSee [`patterns/README.md`](patterns/README.md) for the record template. The four seed records in\n`patterns/` were accepted during the owner-approved knowledge-system setup because each one is\nbacked by committed evidence (`docs/evidence/*.log`, RED→GREEN test history) documented in the\nstage notes.\n\n## Isolation and data boundaries\n\n- The CLI fixes the project scope and repository root; the adapters reject a request whose project\n  ID does not match their configured scope.\n- The Markdown adapter reads only direct `docs/wiki/*.md` pages. Stage notes, plans, `VISION.md`,\n  and other repository Markdown are not automatically retrieved; they are cited by ADRs instead.\n- Accepted learnings are read from `docs/wiki/patterns/*.md` under the stricter review rules above.\n  Graphify source references are restricted to existing code files and exclude secret, fixture,\n  seed-data, and personal-data paths.\n- Context size and result count have hard limits; source references are retained when content is\n  shortened.\n- Never store child names, task contents, PINs or PIN hashes, session rows, device data, or raw\n  incident payloads in this store. Evidence fields hold concise, sanitized summaries only.\n\n## Graphify relationship\n\nGraphify remains the code index and retains its own workflow and output format. The adapter reads\nthe local `graphify-out/graph.json` NetworkX-style nodes and links, returns matched symbols with up\nto three callers, callees, and test references, and marks the indexed commit; relationship\nreferences are in `provenance.related_refs`. It never writes to the store or makes Wiki decisions\nfrom Graphify data.\n\n`graphify-out/` and `.graphify/` are gitignored (derived, rebuildable — mirroring Agentic ERP).\nRebuild options, in order of preference:\n\n1. **Graphify AST builder** (tree-sitter quality; requires the `graphifyy` package — present in\n   sdlc-buddy's backend venv on the build machine):\n\n   ```bash\n   cat > /tmp/graphify_focuskid.py <<'PY'\n   import importlib.util, json\n   spec = importlib.util.spec_from_file_location(\"gtool\", \"/home/hermes/sdlc-buddy/tools/graphify.py\")\n   m = importlib.util.module_from_spec(spec); spec.loader.exec_module(m)\n   if __name__ == \"__main__\":\n       print(json.dumps(m.run_graphify_ast_scan(\"/home/hermes/work/FocusKid\",\n                                                output_dir=\"graphify-out\", force=True)))\n   PY",
+        "source_ref": "docs/wiki/knowledge-store.md#L25",
+        "score": 0.8333333333333334,
+        "provenance": {
+          "project_id": "focuskid",
+          "knowledge_status": "unverified",
+          "source_role": "canonical-wiki",
+          "changed_path_match": false,
+          "commit": "8c6a2e8715445e014efe3e4bbb1baae2f4c85c30",
+          "sha256": "daea300cb70f48b0076b3fbb087c3b13d2ffb45dabe523b2e326bd109e91e193"
+        }
+      },
+      {
+        "knowledge_type": "wiki",
+        "content": "# 📜 Architecture Decision Records (ADRs) & Constraints\n\n> `VISION.md` remains the authoritative spec and is never edited silently: when an owner decision\n> departs from it, the conflict is recorded here and in the stage notes. Invariants INV-01..INV-10\n> and `scripts/check-invariants.sh` always win over convenience.\n\n[[index]] | [[knowledge-store]] | [[patterns]]\n\n---\n\n## Active ADRs\n\n### ADR-001: Child-Initiated STOP Dialog (owner order, VISION §1.2 conflict documented)\n\n- **Decision**: The child may stop a Running/Paused session via a `STOP` FSM event behind a Ukrainian\n  confirm dialog («Зупинити завдання? / Справді зупинити? / Так · Ні`). The session ends `abandoned`\n  through the existing abandon path, requires **no parent token**, and can never reach\n  Completed/Verified.\n- **Rationale**: `VISION.md §1.2` says «…але не „стоп“ до закінчення», but the product owner\n  explicitly ordered the child stop for the UX-fix round. INV-03 stays green because the terminal\n  state is `abandoned`, which earns nothing and carries no penalty (INV-09) — the child still cannot\n  *complete* a session early. The conflict is flagged instead of silently editing `VISION.md`.\n- **Status**: Implemented (`feat/ux-fixes` F3). Evidence: `docs/UX_FIXES_NOTES.md` §F3 (lines 27–37),\n  `src/services/timer/timerService.ts#L478-L511`, `src/services/timer/__tests__/timerStop.test.ts`.\n\n### ADR-002: Cheap PBKDF2 (1 000 iterations) with V2 Migration and Lazy Re-Hash\n\n- **Decision**: `PBKDF2_ITERATIONS` is 1 000 (down from 50 000). The algorithm contract is unchanged:\n  PBKDF2-HMAC-SHA-256 with a 16-byte local salt and constant-time compare (VISION §2 honoured).\n  Migration V2 rebuilds `parent_auth` so the old `iterations >= 50000` CHECK no longer forces the\n  slow cost, copying row data verbatim; a legacy 50 000-iteration record verifies once at its stored\n  cost and is immediately re-written at the fast cost (the PIN is only known at that moment).\n- **Rationale**: This is a local-only kids app (INV-01, no network, no recovery): a single verify\n  cost ~430 ms on desktop and ~5 s on the owner's phone, which read as a freeze right after the\n  correct PIN. Offline PBKDF2 at 1 000 iterations still keeps a salted per-row hash while making\n  verification effectively instant; no crypto hardening beyond the VISION algorithm contract is\n  needed here. Lockout behavior (AS-12) and INV-05 are untouched.\n- **Status**: Implemented (`feat/ux-fixes` F1). Evidence: `src/services/auth/pinHash.ts#L5-L20`,\n  `src/services/auth/__tests__/fastPinVerify.test.ts` (timing <200 ms, V1→V2 migration, lockout),\n  `src/services/auth/__tests__/pinHash.test.ts#L64`, `docs/UX_FIXES_NOTES.md` §F1.\n\n### ADR-003: Mascot Is a Child-Side Affordance Only (removed from Stats per INV-05)\n\n- **Decision**: `MascotFloating` renders on child screens only and is never mounted on\n  PinGate/parent screens or on `StatsScreen`. The C5 brief's \"bottom-left Stats\" companion was\n  dropped.\n- **Rationale**: INV-05/AS-19 say statistics are parent-only. The companion is a child-side\n  affordance (it lives in the child shell and on the child Timer), so a parent-only screen must not\n  carry child chrome — and it gives the child nothing to tap while the parent reads charts. The\n  orchestrator resolved the brief-vs-invariant contradiction in favour of the invariant; the INV-05\n  test pins the absence on Stats **behind a real parent session** so `ParentGuard`'s pre-auth `null`\n  cannot make the assertion vacuous.\n- **Status**: Implemented (`feat/companion-round`, round-1 MED). Evidence:\n  `src/screens/StatsScreen.tsx#L187-L191`, `src/ui/components/MascotFloating.tsx#L67`,\n  `src/ui/__tests__/mascotFloating.test.tsx#L168-L175`, `docs/UX_FIXES_NOTES.md` §\"mascot off Stats\".\n\n## Historical / superseded decisions\n\n_None yet. When an ADR is overturned, mark it superseded here and record the replacement ADR — do\nnot delete history._",
+        "source_ref": "docs/wiki/adrs.md#L20",
+        "score": 0.75,
+        "provenance": {
+          "project_id": "focuskid",
+          "knowledge_status": "unverified",
+          "source_role": "canonical-wiki",
+          "changed_path_match": false,
+          "commit": "8c6a2e8715445e014efe3e4bbb1baae2f4c85c30",
+          "sha256": "8926112e22063114be4d562dfff581c8ac0bec70817822e4cadc9d17749e9f47"
+        }
+      },
+      {
+        "knowledge_type": "wiki",
+        "content": "# 🧠 FocusKid Wiki Index\n\nWelcome to the **FocusKid** engineering wiki. This index links the canonical documentation that the\nlocal knowledge CLI retrieves at task intake (`python3 scripts/knowledge.py retrieve`). Canonical\nsources are Wiki/ADR pages; accepted learnings live under `patterns/`; the Graphify code index is\nderived. Task history is never a source.\n\n- **[[knowledge-store]]**: source-ownership table, retrieval contract, learning lifecycle, privacy\n  boundaries, and Graphify rebuild recipes. Start here.\n- **[[adrs]]**: Architecture Decision Records — child STOP dialog vs VISION §1.2, cheap PBKDF2 +\n  V2 migration, mascot child-side only (INV-05).\n- **[[patterns]]** (`patterns/README.md`): review-gated learning records\n  (`knowledge_status: accepted` only are retrieved) and the `propose-learning` contract.\n\n## Related repository documents (not auto-retrieved; cited by ADRs)\n\n- `VISION.md` — canonical product requirements and invariants INV-01..INV-10.\n- `docs/IMPLEMENTATION_PLAN.md` — stage tracker and assumption table (AS-xx).\n- `docs/UX_FIXES_NOTES.md`, `docs/UI_REDESIGN_NOTES.md`, `docs/FIX_ROUND1_NOTES.md` — stage\n  evidence notes that the seeded ADRs and learnings cite.\n- `docs/evidence/*.log` — RED/GATE logs with embedded real exit codes.\n- `docs/KNOWLEDGE.md` — the REQUIRED-at-intake rule for humans and agents.",
+        "source_ref": "docs/wiki/index.md#L10",
+        "score": 0.4166666666666667,
+        "provenance": {
+          "project_id": "focuskid",
+          "knowledge_status": "unverified",
+          "source_role": "canonical-wiki",
+          "changed_path_match": false,
+          "commit": "8c6a2e8715445e014efe3e4bbb1baae2f4c85c30",
+          "sha256": "972eb95eac5dea47a60426543b78bbecea0fbadbd814c0ae4e48a4e9b236909d"
+        }
+      }
+    ],
+    "graphify": [
+      {
+        "knowledge_type": "code",
+        "content": "Props (src/screens/TimerScreen.tsx)\nGraphify community: TimerScreen.tsx",
+        "source_ref": "src/screens/TimerScreen.tsx#L31",
+        "score": 0.26,
+        "provenance": {
+          "project_id": "focuskid",
+          "index_commit": "8c6a2e8715445e014efe3e4bbb1baae2f4c85c30",
+          "current_commit": "8c6a2e8715445e014efe3e4bbb1baae2f4c85c30",
+          "stale_index": true,
+          "working_tree_dirty": true,
+          "changed_path_match": true,
+          "related_refs": {
+            "callers": [],
+            "callees": [],
+            "tests": []
+          }
+        }
+      },
+      {
+        "knowledge_type": "code",
+        "content": "ParentToken (src/services/timer/timerService.ts)\nGraphify community: timerService.ts",
+        "source_ref": "src/services/timer/timerService.ts#L21",
+        "score": 0.26,
+        "provenance": {
+          "project_id": "focuskid",
+          "index_commit": "8c6a2e8715445e014efe3e4bbb1baae2f4c85c30",
+          "current_commit": "8c6a2e8715445e014efe3e4bbb1baae2f4c85c30",
+          "stale_index": true,
+          "working_tree_dirty": true,
+          "changed_path_match": true,
+          "related_refs": {
+            "callers": [],
+            "callees": [],
+            "tests": []
+          }
+        }
+      },
+      {
+        "knowledge_type": "code",
+        "content": "TimerServiceResult (src/services/timer/timerService.ts)\nGraphify community: timerService.ts",
+        "source_ref": "src/services/timer/timerService.ts#L17",
+        "score": 0.26,
+        "provenance": {
+          "project_id": "focuskid",
+          "index_commit": "8c6a2e8715445e014efe3e4bbb1baae2f4c85c30",
+          "current_commit": "8c6a2e8715445e014efe3e4bbb1baae2f4c85c30",
+          "stale_index": true,
+          "working_tree_dirty": true,
+          "changed_path_match": true,
+          "related_refs": {
+            "callers": [],
+            "callees": [],
+            "tests": []
+          }
+        }
+      }
+    ]
+  },
+  "degraded_sources": [],
+  "context_chars": 18428
+}
+RET_EXIT=0
