@@ -101,6 +101,24 @@ describe('SessionsRepo', () => {
     expect(await repo.getActive()).toBeNull();
   });
 
+  it('countForTaskOnDay counts non-abandoned sessions for a task/day', async () => {
+    const s = await repo.insertRunning({
+      taskId: 1,
+      localDate: '2026-10-23',
+      targetMs: 900000,
+      startedAt: '2026-10-23T10:00:00Z',
+      updatedAt: '2026-10-23T10:00:00Z',
+    });
+
+    expect(await repo.countForTaskOnDay(1, '2026-10-23')).toBe(1);
+    expect(await repo.countForTaskOnDay(1, '2026-10-24')).toBe(0);
+    expect(await repo.countForTaskOnDay(2, '2026-10-23')).toBe(0);
+
+    // Abandoned runs never count against the day's target (INV-09).
+    await repo.setStatus(s.id, 'abandoned', { updatedAt: '2026-10-23T10:05:00Z' });
+    expect(await repo.countForTaskOnDay(1, '2026-10-23')).toBe(0);
+  });
+
   it('getTodayForTask returns today non-abandoned session', async () => {
     const s = await repo.insertRunning({
       taskId: 1,

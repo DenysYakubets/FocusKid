@@ -1,0 +1,6 @@
+
+Test Suites: 4 passed, 4 total
+Tests:       16 passed, 16 total
+Snapshots:   0 total
+Time:        2.741 s, estimated 3 s
+Ran all test suites matching src/ui/__tests__/pinPadCompact.test.tsx|src/screens/__tests__/uxFixesLayout.test.tsx|src/screens/__tests__/layoutResponsive.test.tsx|src/screens/__tests__/uiRedesignLayout.test.tsx.

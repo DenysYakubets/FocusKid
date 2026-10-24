@@ -1,0 +1,666 @@
+FAIL src/screens/__tests__/timerReadyToday.test.tsx
+  ● C3: READY comes from today's sessions, not the latest ever › a task verified YESTERDAY + a free today shows «Почати» and starting it creates TODAY's session
+
+    expect(received).toBeNull()
+
+    Received: <Text allowFontScaling={true} maxFontSizeMultiplier={2} style={[{"color": "#111827", "fontSize": 24, "fontWeight": "700"}, {"color": "#FFFFFF", "textAlign": "center"}]}>Молодець! Перевірено</Text>
+
+      94 |
+      95 |     // RED on the pre-fix tree: the stale Verified box wins and Start is absent.
+    > 96 |     expect(screen.queryByText(uk.timer.verified)).toBeNull();
+         |                                                   ^
+      97 |     const startBtn = await screen.findByLabelText(uk.timer.start);
+      98 |
+      99 |     await act(async () => {
+
+      at Object.toBeNull (src/screens/__tests__/timerReadyToday.test.tsx:96:51)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+  ● C3: READY comes from today's sessions, not the latest ever › a task COMPLETED yesterday neither dead-ends the screen nor routes the child to PinGate verify
+
+    expect(received).toBeNull()
+
+    Received: <Text allowFontScaling={true} maxFontSizeMultiplier={2} style={[{"color": "#111827", "fontSize": 24, "fontWeight": "700"}, {"color": "#92400E", "textAlign": "center"}]}>Очікує перевірки</Text>
+
+      127 |     // RED on the pre-fix tree: «Очікує перевірки» + «Покажи батькам» for a
+      128 |     // stale row, no Start button at all.
+    > 129 |     expect(screen.queryByText(uk.timer.awaiting)).toBeNull();
+          |                                                   ^
+      130 |     expect(screen.queryByText(uk.timer.showParent)).toBeNull();
+      131 |     expect(screen.queryByText(uk.timer.verified)).toBeNull();
+      132 |     expect(await screen.findByLabelText(uk.timer.start)).toBeTruthy();
+
+      at Object.toBeNull (src/screens/__tests__/timerReadyToday.test.tsx:129:51)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+  ● C3: READY comes from today's sessions, not the latest ever › a session COMPLETED TODAY with target_per_day = 3 offers Start for the next run of the day
+
+    Unable to find an element with accessibility label: Почати
+
+    [36m<View[39m
+      [33mtestID[39m=[32m"timer-layout-portrait"[39m
+    [36m>[39m
+      [36m<View>[39m
+        [36m<View[39m
+          [33maccessibilityLabel[39m=[32m"Назад"[39m
+          [33maccessibilityRole[39m=[32m"button"[39m
+          [33maccessibilityState[39m=[32m{
+            {
+              "disabled": false,
+            }
+          }[39m
+          [33maccessible[39m=[32m{true}[39m
+        [36m>[39m
+          [36m<Text>[39m
+            [0m← Назад[0m
+          [36m</Text>[39m
+        [36m</View>[39m
+        [36m<Text[39m
+          [33maccessibilityRole[39m=[32m"header"[39m
+        [36m>[39m
+          [0mЗарядка[0m
+        [36m</Text>[39m
+      [36m</View>[39m
+      [36m<View>[39m
+        [36m<Text>[39m
+          [0m00:00[0m
+        [36m</Text>[39m
+        [36m<View[39m
+          [33maccessibilityRole[39m=[32m"progressbar"[39m
+          [33maccessibilityValue[39m=[32m{
+            {
+              "max": 900000,
+              "min": 0,
+              "now": 900000,
+            }
+          }[39m
+          [33maccessible[39m=[32m{true}[39m
+        [36m>[39m
+          [36m<View />[39m
+        [36m</View>[39m
+      [36m</View>[39m
+      [36m<View>[39m
+        [36m<Text>[39m
+          [0mОчікує перевірки[0m
+        [36m</Text>[39m
+        [36m<View>[39m
+          [36m<View[39m
+            [33maccessibilityLabel[39m=[32m"Покажи батькам"[39m
+            [33maccessibilityRole[39m=[32m"button"[39m
+            [33maccessibilityState[39m=[32m{
+              {
+                "disabled": false,
+              }
+            }[39m
+            [33maccessible[39m=[32m{true}[39m
+          [36m>[39m
+            [36m<Text>[39m
+              [0mПокажи батькам[0m
+            [36m</Text>[39m
+          [36m</View>[39m
+        [36m</View>[39m
+      [36m</View>[39m
+      [36m<View[39m
+        [33mpointerEvents[39m=[32m"box-none"[39m
+        [33mtestID[39m=[32m"mascot-floating"[39m
+      [36m>[39m
+        [36m<View>[39m
+          [36m<View[39m
+            [33maccessibilityLabel[39m=[32m"Bubblo, Щасливий"[39m
+            [33maccessibilityRole[39m=[32m"button"[39m
+            [33maccessibilityState[39m=[32m{
+              {
+                "disabled": false,
+              }
+            }[39m
+            [33maccessible[39m=[32m{true}[39m
+          [36m>[39m
+            [36m<Image[39m
+              [33maccessible[39m=[32m{false}[39m
+              [33mtestID[39m=[32m"mascot-image"[39m
+            [36m/>[39m
+          [36m</View>[39m
+        [36m</View>[39m
+      [36m</View>[39m
+    [36m</View>[39m
+
+      175 |     expect(await screen.findByText(uk.timer.awaiting)).toBeTruthy();
+      176 |     expect(screen.getByText(uk.timer.showParent)).toBeTruthy();
+    > 177 |     expect(await screen.findByLabelText(uk.timer.start)).toBeTruthy();
+          |                         ^
+      178 |
+      179 |     await act(async () => {
+      180 |       fireEvent.press(screen.getByLabelText(uk.timer.start));
+
+      at Object.findByLabelText (src/screens/__tests__/timerReadyToday.test.tsx:177:25)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+FAIL src/services/timer/__tests__/timerServiceDailyLimit.test.ts
+  ● C4: N non-abandoned sessions per task per day › allows the 2nd session for the same task/day when target_per_day = 2 and counts it as completedToday
+
+    expect(received).toEqual(expected) // deep equality
+
+    - Expected  - 2
+    + Received  + 2
+
+      Object {
+    -   "ok": true,
+    -   "state": "Running",
+    +   "error": "SESSION_ALREADY_EXISTS_TODAY",
+    +   "ok": false,
+      }
+
+      83 |     // AS-04 / UNIQUE constraint failed: sessions.task_id, sessions.local_date).
+      84 |     const second = await service.start(task.id);
+    > 85 |     expect(second).toEqual({ ok: true, state: 'Running' });
+         |                    ^
+      86 |     expect(await nonAbandonedToday(task.id)).toBe(2);
+      87 |
+      88 |     await runToCompletion(service, clock, 60_000);
+
+      at Object.toEqual (src/services/timer/__tests__/timerServiceDailyLimit.test.ts:85:20)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+  ● C4: N non-abandoned sessions per task per day › rejects the (target_per_day + 1)-th session with SESSION_LIMIT_REACHED_TODAY
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: true
+    Received: false
+
+      106 |     expect((await service.start(task.id)).ok).toBe(true);
+      107 |     await runToCompletion(service, clock, 60_000);
+    > 108 |     expect((await service.start(task.id)).ok).toBe(true);
+          |                                               ^
+      109 |     await runToCompletion(service, clock, 60_000);
+      110 |
+      111 |     // 3rd > target 2 -> rejected with the new code, not SESSION_ALREADY_EXISTS_TODAY.
+
+      at Object.toBe (src/services/timer/__tests__/timerServiceDailyLimit.test.ts:108:47)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+  ● C4: N non-abandoned sessions per task per day › keeps the default target of 1: the 2nd session of the day is rejected
+
+    expect(received).toEqual(expected) // deep equality
+
+    - Expected  - 1
+    + Received  + 1
+
+      Object {
+    -   "error": "SESSION_LIMIT_REACHED_TODAY",
+    +   "error": "SESSION_ALREADY_EXISTS_TODAY",
+        "ok": false,
+      }
+
+      129 |     await runToCompletion(service, clock, 60_000);
+      130 |
+    > 131 |     expect(await service.start(task.id)).toEqual({
+          |                                          ^
+      132 |       ok: false,
+      133 |       error: 'SESSION_LIMIT_REACHED_TODAY',
+      134 |     });
+
+      at Object.toEqual (src/services/timer/__tests__/timerServiceDailyLimit.test.ts:131:42)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+FAIL src/screens/__tests__/taskProgressClamp.test.tsx
+  ● TaskCard progress label clamp › never renders a numerator above the target (target lowered below completed)
+
+    expect(received).toBeNull()
+
+    Received: <Text accessibilityLabel="Читання: 4/3" allowFontScaling={true} maxFontSizeMultiplier={3} style={[{"color": "#111827", "fontSize": 16, "fontWeight": "400"}, {"color": "#15803D", "fontVariant": ["tabular-nums"], "fontWeight": "700"}]} testID="task-progress-1">4/3</Text>
+
+      36 |     const { getByText, queryByText } = await render(<TaskCard task={task} onPress={() => {}} />);
+      37 |
+    > 38 |     expect(queryByText('4/3')).toBeNull();
+         |                                ^
+      39 |     expect(getByText('3/3')).toBeTruthy();
+      40 |     // Clamped to the target -> still the done state for the day.
+      41 |     expect(getByText(uk.taskCrud.doneToday)).toBeTruthy();
+
+      at Object.toBeNull (src/screens/__tests__/taskProgressClamp.test.tsx:38:32)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+FAIL src/ui/__tests__/mascotFloating.test.tsx
+  ● C5 - floating tappable companion (MASCOT_DESIGN §5) › INV-05: visible on child screens, never rendered on PIN/parent screens or the selection tab
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: "StatsScreen:true"
+    Received: "StatsScreen:false"
+
+      180 |     );
+      181 |     expect(await stats.findByTestId('stats-layout-portrait')).toBeTruthy();
+    > 182 |     expect(`${StatsScreen.name}:${stats.queryByTestId('mascot-floating') === null}`).toBe(
+          |                                                                                      ^
+      183 |       `${StatsScreen.name}:true`
+      184 |     );
+      185 |     stats.unmount();
+
+      at Object.toBe (src/ui/__tests__/mascotFloating.test.tsx:182:86)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+  ● C5 - mascot clearance from primary CTAs (round-1 MED) › Today: >=48dp between the mascot and the bottom-right TaskCard corner at 320dp
+
+    expect(received).toBeGreaterThanOrEqual(expected)
+
+    Expected: >= 48
+    Received:    -32
+
+      232 |       const paddingBottom = listContent.paddingBottom as number;
+      233 |       expect(typeof paddingBottom).toBe('number');
+    > 234 |       expect(paddingBottom - mascotTop).toBeGreaterThanOrEqual(48);
+          |                                         ^
+      235 |
+      236 |       screen.unmount();
+      237 |     });
+
+      at Object.toBeGreaterThanOrEqual (src/ui/__tests__/mascotFloating.test.tsx:234:41)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+  ● C5 - mascot clearance from primary CTAs (round-1 MED) › Today: >=48dp between the mascot and the bottom-right TaskCard corner at 413dp
+
+    expect(received).toBeGreaterThanOrEqual(expected)
+
+    Expected: >= 48
+    Received:    -48
+
+      232 |       const paddingBottom = listContent.paddingBottom as number;
+      233 |       expect(typeof paddingBottom).toBe('number');
+    > 234 |       expect(paddingBottom - mascotTop).toBeGreaterThanOrEqual(48);
+          |                                         ^
+      235 |
+      236 |       screen.unmount();
+      237 |     });
+
+      at Object.toBeGreaterThanOrEqual (src/ui/__tests__/mascotFloating.test.tsx:234:41)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+  ● C5 - mascot clearance from primary CTAs (round-1 MED) › Calendar: no mascot while the day sheet shows its «Перевірити» CTA (and back after closing)
+
+    expect(received).toBeNull()
+
+    Received: <View pointerEvents="box-none" style={[{"pointerEvents": "box-none", "position": "absolute"}, {"bottom": 16, "right": 16}]} testID="mascot-floating"><View collapsable={false} style={{"opacity": 1, "transform": [{"scale": 1}]}}><View accessibilityLabel="Bubblo, Щасливий" accessibilityRole="button" accessibilityState={{"busy": undefined, "checked": undefined, "disabled": false, "expanded": undefined, "selected": undefined}} accessibilityValue={{"max": undefined, "min": undefined, "now": undefined, "text": undefined}} accessible={true} collapsable={false} focusable={true} hitSlop={{"bottom": 8, "left": 8, "right": 8, "top": 8}} onBlur={[Function onBlur]} onClick={[Function onClick]} onFocus={[Function onFocus]} onResponderGrant={[Function onResponderGrant]} onResponderMove={[Function onResponderMove]} onResponderRelease={[Function onResponderRelease]} onResponderTerminate={[Function onResponderTerminate]} onResponderTerminationRequest={[Function onResponderTerminationRequest]} onStartShouldSetResponder={[Function onStartShouldSetResponder]} style={[{"alignItems": "center", "justifyContent": "center", "minHeight": 48, "minWidth": 48}, undefined, [{"backgroundColor": "#FFFFFF", "borderCurve": "continuous", "borderRadius": 9999, "borderWidth": 2}, {"borderColor": "#3B82F6", "height": 64, "minHeight": 48, "minWidth": 48, "width": 64}]]}><Image accessible={false} resizeMode="contain" source={{"testUri": "../../../assets/mascots/Bubblo/happy.png"}} style={{"height": 52, "width": 52}} testID="mascot-image" /></View></View></View>
+
+      277 |     expect(cta).toBeTruthy();
+      278 |     // RED on the pre-fix tree: the mascot still overlays the sheet's corner.
+    > 279 |     expect(screen.queryByTestId('mascot-floating')).toBeNull();
+          |                                                     ^
+      280 |
+      281 |     await act(async () => {
+      282 |       fireEvent.press(screen.getByLabelText(uk.calendar.close));
+
+      at Object.toBeNull (src/ui/__tests__/mascotFloating.test.tsx:279:53)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+FAIL src/screens/__tests__/mascotSelect.test.tsx
+  ● C5 - mascot selection screen (MASCOT_DESIGN §4) › surfaces a persistence failure instead of an unhandled select() rejection (round-1 LOW)
+
+    Unable to find an element with testID: mascot-save-error
+
+    [36m<RCTScrollView[39m
+      [33mtestID[39m=[32m"mascot-select"[39m
+    [36m>[39m
+      [36m<View>[39m
+        [36m<View>[39m
+          [36m<Text[39m
+            [33maccessibilityRole[39m=[32m"header"[39m
+          [36m>[39m
+            [0mОбери персонажа[0m
+          [36m</Text>[39m
+          [36m<Text>[39m
+            [0mТапни, щоб пограти[0m
+          [36m</Text>[39m
+        [36m</View>[39m
+        [36m<View[39m
+          [33maccessibilityLabel[39m=[32m"Обраний персонаж: Stella"[39m
+          [33mtestID[39m=[32m"mascot-preview"[39m
+        [36m>[39m
+          [36m<Image[39m
+            [33maccessible[39m=[32m{false}[39m
+            [33mtestID[39m=[32m"mascot-preview-image"[39m
+          [36m/>[39m
+          [36m<Text>[39m
+            [0mStella[0m
+          [36m</Text>[39m
+          [36m<Text>[39m
+            [0mЯскрава зірка, що веде дитину протягом дня[0m
+          [36m</Text>[39m
+        [36m</View>[39m
+        [36m<View>[39m
+          [36m<View[39m
+            [33maccessibilityLabel[39m=[32m"Bubblo — персонаж"[39m
+            [33maccessibilityRole[39m=[32m"button"[39m
+            [33maccessibilityState[39m=[32m{
+              {
+                "disabled": false,
+                "selected": true,
+              }
+            }[39m
+            [33maccessible[39m=[32m{true}[39m
+          [36m>[39m
+            [36m<Image[39m
+              [33maccessible[39m=[32m{false}[39m
+              [33mtestID[39m=[32m"mascot-card-Bubblo"[39m
+            [36m/>[39m
+            [36m<Text>[39m
+              [0mBubblo[0m
+            [36m</Text>[39m
+            [36m<Text>[39m
+              [0mВесела краплинка води, якій подобається, коли діти фокусуються[0m
+            [36m</Text>[39m
+            [36m<Text>[39m
+              [0m✓ Обрано[0m
+            [36m</Text>[39m
+          [36m</View>[39m
+          [36m<View[39m
+            [33maccessibilityLabel[39m=[32m"Stella — персонаж"[39m
+            [33maccessibilityRole[39m=[32m"button"[39m
+            [33maccessibilityState[39m=[32m{
+              {
+                "disabled": false,
+                "selected": false,
+              }
+            }[39m
+            [33maccessible[39m=[32m{true}[39m
+          [36m>[39m
+            [36m<Image[39m
+              [33maccessible[39m=[32m{false}[39m
+              [33mtestID[39m=[32m"mascot-card-Stella"[39m
+            [36m/>[39m
+            [36m<Text>[39m
+              [0mStella[0m
+            [36m</Text>[39m
+            [36m<Text>[39m
+              [0mЯскрава зірка, що веде дитину протягом дня[0m
+            [36m</Text>[39m
+          [36m</View>[39m
+          [36m<View[39m
+            [33maccessibilityLabel[39m=[32m"Wobble — персонаж"[39m
+            [33maccessibilityRole[39m=[32m"button"[39m
+            [33maccessibilityState[39m=[32m{
+              {
+                "disabled": false,
+                "selected": false,
+              }
+            }[39m
+            [33maccessible[39m=[32m{true}[39m
+          [36m>[39m
+            [36m<Image[39m
+              [33maccessible[39m=[32m{false}[39m
+              [33mtestID[39m=[32m"mascot-card-Wobble"[39m
+            [36m/>[39m
+            [36m<Text>[39m
+              [0mWobble[0m
+            [36m</Text>[39m
+            [36m<Text>[39m
+              [0mПухкенький бульбаш, що радіє кожній маленькій перемозі[0m
+            [36m</Text>[39m
+          [36m</View>[39m
+          [36m<View[39m
+            [33maccessibilityLabel[39m=[32m"Aqua — персонаж"[39m
+            [33maccessibilityRole[39m=[32m"button"[39m
+            [33maccessibilityState[39m=[32m{
+              {
+                "disabled": false,
+                "selected": false,
+              }
+            }[39m
+            [33maccessible[39m=[32m{true}[39m
+          [36m>[39m
+            [36m<Image[39m
+              [33maccessible[39m=[32m{false}[39m
+              [33mtestID[39m=[32m"mascot-card-Aqua"[39m
+            [36m/>[39m
+            [36m<Text>[39m
+              [0mAqua[0m
+            [36m</Text>[39m
+            [36m<Text>[39m
+              [0mСпокійна кулька, що пильнує час під час фокусу[0m
+            [36m</Text>[39m
+          [36m</View>[39m
+          [36m<View[39m
+            [33maccessibilityLabel[39m=[32m"Bud — персонаж"[39m
+            [33maccessibilityRole[39m=[32m"button"[39m
+            [33maccessibilityState[39m=[32m{
+              {
+                "disabled": false,
+                "selected": false,
+              }
+            }[39m
+            [33maccessible[39m=[32m{true}[39m
+          [36m>[39m
+            [36m<Image[39m
+              [33maccessible[39m=[32m{false}[39m
+              [33mtestID[39m=[32m"mascot-card-Bud"[39m
+            [36m/>[39m
+            [36m<Text>[39m
+              [0mBud[0m
+            [36m</Text>[39m
+            [36m<Text>[39m
+              [0mДружний листочок, що росте разом із прогресом[0m
+            [36m</Text>[39m
+          [36m</View>[39m
+          [36m<View[39m
+            [33maccessibilityLabel[39m=[32m"Glow — персонаж"[39m
+            [33maccessibilityRole[39m=[32m"button"[39m
+            [33maccessibilityState[39m=[32m{
+              {
+                "disabled": false,
+                "selected": false,
+              }
+            }[39m
+            [33maccessible[39m=[32m{true}[39m
+          [36m>[39m
+            [36m<Image[39m
+              [33maccessible[39m=[32m{false}[39m
+              [33mtestID[39m=[32m"mascot-card-Glow"[39m
+            [36m/>[39m
+            [36m<Text>[39m
+              [0mGlow[0m
+            [36m</Text>[39m
+            [36m<Text>[39m
+              [0mМ’яке світіння, що освітлює статистику й досягнення[0m
+            [36m</Text>[39m
+          [36m</View>[39m
+          [36m<View[39m
+            [33maccessibilityLabel[39m=[32m"Spark — персонаж"[39m
+            [33maccessibilityRole[39m=[32m"button"[39m
+            [33maccessibilityState[39m=[32m{
+              {
+                "disabled": false,
+                "selected": false,
+              }
+            }[39m
+            [33maccessible[39m=[32m{true}[39m
+          [36m>[39m
+            [36m<Image[39m
+              [33maccessible[39m=[32m{false}[39m
+              [33mtestID[39m=[32m"mascot-card-Spark"[39m
+            [36m/>[39m
+            [36m<Text>[39m
+              [0mSpark[0m
+            [36m</Text>[39m
+            [36m<Text>[39m
+              [0mМаленька зірка, що запалює мотивацію у складні моменти[0m
+            [36m</Text>[39m
+          [36m</View>[39m
+        [36m</View>[39m
+      [36m</View>[39m
+    [36m</RCTScrollView>[39m
+
+      150 |
+      151 |     // The rejection is caught and shown through the app's NoticeBox.
+    > 152 |     expect(await screen.findByTestId('mascot-save-error')).toBeTruthy();
+          |                         ^
+      153 |     // The optimistic pick still rolls back (mascotStore keeps its rollback).
+      154 |     expect(useMascotStore.getState().mascot).toBe(DEFAULT_MASCOT);
+      155 |     expect(setSpy).toHaveBeenCalled();
+
+      at Object.findByTestId (src/screens/__tests__/mascotSelect.test.tsx:152:25)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+  ● C5 - mascot selection screen (MASCOT_DESIGN §4) › surfaces a persistence failure instead of an unhandled select() rejection (round-1 LOW)
+
+    mascot persistence failed
+
+      59 |       // Persistence failed — roll the visible choice back instead of lying.
+      60 |       set({ mascot: previous });
+    > 61 |       throw new Error('mascot persistence failed');
+         |             ^
+      62 |     }
+      63 |   },
+      64 | }));
+
+      at src/state/mascotStore.ts:61:13
+          at Generator.throw (<anonymous>)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _throw (node_modules/@babel/runtime/helpers/asyncToGenerator.js:20:9)
+
+FAIL src/services/repos/__tests__/sessionsRepo.test.ts
+  ● SessionsRepo › countForTaskOnDay counts non-abandoned sessions for a task/day
+
+    TypeError: repo.countForTaskOnDay is not a function
+
+      111 |     });
+      112 |
+    > 113 |     expect(await repo.countForTaskOnDay(1, '2026-10-23')).toBe(1);
+          |                       ^
+      114 |     expect(await repo.countForTaskOnDay(1, '2026-10-24')).toBe(0);
+      115 |     expect(await repo.countForTaskOnDay(2, '2026-10-23')).toBe(0);
+      116 |
+
+      at Object.countForTaskOnDay (src/services/repos/__tests__/sessionsRepo.test.ts:113:23)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+FAIL src/services/timer/__tests__/timerService.test.ts
+  ● TimerService › Acceptance Criterion 7 (Single active and one-per-day rules)
+
+    expect(received).toEqual(expected) // deep equality
+
+    - Expected  - 1
+    + Received  + 1
+
+      Object {
+    -   "error": "SESSION_LIMIT_REACHED_TODAY",
+    +   "error": "SESSION_ALREADY_EXISTS_TODAY",
+        "ok": false,
+      }
+
+      189 |     // (seeded default), so the day is full: SESSION_LIMIT_REACHED_TODAY (round-1 HIGH C4).
+      190 |     const resSameDay = await service.start(1);
+    > 191 |     expect(resSameDay).toEqual({ ok: false, error: 'SESSION_LIMIT_REACHED_TODAY' });
+          |                        ^
+      192 |
+      193 |     // Parent abandons task 1
+      194 |     const abandonRes = await service.abandon(service.getSnapshot().sessionId!, 'token');
+
+      at Object.toEqual (src/services/timer/__tests__/timerService.test.ts:191:24)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+  ● TimerService › double start(1) results in one ok:true and other ok:false with SESSION_LIMIT_REACHED_TODAY without throwing
+
+    expect(received).toEqual(expected) // deep equality
+
+    - Expected  - 1
+    + Received  + 1
+
+      Object {
+    -   "error": "SESSION_LIMIT_REACHED_TODAY",
+    +   "error": "SESSION_ALREADY_EXISTS_TODAY",
+        "ok": false,
+      }
+
+      266 |     // Seeded tasks default to target_per_day = 1: the first run fills the day,
+      267 |     // so the second start is rejected by the N-per-day rule (not AS-04).
+    > 268 |     expect(failures[0]).toEqual({ ok: false, error: 'SESSION_LIMIT_REACHED_TODAY' });
+          |                         ^
+      269 |   });
+      270 |
+      271 |   it('DB-level: a second ACTIVE session is rejected by ux_sessions_one_active (AS-05, unchanged)', async () => {
+
+      at Object.toEqual (src/services/timer/__tests__/timerService.test.ts:268:25)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+FAIL src/services/db/__tests__/migrations.test.ts
+  ● Database migrations › is idempotent and creates all tables, indexes, and triggers
+
+    expect(received).not.toContain(expected) // indexOf
+
+    Expected value: not "ux_sessions_task_day"
+    Received array:     ["ix_tasks_active", "ix_sessions_date", "ux_sessions_task_day", "ux_sessions_one_active", "ix_session_events_session"]
+
+      38 |     // Round-1 HIGH: V5 drops the one-session-per-task-per-day UNIQUE index —
+      39 |     // N per day cannot be expressed as UNIQUE — AS-05 must survive.
+    > 40 |     expect(indexNames).not.toContain('ux_sessions_task_day');
+         |                            ^
+      41 |     expect(indexNames).toContain('ux_sessions_one_active');
+      42 |     expect(indexNames).toContain('ix_session_events_session');
+      43 |
+
+      at Object.toContain (src/services/db/__tests__/migrations.test.ts:40:28)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+  ● Database migrations › V5: two non-abandoned sessions can share a task/day while one ACTIVE session stays unique
+
+    SqliteError: UNIQUE constraint failed: sessions.task_id, sessions.local_date
+
+      13 |     async run(sql: string, params: readonly SqlParam[] = []): Promise<RunResult> {
+      14 |       const stmt = db.prepare(sql);
+    > 15 |       const res = stmt.run(...params);
+         |                        ^
+      16 |       return {
+      17 |         changes: res.changes,
+      18 |         lastInsertRowId: Number(res.lastInsertRowid),
+
+      at run (test/helpers/nodeDb.ts:15:24)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+      at node_modules/@babel/runtime/helpers/asyncToGenerator.js:22:7
+      at Object.<anonymous> (node_modules/@babel/runtime/helpers/asyncToGenerator.js:14:12)
+      at Object.apply [as run] (test/helpers/nodeDb.ts:19:9)
+      at Object.run (src/services/db/__tests__/migrations.test.ts:75:29)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+  ● Database migrations › UPGRADE: a V2 database with task rows and sessions migrates to the latest version without data loss
+
+    expect(received).not.toContain(expected) // indexOf
+
+    Expected value: not "ux_sessions_task_day"
+    Received array:     ["ix_tasks_active", "ix_sessions_date", "ux_sessions_task_day", "ux_sessions_one_active", "ix_session_events_session"]
+
+      182 |     );
+      183 |     const indexNames = indexes.map((i) => i.name);
+    > 184 |     expect(indexNames).not.toContain('ux_sessions_task_day');
+          |                            ^
+      185 |     expect(indexNames).toContain('ux_sessions_one_active');
+      186 |     expect(indexNames).toContain('ix_sessions_date');
+      187 |
+
+      at Object.toContain (src/services/db/__tests__/migrations.test.ts:184:28)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+Test Suites: 8 failed, 8 total
+Tests:       18 failed, 23 passed, 41 total
+Snapshots:   0 total
+Time:        7.145 s
+Ran all test suites matching src/services/timer/__tests__/timerServiceDailyLimit.test.ts|src/services/timer/__tests__/timerService.test.ts|src/services/repos/__tests__/sessionsRepo.test.ts|src/services/db/__tests__/migrations.test.ts|src/screens/__tests__/timerReadyToday.test.tsx|src/screens/__tests__/taskProgressClamp.test.tsx|src/ui/__tests__/mascotFloating.test.tsx|src/screens/__tests__/mascotSelect.test.tsx.
+JEST_EXIT=1

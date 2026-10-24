@@ -1,0 +1,7 @@
+
+Test Suites: 8 passed, 8 total
+Tests:       41 passed, 41 total
+Snapshots:   0 total
+Time:        3.698 s, estimated 5 s
+Ran all test suites matching src/services/timer/__tests__/timerServiceDailyLimit.test.ts|src/services/timer/__tests__/timerService.test.ts|src/services/repos/__tests__/sessionsRepo.test.ts|src/services/db/__tests__/migrations.test.ts|src/screens/__tests__/timerReadyToday.test.tsx|src/screens/__tests__/taskProgressClamp.test.tsx|src/ui/__tests__/mascotFloating.test.tsx|src/screens/__tests__/mascotSelect.test.tsx.
+JEST_EXIT=0

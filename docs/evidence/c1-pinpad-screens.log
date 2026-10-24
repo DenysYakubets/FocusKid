@@ -1,0 +1,6 @@
+
+Test Suites: 6 passed, 6 total
+Tests:       26 passed, 26 total
+Snapshots:   0 total
+Time:        3.353 s
+Ran all test suites matching src/screens/__tests__/PinSetupScreen.test.tsx|src/screens/__tests__/ParentHomeScreen.test.tsx|src/screens/__tests__/pinGateVerifyErrors.test.tsx|src/screens/__tests__/landscapeParity.inv08.test.tsx|src/screens/__tests__/parentHomeLockState.test.tsx|src/ui/__tests__/a11y.inv10.test.tsx.

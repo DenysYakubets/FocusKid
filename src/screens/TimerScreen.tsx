@@ -20,7 +20,8 @@ import { AppButton } from '../ui/components/AppButton';
 import { AppText } from '../ui/components/AppText';
 import { NoticeBox } from '../ui/components/NoticeBox';
 import { ProgressBar } from '../ui/components/ProgressBar';
-import { ScreenTopBar } from '../ui/components/ScreenTopBar';
+import { AppToolbar } from '../ui/components/AppToolbar';
+import { MascotFloating } from '../ui/components/MascotFloating';
 import { formatMinutesUk } from '../ui/components/TaskCard';
 import { useScreenGutter } from '../ui/hooks/useScreenGutter';
 import { uk } from '../i18n/uk';
@@ -45,6 +46,9 @@ export function TimerScreen({ route, navigation }: Props) {
 
   const [task, setTask] = useState<Task | null>(null);
   const [routeSession, setRouteSession] = useState<SessionRow | null>(null);
+  // C4: non-abandoned runs of this task today — how much of the day's target
+  // (`task.targetPerDay`) is already used up.
+  const [todayRuns, setTodayRuns] = useState(0);
   const [showStopDialog, setShowStopDialog] = useState(false);
   const loadSeqRef = useRef(0);
   const restoredBaseRef = useRef<{ key: string; base: number }>({ key: '', base: 0 });
@@ -63,12 +67,17 @@ export function TimerScreen({ route, navigation }: Props) {
     const seq = ++loadSeqRef.current;
     void (async () => {
       const todayDate = wall.todayLocalDate();
-      let s = await sessionsRepo.getTodayForTask(route.params.taskId, todayDate);
-      if (!s) {
-        s = await sessionsRepo.getLatestForTask(route.params.taskId);
-      }
+      // C3 (round-1 HIGH): only a session dated TODAY drives the display
+      // state. `getLatestForTask` is ignored when its local_date is not
+      // today — otherwise a prior-day verified/completed row dead-ends the
+      // start path (Completed/Verified box, no «Почати», and a stale row
+      // routing the child to PinGate verify).
+      const latest = await sessionsRepo.getLatestForTask(route.params.taskId);
+      const s = latest && latest.localDate === todayDate ? latest : null;
+      const runs = await sessionsRepo.countForTaskOnDay(route.params.taskId, todayDate);
       if (loadSeqRef.current === seq) {
         setRouteSession(s);
+        setTodayRuns(runs);
       }
     })();
   }, [sessionsRepo, wall, route.params.taskId]);
@@ -207,6 +216,26 @@ export function TimerScreen({ route, navigation }: Props) {
   const isCompleted = displayState.kind === 'Completed';
   const isVerified = displayState.kind === 'Verified';
   const isPaused = displayState.kind === 'Paused';
+  // C3/C4 (round-1 HIGH): READY = no ACTIVE session on this route AND today's
+  // target not reached yet.
+  //  - a prior-day session never blocks (it is not in routeSession at all);
+  //  - a session completed/verified TODAY still renders its Completed/Verified
+  //    state, and keeps «Почати» available while runs < target_per_day — that
+  //    is what makes '2/3' reachable instead of dead-ending after run 1;
+  //  - at runs >= target_per_day the day is done: no start, display stays.
+  const dayTarget = task?.targetPerDay ?? 1;
+  const hasActiveSession =
+    displayState.kind === 'Running' || displayState.kind === 'Paused';
+  const isReady = !hasActiveSession && todayRuns < dayTarget;
+
+  const start = useTimerStore((s) => s.start);
+
+  const handleStart = async () => {
+    const ok = await start(route.params.taskId);
+    if (ok) {
+      await refreshRouteSession();
+    }
+  };
 
   const handleBack = () => {
     navigation.navigate('Today');
@@ -305,67 +334,89 @@ export function TimerScreen({ route, navigation }: Props) {
     </View>
   ) : null;
 
-  const actionControls = isCompleted ? (
-    <AppButton
-      label={uk.timer.showParent}
-      variant="primary"
-      size="lg"
-      disabled={displaySessionId === null}
-      onPress={handleShowParent}
-      style={isLandscape ? undefined : styles.flexButton}
-    />
-  ) : isVerified ? null : (
-    <>
-      {isLive && displayState.kind === 'Running' ? (
+  // Action row composition:
+  //  - Completed today -> «Покажи батькам» (+ «Почати» while the day's target
+  //    is not reached yet, C4);
+  //  - Verified today  -> «Почати» only while runs < target, otherwise nothing;
+  //  - READY           -> «Почати» only (explicit start, C3);
+  //  - Running/Paused  -> the live controls.
+  const showStart = isReady;
+  const showParentAction = isCompleted;
+  const showLiveControls = !isCompleted && !isVerified && !showStart;
+  const hasActions = showParentAction || showStart || showLiveControls;
+
+  const actionControls = hasActions ? (
+    <View
+      style={[styles.actionRow, stackSideActions && styles.actionRowStacked]}
+    >
+      {showParentAction ? (
         <AppButton
-          label={uk.timer.pause}
+          label={uk.timer.showParent}
           variant="primary"
           size="lg"
-          disabled={isPauseDisabled}
-          onPress={() => {
-            void handlePause();
-          }}
-          style={buttonStyle}
-        />
-      ) : isLive && displayState.kind === 'Paused' ? (
-        <AppButton
-          label={uk.timer.resume}
-          variant="success"
-          size="lg"
-          onPress={() => {
-            void handleResume();
-          }}
-          style={buttonStyle}
+          disabled={displaySessionId === null}
+          onPress={handleShowParent}
+          style={isLandscape ? undefined : styles.flexButton}
         />
       ) : null}
+      {showStart ? (
+        /* C3: explicit start — READY state shows only «Почати»; pressing it
+           begins the countdown (START event in the FSM). */
+        <AppButton
+          label={uk.timer.start}
+          variant="primary"
+          size="lg"
+          onPress={() => {
+            void handleStart();
+          }}
+          style={isLandscape ? undefined : styles.flexButton}
+        />
+      ) : null}
+      {showLiveControls ? (
+        <>
+          {isLive && displayState.kind === 'Running' ? (
+            <AppButton
+              label={uk.timer.pause}
+              variant="primary"
+              size="lg"
+              disabled={isPauseDisabled}
+              onPress={() => {
+                void handlePause();
+              }}
+              style={buttonStyle}
+            />
+          ) : isLive && displayState.kind === 'Paused' ? (
+            <AppButton
+              label={uk.timer.resume}
+              variant="success"
+              size="lg"
+              onPress={() => {
+                void handleResume();
+              }}
+              style={buttonStyle}
+            />
+          ) : null}
 
-      <AppButton
-        label={uk.timer.addTime}
-        variant="secondary"
-        size="lg"
-        disabled={isAddTimeDisabled}
-        onPress={() => {
-          void handleAddTime();
-        }}
-        style={buttonStyle}
-      />
-    </>
-  );
-
-  const actionRow =
-    actionControls === null ? null : (
-      <View
-        style={[styles.actionRow, stackSideActions && styles.actionRowStacked]}
-      >
-        {actionControls}
-      </View>
-    );
+          <AppButton
+            label={uk.timer.addTime}
+            variant="secondary"
+            size="lg"
+            disabled={isAddTimeDisabled}
+            onPress={() => {
+              void handleAddTime();
+            }}
+            style={buttonStyle}
+          />
+        </>
+      ) : null}
+    </View>
+  ) : null;
 
   const bottomNode = (
     <View style={styles.bottomZone}>
       {pauseHintNode}
       {stateNode}
-      {actionRow}
+      {actionControls}
       {canStop ? (
         <AppButton
           label={uk.timer.stop}
@@ -383,7 +434,7 @@ export function TimerScreen({ route, navigation }: Props) {
         testID={layoutTestID}
         style={[styles.container, { paddingHorizontal: gutter }]}
       >
-        <ScreenTopBar
+        <AppToolbar
           onBack={handleBack}
           title={task ? (task.emoji ? `${task.emoji} ${task.title}` : task.title) : undefined}
         />
@@ -401,6 +452,10 @@ export function TimerScreen({ route, navigation }: Props) {
             {bottomNode}
           </>
         )}
+
+        {/* C5: companion goes top-right (below the toolbar) so it never sits
+            on the countdown digits or the action buttons (MASCOT_DESIGN §6). */}
+        <MascotFloating corner="top-right" />
       </View>
 
       {/* F3 confirm dialog: full-screen card, the same shape as PinGate's. */}

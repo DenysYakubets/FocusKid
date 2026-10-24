@@ -10,7 +10,7 @@ import { AppButton } from '../ui/components/AppButton';
 import { AppText } from '../ui/components/AppText';
 import { EmojiPicker } from '../ui/components/EmojiPicker';
 import { NoticeBox } from '../ui/components/NoticeBox';
-import { ScreenTopBar } from '../ui/components/ScreenTopBar';
+import { AppToolbar } from '../ui/components/AppToolbar';
 import { TapTarget } from '../ui/components/TapTarget';
 import { ParentGuard } from '../navigation/ParentGuard';
 import { CONTENT_MAX_WIDTH, useScreenGutter } from '../ui/hooks/useScreenGutter';
@@ -31,6 +31,8 @@ export function TaskEditScreen({ route, navigation }: Props) {
   const [emoji, setEmoji] = useState('');
   const [targetMinutes, setTargetMinutes] = useState(15);
   const [daysMask, setDaysMask] = useState(127); // all 7 days by default
+  // C4: times per day (1..10, default 1)
+  const [targetPerDay, setTargetPerDay] = useState(1);
   const [hasSessions, setHasSessions] = useState(false);
   const [errors, setErrors] = useState<TaskValidationError[]>([]);
   const [emojiPickerOpen, setEmojiPickerOpen] = useState(false);
@@ -44,6 +46,7 @@ export function TaskEditScreen({ route, navigation }: Props) {
           setEmoji(task.emoji ?? '');
           setTargetMinutes(task.targetMinutes);
           setDaysMask(task.daysMask);
+          setTargetPerDay(task.targetPerDay ?? 1);
         }
 
         const countRow = await db.get<{ count: number }>(
@@ -64,6 +67,11 @@ export function TaskEditScreen({ route, navigation }: Props) {
   const handleAdjustMinutes = (delta: number) => {
     parentSessionStore.touch();
     setTargetMinutes((prev) => Math.max(0, Math.min(130, prev + delta)));
+  };
+
+  const handleAdjustPerDay = (delta: number) => {
+    parentSessionStore.touch();
+    setTargetPerDay((prev) => Math.max(1, Math.min(10, prev + delta)));
   };
 
   const handleSave = async () => {
@@ -91,11 +99,12 @@ export function TaskEditScreen({ route, navigation }: Props) {
           emoji: result.value.emoji,
           targetMinutes: result.value.targetMinutes,
           daysMask: result.value.daysMask,
+          targetPerDay,
         },
         nowIso
       );
     } else {
-      await tasksRepo.create(result.value, nowIso);
+      await tasksRepo.create({ ...result.value, targetPerDay }, nowIso);
     }
 
     await tasksStore.refreshToday();
@@ -141,7 +150,7 @@ export function TaskEditScreen({ route, navigation }: Props) {
           scrollEventThrottle={1000}
         >
           {/* Row A only — the primary action lives in the bottom footer (F4). */}
-          <ScreenTopBar
+          <AppToolbar
             testID="taskedit-topbar"
             onBack={() => {
               parentSessionStore.touch();
@@ -289,6 +298,40 @@ export function TaskEditScreen({ route, navigation }: Props) {
                   </TapTarget>
                 );
               })}
+            </View>
+          </View>
+
+          {/* C4: times per day stepper (1..10) */}
+          <View style={styles.field}>
+            <AppText variant="body" style={styles.fieldLabel}>
+              {uk.taskCrud.timesPerDayLabel}
+            </AppText>
+            <View testID="taskedit-timesperday" style={styles.stepperRow}>
+              <TapTarget
+                accessibilityRole="button"
+                accessibilityLabel={uk.taskCrud.timesPerDayMinus}
+                onPress={() => handleAdjustPerDay(-1)}
+                style={styles.stepperButton}
+              >
+                <AppText variant="body" style={styles.stepperButtonText}>
+                  −1
+                </AppText>
+              </TapTarget>
+
+              <AppText variant="heading" style={styles.minutesDisplay}>
+                {`${targetPerDay} ${uk.taskCrud.timesPerDayUnit}`}
+              </AppText>
+
+              <TapTarget
+                accessibilityRole="button"
+                accessibilityLabel={uk.taskCrud.timesPerDayPlus}
+                onPress={() => handleAdjustPerDay(1)}
+                style={styles.stepperButton}
+              >
+                <AppText variant="body" style={styles.stepperButtonText}>
+                  +1
+                </AppText>
+              </TapTarget>
             </View>
           </View>
 

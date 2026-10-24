@@ -16,6 +16,8 @@ import { timerStore } from '../../state/timerStore';
 import { parentSessionStore } from '../../state/parentSessionStore';
 
 import { TodayScreen } from '../../screens/TodayScreen';
+import { ChildTabsScreen } from '../../screens/ChildTabsScreen';
+import { MascotSelectScreen } from '../../screens/MascotSelectScreen';
 import { TimerScreen } from '../../screens/TimerScreen';
 import { PinSetupScreen } from '../../screens/PinSetupScreen';
 import { PinGateScreen } from '../../screens/PinGateScreen';
@@ -136,7 +138,7 @@ describe('INV-10 Accessibility & Touch Targets', () => {
   });
 
   it('TaskCard generates correct accessibilityLabel with title, minutes, and status', async () => {
-    const task: TodayTaskView = {
+    const task = {
       id: 1,
       title: 'Читання',
       emoji: '📚',
@@ -148,7 +150,9 @@ describe('INV-10 Accessibility & Touch Targets', () => {
       updatedAt: '2026-10-23T00:00:00Z',
       sessionId: null,
       status: 'idle',
-    };
+      targetPerDay: 1,
+      completedToday: 0,
+    } as unknown as TodayTaskView;
 
     const { getByRole } = await render(
       <TaskCard task={task} onPress={() => {}} />
@@ -207,6 +211,18 @@ describe('INV-10 Accessibility & Touch Targets', () => {
       const res = await renderWithApp(
         <TodayScreen navigation={mockNavigation} route={{} as any} />
       );
+      auditA11yTree(res);
+    });
+
+    it('audits ChildTabsScreen (child shell with the floating companion)', async () => {
+      const res = await renderWithApp(
+        <ChildTabsScreen navigation={mockNavigation} route={{} as any} />
+      );
+      auditA11yTree(res);
+    });
+
+    it('audits MascotSelectScreen (7-mascot roster grid)', async () => {
+      const res = await renderWithApp(<MascotSelectScreen />);
       auditA11yTree(res);
     });
 

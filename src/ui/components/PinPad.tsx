@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { AppText } from './AppText';
 import { TapTarget } from './TapTarget';
-import { MIN_TOUCH_DP, colors, radius, spacing } from '../theme';
+import { useScreenGutter } from '../hooks/useScreenGutter';
+import { MIN_TOUCH_DP, colors, radius, shadows, spacing } from '../theme';
 import { uk } from '../../i18n/uk';
 
 export interface PinPadProps {
@@ -13,12 +14,17 @@ export interface PinPadProps {
 }
 
 /**
- * 4-dot indicator + 3x4 keypad (spec §4.1, tightened per owner item F7): keys
- * are `flex: 1` with no maxWidth cap, `minHeight` at the 48dp INV-10 floor and
- * the compact `spacing.sm` gap between them, and both the grid and the pad use
- * `space-between` instead of `space-evenly` so the digits no longer drift apart
- * vertically. All 10 digits + ⌫ still fit at 320dp; the grid keeps `flex: 1`
- * (pinned by layoutResponsive.test).
+ * C1 (PIN_KEYPAD_SPEC §2-§6): a tight, calculator-like cluster instead of the
+ * old spread layout.
+ *
+ * - 3x4 grid, 10 digits + backspace + an empty bottom-left cell.
+ * - Responsive via `useScreenGutter()` (which wraps `useWindowDimensions`):
+ *   key 56/64/72dp and gap 8/10/12dp below/at/above the 340/400dp breakpoints
+ *   — the SAME gap on both axes, never wider than 12dp.
+ * - Every key keeps the 48dp INV-10 floor (`minWidth`/`minHeight`) and the
+ *   cluster (keys + `spacing.md`/`spacing.lg` padding) always fits the window.
+ * - The cluster is centered horizontally and vertically; the grid still grows
+ *   (`flex: 1`, pinned by layoutResponsive.test) so it stays centered.
  */
 export function PinPad({
   onComplete,
@@ -26,8 +32,16 @@ export function PinPad({
   value,
   onChange,
 }: PinPadProps) {
+  const { width } = useScreenGutter();
   const [internalPin, setInternalPin] = useState('');
   const currentPin = value !== undefined ? value : internalPin;
+
+  // PIN_KEYPAD_SPEC §2 responsive table.
+  const compact = width < 340;
+  const wide = width >= 400;
+  const keySize = compact ? 56 : wide ? 72 : 64;
+  const gap = compact ? 8 : wide ? 12 : 10;
+  const clusterPadding = wide ? spacing.lg : spacing.md;
 
   const handleDigit = (digit: string) => {
     if (disabled || currentPin.length >= 4) return;
@@ -50,6 +64,13 @@ export function PinPad({
     onChange?.(nextPin);
   };
 
+  const keyStyle = {
+    width: keySize,
+    height: keySize,
+    minWidth: MIN_TOUCH_DP,
+    minHeight: MIN_TOUCH_DP,
+  };
+
   const renderDigit = (d: number) => (
     <TapTarget
       key={d}
@@ -57,7 +78,12 @@ export function PinPad({
       accessibilityLabel={uk.pin.digit(d)}
       disabled={disabled}
       onPress={() => handleDigit(String(d))}
-      style={[styles.keyButton, disabled && styles.keyButtonDisabled]}
+      style={(state) => [
+        styles.keyButton,
+        keyStyle,
+        state.pressed && styles.keyPressed,
+        disabled && styles.keyButtonDisabled,
+      ]}
     >
       <AppText variant="heading" style={styles.keyText}>
         {String(d)}
@@ -84,29 +110,39 @@ export function PinPad({
         })}
       </View>
 
-      {/* Digits pad */}
+      {/* Compact calculator cluster (spec §3): card surface, tight gap. */}
       <View testID="pinpad-grid" style={styles.grid}>
-        <View style={styles.row}>{[1, 2, 3].map(renderDigit)}</View>
-        <View style={styles.row}>{[4, 5, 6].map(renderDigit)}</View>
-        <View style={styles.row}>{[7, 8, 9].map(renderDigit)}</View>
+        <View
+          style={[
+            styles.cluster,
+            { gap, padding: clusterPadding },
+          ]}
+        >
+          <View style={[styles.row, { gap }]}>{[1, 2, 3].map(renderDigit)}</View>
+          <View style={[styles.row, { gap }]}>{[4, 5, 6].map(renderDigit)}</View>
+          <View style={[styles.row, { gap }]}>{[7, 8, 9].map(renderDigit)}</View>
 
-        <View style={styles.row}>
-          <View style={styles.keyPlaceholder} />
-          {renderDigit(0)}
-          <TapTarget
-            accessibilityRole="button"
-            accessibilityLabel={uk.pin.backspace}
-            disabled={disabled || currentPin.length === 0}
-            onPress={handleBackspace}
-            style={[
-              styles.keyButton,
-              (disabled || currentPin.length === 0) && styles.keyButtonDisabled,
-            ]}
-          >
-            <AppText variant="heading" style={styles.keyText}>
-              ⌫
-            </AppText>
-          </TapTarget>
+          <View style={[styles.row, { gap }]}>
+            <View style={[styles.keyPlaceholder, keyStyle]} />
+            {renderDigit(0)}
+            <TapTarget
+              accessibilityRole="button"
+              accessibilityLabel={uk.pin.backspace}
+              disabled={disabled || currentPin.length === 0}
+              onPress={handleBackspace}
+              style={(state) => [
+                styles.keyButton,
+                styles.backspaceButton,
+                keyStyle,
+                state.pressed && styles.keyPressed,
+                (disabled || currentPin.length === 0) && styles.keyButtonDisabled,
+              ]}
+            >
+              <AppText variant="heading" style={styles.backspaceText}>
+                ⌫
+              </AppText>
+            </TapTarget>
+          </View>
         </View>
       </View>
     </View>
@@ -117,7 +153,7 @@ const styles = StyleSheet.create({
   container: {
     width: '100%',
     flex: 1,
-    justifyContent: 'space-between',
+    justifyContent: 'center',
     alignItems: 'center',
     paddingVertical: spacing.sm,
   },
@@ -142,35 +178,50 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primary,
   },
   grid: {
-    width: '100%',
     flex: 1,
-    justifyContent: 'space-between',
-    gap: spacing.sm,
+    width: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cluster: {
+    alignSelf: 'center',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'column',
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
+    borderCurve: 'continuous',
+    boxShadow: shadows.card,
   },
   row: {
     flexDirection: 'row',
-    gap: spacing.sm,
     alignItems: 'stretch',
   },
   keyButton: {
-    flex: 1,
-    minHeight: MIN_TOUCH_DP,
-    borderRadius: radius.lg,
+    borderRadius: radius.md,
     borderCurve: 'continuous',
-    backgroundColor: colors.surface,
+    backgroundColor: colors.cardBg,
     borderWidth: 1,
     borderColor: colors.borderStrong,
     justifyContent: 'center',
     alignItems: 'center',
   },
+  backspaceButton: {
+    backgroundColor: colors.surfaceAlt,
+  },
+  keyPressed: {
+    opacity: 0.6,
+  },
   keyButtonDisabled: {
     opacity: 0.4,
   },
   keyPlaceholder: {
-    flex: 1,
-    minHeight: MIN_TOUCH_DP,
+    backgroundColor: 'transparent',
   },
   keyText: {
     color: colors.text,
+  },
+  backspaceText: {
+    color: colors.textSecondary,
   },
 });

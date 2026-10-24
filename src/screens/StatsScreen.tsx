@@ -7,7 +7,7 @@ import { parentSessionStore } from '../state/parentSessionStore';
 import { ParentGuard } from '../navigation/ParentGuard';
 import { WeekSummary, TaskStat } from '../domain/stats/aggregate';
 import { AppText } from '../ui/components/AppText';
-import { ScreenTopBar } from '../ui/components/ScreenTopBar';
+import { AppToolbar } from '../ui/components/AppToolbar';
 import { StatBar } from '../ui/components/StatBar';
 import { useOrientation } from '../ui/hooks/useOrientation';
 import { uk } from '../i18n/uk';
@@ -132,7 +132,7 @@ export function StatsScreen({ navigation }: Props) {
         testID={isLandscape ? 'stats-layout-landscape' : 'stats-layout-portrait'}
         style={[styles.container, isLandscape && styles.containerLandscape]}
       >
-        <ScreenTopBar onBack={() => navigation.goBack()} title={uk.stats.title} />
+        <AppToolbar onBack={() => navigation.goBack()} title={uk.stats.title} />
 
         {loading ? (
           <View style={styles.centerBox}>
@@ -184,6 +184,11 @@ export function StatsScreen({ navigation }: Props) {
             {taskStats.length > 0 ? taskSectionNode : null}
           </ScrollView>
         )}
+        {/* Round-1 MED / INV-05: no companion here. Statistics is a
+            parent-only screen — the C5 brief's "bottom-left Stats" contradicted
+            INV-05/AS-19 ("statistics are parent-only"), and the orchestrator
+            resolved it in favour of the invariant: the companion is a child-side
+            affordance only. Rationale recorded in docs/UX_FIXES_NOTES.md. */}
       </View>
     </ParentGuard>
   );

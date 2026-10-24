@@ -1,0 +1,63 @@
+FAIL src/ui/__tests__/pinPadCompact.test.tsx
+  ● C1 - compact calculator PIN keypad (PIN_KEYPAD_SPEC) › 320dp: keys 56dp, gap 8dp on both axes, 10 digits + backspace all >= 48dp
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 56
+    Received: undefined
+
+      48 |       for (let d = 0; d <= 9; d++) {
+      49 |         const key = flat(screen.getByLabelText(uk.pin.digit(d)));
+    > 50 |         expect(key.width).toBe(keySize);
+         |                           ^
+      51 |         expect(key.height).toBe(keySize);
+      52 |         expect(key.minWidth ?? key.width).toBeGreaterThanOrEqual(MIN_TOUCH_DP);
+      53 |         expect(key.minHeight ?? key.height).toBeGreaterThanOrEqual(MIN_TOUCH_DP);
+
+      at Object.toBe (src/ui/__tests__/pinPadCompact.test.tsx:50:27)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+  ● C1 - compact calculator PIN keypad (PIN_KEYPAD_SPEC) › 366dp: keys 64dp, gap 10dp on both axes, 10 digits + backspace all >= 48dp
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 64
+    Received: undefined
+
+      48 |       for (let d = 0; d <= 9; d++) {
+      49 |         const key = flat(screen.getByLabelText(uk.pin.digit(d)));
+    > 50 |         expect(key.width).toBe(keySize);
+         |                           ^
+      51 |         expect(key.height).toBe(keySize);
+      52 |         expect(key.minWidth ?? key.width).toBeGreaterThanOrEqual(MIN_TOUCH_DP);
+      53 |         expect(key.minHeight ?? key.height).toBeGreaterThanOrEqual(MIN_TOUCH_DP);
+
+      at Object.toBe (src/ui/__tests__/pinPadCompact.test.tsx:50:27)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+  ● C1 - compact calculator PIN keypad (PIN_KEYPAD_SPEC) › 413dp: keys 72dp, gap 12dp on both axes, 10 digits + backspace all >= 48dp
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 72
+    Received: undefined
+
+      48 |       for (let d = 0; d <= 9; d++) {
+      49 |         const key = flat(screen.getByLabelText(uk.pin.digit(d)));
+    > 50 |         expect(key.width).toBe(keySize);
+         |                           ^
+      51 |         expect(key.height).toBe(keySize);
+      52 |         expect(key.minWidth ?? key.width).toBeGreaterThanOrEqual(MIN_TOUCH_DP);
+      53 |         expect(key.minHeight ?? key.height).toBeGreaterThanOrEqual(MIN_TOUCH_DP);
+
+      at Object.toBe (src/ui/__tests__/pinPadCompact.test.tsx:50:27)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+Test Suites: 1 failed, 1 total
+Tests:       3 failed, 1 passed, 4 total
+Snapshots:   0 total
+Time:        1.499 s, estimated 2 s
+Ran all test suites matching src/ui/__tests__/pinPadCompact.test.tsx.

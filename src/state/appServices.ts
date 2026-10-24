@@ -12,6 +12,7 @@ import {
   TokenConsumer,
 } from '../services/timer/timerService';
 import { createStatsService, StatsService } from '../services/stats/statsService';
+import { createSettingsRepo, SettingsRepo } from '../services/repos/settingsRepo';
 
 export interface AppServices {
   db: Db;
@@ -20,6 +21,7 @@ export interface AppServices {
   tasksRepo: TasksRepo;
   sessionsRepo: SessionsRepo;
   authRepo: AuthRepo;
+  settingsRepo: SettingsRepo;
   authService: AuthService;
   timerService: TimerService;
   statsService: StatsService;
@@ -66,6 +68,8 @@ export function createAppServices(options: CreateAppServicesOptions): AppService
     sessionsRepo,
   });
 
+  const settingsRepo = createSettingsRepo(db, wall);
+
   return {
     db,
     clock,
@@ -73,6 +77,7 @@ export function createAppServices(options: CreateAppServicesOptions): AppService
     tasksRepo,
     sessionsRepo,
     authRepo,
+    settingsRepo,
     authService,
     timerService,
     statsService,

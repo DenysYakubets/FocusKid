@@ -146,3 +146,72 @@ pre-fix tree). Gates: `npx tsc --noEmit`, `npm test -- --ci`, `bash scripts/chec
 - `taskEditEmojiPicker.test.tsx` regression now really opens the picker, cancels
   (queries scoped `within(picker)` — top bar shares «Скасувати») and saves on the
   **update** path, asserting the record keeps 📚 (RED → GREEN, direct run).
+## Review round 1 — companion cycle (`feat/companion-round`): all 8 findings fixed
+
+RED evidence: `docs/evidence/companion-round-r2-red.log` — 8 suites / **18 failed, 23 passed** on the
+pre-fix tree (`JEST_EXIT=1`), one failing test per finding. GREEN:
+`docs/evidence/companion-round-r2-green.log` — same 8 suites, 41/41 (`JEST_EXIT=0`).
+Gates (direct runs, no pipes): `npx tsc --noEmit` → `TSC_EXIT=0`;
+`npm test -- --ci` → **71 suites / 278 tests**, `JEST_EXIT=0` twice
+(`companion-round-r2-full-1.log` / `-full-2.log`); `bash scripts/check-invariants.sh` → `INV_EXIT=0`.
+
+### HIGH — C4 is now enforced end to end (was UI-only)
+- **Migration V5** (`src/services/db/schema.ts`) drops `ux_sessions_task_day` — N-per-day cannot be
+  expressed as `UNIQUE` (N varies per row) — and deliberately leaves `ux_sessions_one_active` (AS-05)
+  alone. A fresh install creates it in V1 and drops it in V5; the upgrade path runs the same statement.
+- **Service rule** (`timerService.doStart`): rejects only when non-abandoned sessions for
+  `(task_id, today) >= task.targetPerDay`, with the new code `SESSION_LIMIT_REACHED_TODAY`
+  (mapped in `mapTimerError` → `uk.today.sessionLimitError`). The check is repeated inside the
+  transaction; the UNIQUE-catch now maps AS-05 first, then the day limit. AS-05 (one ACTIVE session)
+  keeps its precedence over everything except a full day.
+- `sessionsRepo.countForTaskOnDay()` is the counter; `tasksRepo.listToday` now LEFT JOINs the *latest*
+  of today's runs through a correlated subquery, so several runs on one day can never duplicate the
+  task card (`completed_today` genuinely reaches 2, 3, …).
+- RED: 2nd session same task/day allowed (previously `UNIQUE constraint failed` / AS-04), 3rd rejected
+  with `SESSION_LIMIT_REACHED_TODAY` for `target_per_day = 2`, default target 1 keeps its cap.
+
+### HIGH — READY comes from TODAY's sessions (C3 dead-end)
+- `TimerScreen.refreshRouteSession` uses `getLatestForTask` **only when its `local_date` is today**;
+  a prior-day row is ignored, so a verified/completed session from yesterday shows «Почати» instead of
+  a dead Verified box, and a stale Completed row no longer routes the child to PinGate `verify`.
+- Documented extension of the review's formula (needed for C4 to be reachable in the UI):
+  `READY = no ACTIVE session AND todayRuns < target_per_day`. With the literal
+  "no session with local_date = today" a child could never start run 2 of '2/3' — today's completed
+  run would block Start forever. Today's Completed/Verified state is still rendered; «Почати» is
+  *added* next to «Покажи батькам» only while the day's target is not reached, and disappears at
+  `runs >= target` (pinned by `timerReadyToday.test.tsx`, 4 cases).
+
+### MED — mascot CTA clearance (Today + Calendar)
+- New exported geometry in `MascotFloating`: `MASCOT_CLEARANCE_DP = 48`, `mascotSize/Offset` and
+  `mascotBottomInset(width) = offset + size + 48` (128dp at 320, 144dp from 340). `TodayScreen`'s list
+  `contentContainerStyle` reserves that bottom inset, so the last TaskCard can never end under the
+  companion.
+- Calendar: `CalendarScreen` reports day-sheet state upward (`onDayDetailChange`) and
+  `ChildTabsScreen` **hides** the mascot while the sheet (with its right-aligned «Перевірити») is
+  open; it returns when the sheet closes.
+- Clearance test: geometry from the rendered styles (corner offset + target height) vs the list's
+  bottom inset at 320dp and 413dp — `paddingBottom - mascotTop >= 48`. RED was −32 / −48.
+
+### MED — mascot off Stats (INV-05)
+- `MascotFloating` removed from `StatsScreen`. Owner-side rationale: the C5 brief asked for a
+  "bottom-left Stats" companion, but INV-05/AS-19 say *statistics are parent-only* and the companion is
+  a **child-side** affordance (it lives in the child shell and on the child Timer). The orchestrator
+  resolved the contradiction in favour of the invariant — a parent-only screen must not carry child
+  chrome, and it gives the child nothing to tap while the parent is reading charts. The INV-05 test now
+  pins absence on Stats **behind a real parent session** (otherwise `ParentGuard`'s pre-auth `null`
+  would make the assertion vacuous).
+
+### LOW
+- **Dead component:** `src/ui/components/ScreenTopBar.tsx` deleted (all 5 screens use `AppToolbar`;
+  no importer left).
+- **Upgrade migration test:** `migrations.test.ts` builds a real V2 install (V1+V2 SQL,
+  `user_version = 2`) with task rows and three sessions, runs the actual `migrate()` and asserts rows
+  verbatim, `target_per_day` defaulting to 1, sessions untouched and `ux_sessions_task_day` gone.
+- **`select()` rejection:** `MascotSelectScreen` catches the rethrown persistence error and surfaces it
+  in a `NoticeBox` (`testID="mascot-save-error"`, `uk.mascot.saveError`); `mascotStore.select` keeps
+  its rollback.
+- **Progress clamp:** `TaskCard` clamps `completedToday` to `target_per_day`, so lowering the target
+  below what is done renders `3/3` + «Виконано на сьогодні», never `4/3`.
+
+Commits: `test(review): … (RED)` → `fix(timer):` → `fix(tasks):` → `fix(mascot):` → `chore:`. Branch
+pushed only — no PR, no merge.

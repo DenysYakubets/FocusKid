@@ -12,6 +12,8 @@ export function mapTimerError(code: string | null): string {
       return uk.timer.errors.invalidSession;
     case 'ACTIVE_SESSION_EXISTS':
       return uk.today.activeSessionError;
+    case 'SESSION_LIMIT_REACHED_TODAY':
+      return uk.today.sessionLimitError;
     case 'SESSION_ALREADY_EXISTS_TODAY':
     case 'TASK_NOT_FOUND':
     default:

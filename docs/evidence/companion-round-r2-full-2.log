@@ -1,0 +1,11 @@
+
+> focuskid@0.1.0 test
+> jest --ci
+
+
+Test Suites: 71 passed, 71 total
+Tests:       278 passed, 278 total
+Snapshots:   0 total
+Time:        15.245 s
+Ran all test suites.
+JEST_EXIT=0

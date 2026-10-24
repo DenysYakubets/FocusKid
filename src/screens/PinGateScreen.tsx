@@ -11,7 +11,7 @@ import { AppButton } from '../ui/components/AppButton';
 import { AppText } from '../ui/components/AppText';
 import { NoticeBox } from '../ui/components/NoticeBox';
 import { PinPad } from '../ui/components/PinPad';
-import { ScreenTopBar } from '../ui/components/ScreenTopBar';
+import { AppToolbar } from '../ui/components/AppToolbar';
 import { useOrientation } from '../ui/hooks/useOrientation';
 import { uk } from '../i18n/uk';
 import { colors, radius, shadows, spacing } from '../ui/theme';
@@ -181,7 +181,7 @@ export function PinGateScreen({ route, navigation }: Props) {
         ]}
         keyboardShouldPersistTaps="handled"
       >
-        <ScreenTopBar onBack={() => navigation.goBack()} />
+        <AppToolbar onBack={() => navigation.goBack()} />
 
         <View style={isLandscape ? styles.contentLandscape : styles.contentPortrait}>
           <View

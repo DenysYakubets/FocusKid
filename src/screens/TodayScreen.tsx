@@ -11,6 +11,7 @@ import { AppText } from '../ui/components/AppText';
 import { NoticeBox } from '../ui/components/NoticeBox';
 import { StatusChip } from '../ui/components/StatusChip';
 import { CONTENT_MAX_WIDTH, useScreenGutter } from '../ui/hooks/useScreenGutter';
+import { mascotBottomInset } from '../ui/components/MascotFloating';
 import { uk } from '../i18n/uk';
 import { colors, spacing } from '../ui/theme';
 import { TodayTaskView } from '../domain/tasks/types';
@@ -19,7 +20,7 @@ type Props = NativeStackScreenProps<RootStackParamList, 'Today'>;
 
 export function TodayScreen({ navigation }: Props) {
   const services = useServices();
-  const { gutter, isLandscape } = useScreenGutter();
+  const { width, gutter, isLandscape } = useScreenGutter();
 
   const todayTasks = useTasksStore((s) => s.todayTasks);
   const refreshToday = useTasksStore((s) => s.refreshToday);
@@ -45,28 +46,9 @@ export function TodayScreen({ navigation }: Props) {
   const handleTaskPress = async (task: TodayTaskView) => {
     setErrorMessage(null);
 
-    if (task.status === 'idle') {
-      if (startPending) return;
-      setStartPending(true);
-      try {
-        const ok = await startTimer(task.id);
-        if (ok) {
-          await refreshToday(services);
-          navigation.navigate('Timer', { taskId: task.id });
-        } else {
-          const error = useTimerStore.getState().lastError;
-          if (error === 'ACTIVE_SESSION_EXISTS') {
-            setErrorMessage(uk.today.activeSessionError);
-          } else {
-            setErrorMessage(uk.today.startError);
-          }
-        }
-      } finally {
-        setStartPending(false);
-      }
-    } else {
-      navigation.navigate('Timer', { taskId: task.id });
-    }
+    // C3: explicit start — do NOT auto-start. Open the Timer screen in its
+    // IDLE/READY state; the child presses «Почати» there to begin the countdown.
+    navigation.navigate('Timer', { taskId: task.id });
   };
 
   const handleParentPress = () => {
@@ -106,7 +88,11 @@ export function TodayScreen({ navigation }: Props) {
 
       {errorMessage ? <NoticeBox tone="error" message={errorMessage} /> : null}
 
+      {/* Round-1 MED: the list reserves the bottom-right corner for the
+          floating companion (offset + target + 48dp) so a full-width
+          TaskCard can never end underneath it. */}
       <FlatList
+        testID="today-list"
         style={[styles.list, isLandscape && styles.listLandscape]}
         data={todayTasks}
         keyExtractor={(item) => String(item.id)}
@@ -117,7 +103,7 @@ export function TodayScreen({ navigation }: Props) {
             disabled={startPending}
           />
         )}
-        contentContainerStyle={styles.listContent}
+        contentContainerStyle={[styles.listContent, { paddingBottom: mascotBottomInset(width) }]}
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
             <AppText variant="body" style={styles.emptyText}>
