@@ -1,6 +1,6 @@
 /** @jest-environment node */
 import React from 'react';
-import { act, fireEvent } from '@testing-library/react-native';
+import { act, fireEvent, within } from '@testing-library/react-native';
 import { renderWithApp } from '../../../test/helpers/renderWithApp';
 import { createFakeClock } from '../../../test/helpers/fakeClock';
 import { createNodeDb } from '../../../test/helpers/nodeDb';
@@ -101,5 +101,31 @@ describe('F5 - emoji picker dialog (no system keyboard) + persistence', () => {
     // Seed task 1 ships with 📚 and the picker field shows it
     expect(await screen.findByDisplayValue('Читання')).toBeTruthy();
     expect(screen.getByTestId('task-emoji-field').props.accessibilityLabel).toContain('📚');
+
+    // Opening the picker must not disturb the saved selection: the grid lists
+    // the current emoji and cancelling closes the dialog untouched. Queries are
+    // scoped to the dialog because the top bar shares the «Скасувати» label.
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('task-emoji-field'));
+    });
+    const picker = screen.getByTestId('emoji-picker');
+    expect(within(picker).getByText(uk.taskCrud.emojiTitle)).toBeTruthy();
+    expect(within(picker).getByLabelText('📚')).toBeTruthy();
+
+    await act(async () => {
+      fireEvent.press(within(picker).getByLabelText(uk.taskCrud.cancel));
+    });
+    expect(screen.queryByText(uk.taskCrud.emojiTitle)).toBeNull();
+    expect(screen.getByTestId('task-emoji-field').props.accessibilityLabel).toContain('📚');
+
+    // Saving on the UPDATE path keeps the emoji in the record (F5 persistence)
+    await act(async () => {
+      fireEvent.press(screen.getByLabelText(uk.taskCrud.save));
+    });
+    expect(mockNav.goBack).toHaveBeenCalled();
+
+    const all = await services.tasksRepo.listAll();
+    const updated = all.find((t) => t.title === 'Читання');
+    expect(updated?.emoji).toBe('📚');
   });
 });
