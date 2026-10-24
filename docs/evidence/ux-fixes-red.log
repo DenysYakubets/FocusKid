@@ -1,0 +1,652 @@
+FAIL src/domain/stats/__tests__/calendar.test.ts
+  ● Test suite failed to run
+
+    Cannot find module '../../services/clock/wallClock' from 'src/domain/stats/__tests__/calendar.test.ts'
+
+      1 | import { createFakeClock } from '../../../../test/helpers/fakeClock';
+      2 | import { createNodeDb } from '../../../../test/helpers/nodeDb';
+    > 3 | import { systemWallClock, WallClock } from '../../services/clock/wallClock';
+        | ^
+      4 | import { migrate } from '../../services/db/migrations';
+      5 | import { seedIfEmpty } from '../../services/db/seed';
+      6 | import { createSessionsRepo } from '../../services/repos/sessionsRepo';
+
+      at Resolver._throwModNotFoundError (node_modules/jest-resolve/build/index.js:1031:11)
+      at Object.require (src/domain/stats/__tests__/calendar.test.ts:3:1)
+
+FAIL src/services/timer/__tests__/timerStop.test.ts
+  ● F3 - TimerService.stop() (child-initiated, no parent token) › terminates a running session without any parent token
+
+    TypeError: service.stop is not a function
+
+      46 |
+      47 |     // No token passed at all — this is the child-initiated path.
+    > 48 |     const stopped = await service.stop();
+         |                                   ^
+      49 |     expect(stopped.ok).toBe(true);
+      50 |     expect(stopped.ok && stopped.state.kind).toBe('Idle');
+      51 |
+
+      at Object.stop (src/services/timer/__tests__/timerStop.test.ts:48:35)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+  ● F3 - TimerService.stop() (child-initiated, no parent token) › terminates a paused session and appends a STOP audit event
+
+    TypeError: service.stop is not a function
+
+      68 |     clock.advance(60_000);
+      69 |
+    > 70 |     expect((await service.stop()).ok).toBe(true);
+         |                           ^
+      71 |     expect(service.getSnapshot().state.kind).toBe('Idle');
+      72 |
+      73 |     const row = await sessionsRepo.get(sessionId);
+
+      at Object.stop (src/services/timer/__tests__/timerStop.test.ts:70:27)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+  ● F3 - TimerService.stop() (child-initiated, no parent token) › rejects stop() when no session is running
+
+    TypeError: service.stop is not a function
+
+      86 |   it('rejects stop() when no session is running', async () => {
+      87 |     const { service } = await buildService();
+    > 88 |     const res = await service.stop();
+         |                               ^
+      89 |     expect(res.ok).toBe(false);
+      90 |     if (!res.ok) expect(res.error).toBe('INVALID_TRANSITION');
+      91 |   });
+
+      at Object.stop (src/services/timer/__tests__/timerStop.test.ts:88:31)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+  ● F3 - TimerService.stop() (child-initiated, no parent token) › an abandoned (stopped) session does not block starting the same task again
+
+    TypeError: service.stop is not a function
+
+      94 |     const { service } = await buildService();
+      95 |     await service.start(1);
+    > 96 |     expect((await service.stop()).ok).toBe(true);
+         |                           ^
+      97 |     const restarted = await service.start(1);
+      98 |     expect(restarted.ok).toBe(true);
+      99 |   });
+
+      at Object.stop (src/services/timer/__tests__/timerStop.test.ts:96:27)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+FAIL src/domain/timer/__tests__/fsm.stop.test.ts
+  ● F3 - child-initiated STOP transition › Running -> Idle on STOP with the ABANDONED effect
+
+    expect(received).toEqual(expected) // deep equality
+
+    - Expected  - 5
+    + Received  + 9
+
+      Object {
+    -   "effects": Array [
+    -     "ABANDONED",
+    -   ],
+    -   "ok": true,
+    +   "error": "INVALID_TRANSITION",
+    +   "ok": false,
+        "state": Object {
+    -     "kind": "Idle",
+    +     "addedMs": 0,
+    +     "kind": "Running",
+    +     "pauseCount": 0,
+    +     "pausedTotalMs": 0,
+    +     "runAccumMs": 0,
+    +     "runSince": 1000,
+    +     "targetMs": 60000,
+        },
+      }
+
+      25 |   it('Running -> Idle on STOP with the ABANDONED effect', () => {
+      26 |     const res = transition(running, { type: 'STOP', now: 5_000 });
+    > 27 |     expect(res).toEqual({ ok: true, state: { kind: 'Idle' }, effects: ['ABANDONED'] });
+         |                 ^
+      28 |   });
+      29 |
+      30 |   it('Paused -> Idle on STOP with the ABANDONED effect', () => {
+
+      at Object.toEqual (src/domain/timer/__tests__/fsm.stop.test.ts:27:17)
+
+  ● F3 - child-initiated STOP transition › Paused -> Idle on STOP with the ABANDONED effect
+
+    expect(received).toEqual(expected) // deep equality
+
+    - Expected  - 5
+    + Received  + 9
+
+      Object {
+    -   "effects": Array [
+    -     "ABANDONED",
+    -   ],
+    -   "ok": true,
+    +   "error": "INVALID_TRANSITION",
+    +   "ok": false,
+        "state": Object {
+    -     "kind": "Idle",
+    +     "addedMs": 0,
+    +     "kind": "Paused",
+    +     "pauseCount": 1,
+    +     "pausedSince": 2000,
+    +     "pausedTotalMs": 0,
+    +     "runAccumMs": 5000,
+    +     "targetMs": 60000,
+        },
+      }
+
+      30 |   it('Paused -> Idle on STOP with the ABANDONED effect', () => {
+      31 |     const res = transition(paused, { type: 'STOP', now: 5_000 });
+    > 32 |     expect(res).toEqual({ ok: true, state: { kind: 'Idle' }, effects: ['ABANDONED'] });
+         |                 ^
+      33 |   });
+      34 |
+      35 |   it('STOP is rejected in Idle and in Completed (nothing to stop / already awaiting parent)', () => {
+
+      at Object.toEqual (src/domain/timer/__tests__/fsm.stop.test.ts:32:17)
+
+  ● F3 - child-initiated STOP transition › STOP never reaches Completed/Verified from Running (INV-03 stays green)
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: true
+    Received: false
+
+      73 |   it('STOP never reaches Completed/Verified from Running (INV-03 stays green)', () => {
+      74 |     const res = transition(running, { type: 'STOP', now: 5_000 });
+    > 75 |     expect(res.ok).toBe(true);
+         |                    ^
+      76 |     if (res.ok) {
+      77 |       expect(res.state.kind).not.toBe('Completed');
+      78 |       expect(res.state.kind).not.toBe('Verified');
+
+      at Object.toBe (src/domain/timer/__tests__/fsm.stop.test.ts:75:20)
+
+FAIL src/domain/tasks/__tests__/emoji.test.ts
+  ● Test suite failed to run
+
+    Cannot find module '../emoji' from 'src/domain/tasks/__tests__/emoji.test.ts'
+
+    > 1 | import { EMOJI_OPTIONS, filterEmojis, searchIndex } from '../emoji';
+        | ^
+      2 |
+      3 | describe('F5 - curated emoji picker data', () => {
+      4 |   it('ships a curated kid-friendly list of 30-40 emojis across sport/study/chores/music', () => {
+
+      at Resolver._throwModNotFoundError (node_modules/jest-resolve/build/index.js:1031:11)
+      at Object.require (src/domain/tasks/__tests__/emoji.test.ts:1:1)
+
+FAIL src/ui/__tests__/appFrame.test.tsx
+  ● Test suite failed to run
+
+    Cannot find module '../components/AppFrame' from 'src/ui/__tests__/appFrame.test.tsx'
+
+      3 | import { StyleSheet } from 'react-native';
+      4 | import { render } from '@testing-library/react-native';
+    > 5 | import { AppFrame } from '../components/AppFrame';
+        | ^
+      6 | import { AppText } from '../components/AppText';
+      7 |
+      8 | describe('F2 - AppFrame keeps content clear of the system bars', () => {
+
+      at Resolver._throwModNotFoundError (node_modules/jest-resolve/build/index.js:1031:11)
+      at Object.require (src/ui/__tests__/appFrame.test.tsx:5:1)
+
+FAIL src/screens/__tests__/childTabs.test.tsx
+  ● Test suite failed to run
+
+    Cannot find module '../ChildTabsScreen' from 'src/screens/__tests__/childTabs.test.tsx'
+
+       7 | import { createNodeDb } from '../../../test/helpers/nodeDb';
+       8 | import { systemWallClock } from '../../services/clock/wallClock';
+    >  9 | import { ChildTabsScreen } from '../ChildTabsScreen';
+         | ^
+      10 | import { uk } from '../../i18n/uk';
+      11 |
+      12 | function flat(node: any) {
+
+      at Resolver._throwModNotFoundError (node_modules/jest-resolve/build/index.js:1031:11)
+      at Object.require (src/screens/__tests__/childTabs.test.tsx:9:1)
+
+FAIL src/screens/__tests__/calendarScreen.test.tsx
+  ● Test suite failed to run
+
+    Cannot find module '../CalendarScreen' from 'src/screens/__tests__/calendarScreen.test.tsx'
+
+       7 | import { createNodeDb } from '../../../test/helpers/nodeDb';
+       8 | import { systemWallClock, WallClock } from '../../services/clock/wallClock';
+    >  9 | import { CalendarScreen } from '../CalendarScreen';
+         | ^
+      10 | import { uk } from '../../i18n/uk';
+      11 | import { MIN_TOUCH_DP } from '../../ui/theme';
+      12 |
+
+      at Resolver._throwModNotFoundError (node_modules/jest-resolve/build/index.js:1031:11)
+      at Object.require (src/screens/__tests__/calendarScreen.test.tsx:9:1)
+
+FAIL src/screens/__tests__/taskEditEmojiPicker.test.tsx
+  ● Test suite failed to run
+
+    Cannot find module '../../domain/tasks/emoji' from 'src/screens/__tests__/taskEditEmojiPicker.test.tsx'
+
+       9 | import { TaskEditScreen } from '../TaskEditScreen';
+      10 | import { uk } from '../../i18n/uk';
+    > 11 | import { EMOJI_OPTIONS } from '../../domain/tasks/emoji';
+         | ^
+      12 |
+      13 | const fakeWall: WallClock = {
+      14 |   todayLocalDate: () => '2026-10-23',
+
+      at Resolver._throwModNotFoundError (node_modules/jest-resolve/build/index.js:1031:11)
+      at Object.require (src/screens/__tests__/taskEditEmojiPicker.test.tsx:11:1)
+
+FAIL src/screens/__tests__/timerStopFlow.test.tsx (11.742 s)
+  ● F3 - child-initiated STOP flow in the Timer screen › asks for confirmation in Ukrainian and only stops on «Так»
+
+    TypeError: Cannot set properties of undefined (setting 'lastIndex')
+
+      35 |
+      36 |     // 1. The child sees a stop control while the session runs
+    > 37 |     const stopButton = screen.getByLabelText(uk.timer.stop);
+         |                               ^
+      38 |     expect(stopButton).toBeTruthy();
+      39 |
+      40 |     // 2. Tapping it opens the confirm dialog (nothing stopped yet)
+
+      at matches (node_modules/@testing-library/react-native/src/matches.ts:27:22)
+      at matchAccessibilityLabel (node_modules/@testing-library/react-native/src/helpers/matchers/match-label-text.ts:12:17)
+      at node_modules/@testing-library/react-native/src/queries/label-text.ts:23:40
+      at queryAll (node_modules/test-renderer/src/query-all.ts:47:5)
+      at node_modules/test-renderer/src/query-all.ts:40:33
+          at Array.forEach (<anonymous>)
+      at queryAll (node_modules/test-renderer/src/query-all.ts:35:21)
+      at node_modules/test-renderer/src/query-all.ts:40:33
+          at Array.forEach (<anonymous>)
+      at queryAll (node_modules/test-renderer/src/query-all.ts:35:21)
+      at node_modules/test-renderer/src/query-all.ts:40:33
+          at Array.forEach (<anonymous>)
+      at queryAll (node_modules/test-renderer/src/query-all.ts:35:21)
+      at TestInstance.queryAll (node_modules/test-renderer/src/test-instance.ts:89:12)
+      at queryAll (node_modules/@testing-library/react-native/src/helpers/find-all.ts:23:24)
+      at node_modules/@testing-library/react-native/src/queries/label-text.ts:21:19
+      at Object.getFn [as getByLabelText] (node_modules/@testing-library/react-native/src/queries/make-queries.ts:154:48)
+      at Object.getByLabelText (src/screens/__tests__/timerStopFlow.test.tsx:37:31)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+  ● F3 - child-initiated STOP flow in the Timer screen › hides the stop control once the session completed (INV-03)
+
+    TypeError: Cannot set properties of undefined (setting 'lastIndex')
+
+      87 |     });
+      88 |
+    > 89 |     expect(screen.queryByText(uk.timer.stopTitle)).toBeNull();
+         |                   ^
+      90 |     expect(screen.queryByLabelText(uk.timer.stop)).toBeNull();
+      91 |     expect(screen.getByText(uk.timer.awaiting)).toBeTruthy();
+      92 |   });
+
+      at matches (node_modules/@testing-library/react-native/src/matches.ts:27:22)
+      at matchTextContent (node_modules/@testing-library/react-native/src/helpers/matchers/match-text-content.ts:21:17)
+      at node_modules/@testing-library/react-native/src/queries/text.ts:22:76
+      at queryAll (node_modules/test-renderer/src/query-all.ts:47:5)
+      at node_modules/test-renderer/src/query-all.ts:40:33
+          at Array.forEach (<anonymous>)
+      at queryAll (node_modules/test-renderer/src/query-all.ts:35:21)
+      at node_modules/test-renderer/src/query-all.ts:40:33
+          at Array.forEach (<anonymous>)
+      at queryAll (node_modules/test-renderer/src/query-all.ts:35:21)
+      at node_modules/test-renderer/src/query-all.ts:40:33
+          at Array.forEach (<anonymous>)
+      at queryAll (node_modules/test-renderer/src/query-all.ts:35:21)
+      at node_modules/test-renderer/src/query-all.ts:40:33
+          at Array.forEach (<anonymous>)
+      at queryAll (node_modules/test-renderer/src/query-all.ts:35:21)
+      at TestInstance.queryAll (node_modules/test-renderer/src/test-instance.ts:89:12)
+      at queryAll (node_modules/@testing-library/react-native/src/helpers/find-all.ts:23:24)
+      at queryAllByTextFn (node_modules/@testing-library/react-native/src/queries/text.ts:22:19)
+      at Object.singleQueryFn [as queryByText] (node_modules/@testing-library/react-native/src/queries/make-queries.ts:135:48)
+      at Object.queryByText (src/screens/__tests__/timerStopFlow.test.tsx:89:19)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+FAIL src/screens/__tests__/uxFixesLayout.test.tsx (13.49 s)
+  ● F4 - Save button lives at the bottom of the task form › renders Зберегти inside a bottom footer, not in the top bar
+
+    Unable to find an element with testID: taskedit-footer
+
+    [36m<RCTScrollView>[39m
+      [36m<View>[39m
+        [36m<View[39m
+          [33mtestID[39m=[32m"taskedit-topbar"[39m
+        [36m>[39m
+          [36m<View[39m
+            [33maccessibilityLabel[39m=[32m"Скасувати"[39m
+            [33maccessibilityRole[39m=[32m"button"[39m
+            [33maccessibilityState[39m=[32m{
+              {
+                "disabled": false,
+              }
+            }[39m
+            [33maccessible[39m=[32m{true}[39m
+          [36m>[39m
+            [36m<Text>[39m
+              [0m← Скасувати[0m
+            [36m</Text>[39m
+          [36m</View>[39m
+          [36m<Text[39m
+            [33maccessibilityRole[39m=[32m"header"[39m
+          [36m>[39m
+            [0mНове завдання[0m
+          [36m</Text>[39m
+          [36m<View[39m
+            [33maccessibilityLabel[39m=[32m"Зберегти"[39m
+            [33maccessibilityRole[39m=[32m"button"[39m
+            [33maccessibilityState[39m=[32m{
+              {
+                "disabled": false,
+              }
+            }[39m
+            [33maccessible[39m=[32m{true}[39m
+          [36m>[39m
+            [36m<Text>[39m
+              [0mЗберегти[0m
+            [36m</Text>[39m
+          [36m</View>[39m
+        [36m</View>[39m
+        [36m<View>[39m
+          [36m<Text>[39m
+            [0mНазва[0m
+          [36m</Text>[39m
+          [36m<TextInput[39m
+            [33mplaceholder[39m=[32m"Введіть назву завдання"[39m
+            [33mtestID[39m=[32m"task-title-input"[39m
+            [33mvalue[39m=[32m""[39m
+          [36m/>[39m
+        [36m</View>[39m
+        [36m<View>[39m
+          [36m<Text>[39m
+            [0mЕмодзі[0m
+          [36m</Text>[39m
+          [36m<TextInput[39m
+            [33mplaceholder[39m=[32m"📚"[39m
+            [33mtestID[39m=[32m"task-emoji-input"[39m
+            [33mvalue[39m=[32m""[39m
+          [36m/>[39m
+        [36m</View>[39m
+        [36m<View>[39m
+          [36m<Text>[39m
+            [0mТривалість (хвилин)[0m
+          [36m</Text>[39m
+          [36m<View[39m
+            [33mtestID[39m=[32m"taskedit-stepper"[39m
+          [36m>[39m
+            [36m<View[39m
+              [33maccessibilityLabel[39m=[32m"-5 хвилин"[39m
+              [33maccessibilityRole[39m=[32m"button"[39m
+              [33maccessibilityState[39m=[32m{
+                {
+                  "disabled": false,
+                }
+              }[39m
+              [33maccessible[39m=[32m{true}[39m
+            [36m>[39m
+              [36m<Text>[39m
+                [0m-5[0m
+              [36m</Text>[39m
+            [36m</View>[39m
+            [36m<View[39m
+              [33maccessibilityLabel[39m=[32m"-1 хвилина"[39m
+              [33maccessibilityRole[39m=[32m"button"[39m
+              [33maccessibilityState[39m=[32m{
+                {
+                  "disabled": false,
+                }
+              }[39m
+              [33maccessible[39m=[32m{true}[39m
+            [36m>[39m
+              [36m<Text>[39m
+                [0m-1[0m
+              [36m</Text>[39m
+            [36m</View>[39m
+            [36m<Text>[39m
+              [0m15 хв[0m
+            [36m</Text>[39m
+            [36m<View[39m
+              [33maccessibilityLabel[39m=[32m"+1 хвилина"[39m
+              [33maccessibilityRole[39m=[32m"button"[39m
+              [33maccessibilityState[39m=[32m{
+                {
+                  "disabled": false,
+                }
+              }[39m
+              [33maccessible[39m=[32m{true}[39m
+            [36m>[39m
+              [36m<Text>[39m
+                [0m+1[0m
+              [36m</Text>[39m
+            [36m</View>[39m
+            [36m<View[39m
+              [33maccessibilityLabel[39m=[32m"+5 хвилин"[39m
+              [33maccessibilityRole[39m=[32m"button"[39m
+              [33maccessibilityState[39m=[32m{
+                {
+                  "disabled": false,
+                }
+              }[39m
+              [33maccessible[39m=[32m{true}[39m
+            [36m>[39m
+              [36m<Text>[39m
+                [0m+5[0m
+              [36m</Text>[39m
+            [36m</View>[39m
+          [36m</View>[39m
+        [36m</View>[39m
+        [36m<View>[39m
+          [36m<Text>[39m
+            [0mДні виконання[0m
+          [36m</Text>[39m
+          [36m<View[39m
+            [33mtestID[39m=[32m"taskedit-weekdays"[39m
+          [36m>[39m
+            [36m<View[39m
+              [33maccessibilityLabel[39m=[32m"Пн: вибрано"[39m
+              [33maccessibilityRole[39m=[32m"button"[39m
+              [33maccessibilityState[39m=[32m{
+                {
+                  "disabled": false,
+                }
+              }[39m
+              [33maccessible[39m=[32m{true}[39m
+            [36m>[39m
+              [36m<Text>[39m
+                [0mПн[0m
+              [36m</Text>[39m
+            [36m</View>[39m
+            [36m<View[39m
+              [33maccessibilityLabel[39m=[32m"Вт: вибрано"[39m
+              [33maccessibilityRole[39m=[32m"button"[39m
+              [33maccessibilityState[39m=[32m{
+                {
+                  "disabled": false,
+                }
+              }[39m
+              [33maccessible[39m=[32m{true}[39m
+            [36m>[39m
+              [36m<Text>[39m
+                [0mВт[0m
+              [36m</Text>[39m
+            [36m</View>[39m
+            [36m<View[39m
+              [33maccessibilityLabel[39m=[32m"Ср: вибрано"[39m
+              [33maccessibilityRole[39m=[32m"button"[39m
+              [33maccessibilityState[39m=[32m{
+                {
+                  "disabled": false,
+                }
+              }[39m
+              [33maccessible[39m=[32m{true}[39m
+            [36m>[39m
+              [36m<Text>[39m
+                [0mСр[0m
+              [36m</Text>[39m
+            [36m</View>[39m
+            [36m<View[39m
+              [33maccessibilityLabel[39m=[32m"Чт: вибрано"[39m
+              [33maccessibilityRole[39m=[32m"button"[39m
+              [33maccessibilityState[39m=[32m{
+                {
+                  "disabled": false,
+                }
+              }[39m
+              [33maccessible[39m=[32m{true}[39m
+            [36m>[39m
+              [36m<Text>[39m
+                [0mЧт[0m
+              [36m</Text>[39m
+            [36m</View>[39m
+            [36m<View[39m
+              [33maccessibilityLabel[39m=[32m"Пт: вибрано"[39m
+              [33maccessibilityRole[39m=[32m"button"[39m
+              [33maccessibilityState[39m=[32m{
+                {
+                  "disabled": false,
+                }
+              }[39m
+              [33maccessible[39m=[32m{true}[39m
+            [36m>[39m
+              [36m<Text>[39m
+                [0mПт[0m
+              [36m</Text>[39m
+            [36m</View>[39m
+            [36m<View[39m
+              [33maccessibilityLabel[39m=[32m"Сб: вибрано"[39m
+              [33maccessibilityRole[39m=[32m"button"[39m
+              [33maccessibilityState[39m=[32m{
+                {
+                  "disabled": false,
+                }
+              }[39m
+              [33maccessible[39m=[32m{true}[39m
+            [36m>[39m
+              [36m<Text>[39m
+                [0mСб[0m
+              [36m</Text>[39m
+            [36m</View>[39m
+            [36m<View[39m
+              [33maccessibilityLabel[39m=[32m"Нд: вибрано"[39m
+              [33maccessibilityRole[39m=[32m"button"[39m
+              [33maccessibilityState[39m=[32m{
+                {
+                  "disabled": false,
+                }
+              }[39m
+              [33maccessible[39m=[32m{true}[39m
+            [36m>[39m
+              [36m<Text>[39m
+                [0mНд[0m
+              [36m</Text>[39m
+            [36m</View>[39m
+          [36m</View>[39m
+        [36m</View>[39m
+      [36m</View>[39m
+    [36m</RCTScrollView>[39m
+
+      45 |     );
+      46 |
+    > 47 |     const footer = screen.getByTestId('taskedit-footer');
+         |                           ^
+      48 |     expect(footer).toBeTruthy();
+      49 |
+      50 |     // The Save button must be a descendant of the footer...
+
+      at Object.getByTestId (src/screens/__tests__/uxFixesLayout.test.tsx:47:27)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+  ● F7 - PinPad is tighter (smaller keys, smaller gaps) › uses the small spacing step between keys and a compact key height
+
+    expect(received).toBeLessThanOrEqual(expected)
+
+    Expected: <= 8
+    Received:    12
+
+      93 |     const gap = rowStyle.gap ?? gridStyle.gap;
+      94 |     expect(gap).toBeDefined();
+    > 95 |     expect(gap).toBeLessThanOrEqual(8);
+         |                 ^
+      96 |
+      97 |     const key = flat(screen.getByLabelText(uk.pin.digit(1)));
+      98 |     expect(key.minHeight).toBeGreaterThanOrEqual(MIN_TOUCH_DP);
+
+      at Object.toBeLessThanOrEqual (src/screens/__tests__/uxFixesLayout.test.tsx:95:17)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+FAIL src/services/auth/__tests__/fastPinVerify.test.ts (16.25 s)
+  ● F1 - instant PIN verification (cheap KDF, no artificial delay) › default KDF cost is cheap and a single verify completes in well under 200ms
+
+    expect(received).toBeLessThanOrEqual(expected)
+
+    Expected: <= 1000
+    Received:    50000
+
+      23 |
+      24 |   it('default KDF cost is cheap and a single verify completes in well under 200ms', () => {
+    > 25 |     expect(PBKDF2_ITERATIONS).toBeLessThanOrEqual(1000);
+         |                               ^
+      26 |
+      27 |     const salt = new Uint8Array(16).fill(7);
+      28 |     const record = {
+
+      at Object.toBeLessThanOrEqual (src/services/auth/__tests__/fastPinVerify.test.ts:25:31)
+
+  ● F1 - instant PIN verification (cheap KDF, no artificial delay) › setupPin persists the fast iteration count and attempt() succeeds fast
+
+    expect(received).toBeLessThan(expected)
+
+    Expected: < 200
+    Received:   431
+
+      57 |     const started = performance.now();
+      58 |     expect(await service.attempt('1234')).toBe('SUCCESS');
+    > 59 |     expect(performance.now() - started).toBeLessThan(200);
+         |                                         ^
+      60 |   });
+      61 |
+      62 |   it('still verifies a legacy 50k-iteration record, then re-hashes it onto the fast path', async () => {
+
+      at Object.toBeLessThan (src/services/auth/__tests__/fastPinVerify.test.ts:59:41)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+  ● F1 - instant PIN verification (cheap KDF, no artificial delay) › still verifies a legacy 50k-iteration record, then re-hashes it onto the fast path
+
+    expect(received).toBeLessThan(expected)
+
+    Expected: < 200
+    Received:   440
+
+      89 |     const started = performance.now();
+      90 |     expect(await service.attempt('1234')).toBe('SUCCESS');
+    > 91 |     expect(performance.now() - started).toBeLessThan(200);
+         |                                         ^
+      92 |   });
+      93 |
+      94 |   it('keeps the lockout contract intact with the fast KDF (4 INVALID, 5th LOCKED)', async () => {
+
+      at Object.toBeLessThan (src/services/auth/__tests__/fastPinVerify.test.ts:91:41)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+Test Suites: 11 failed, 11 total
+Tests:       14 failed, 3 passed, 17 total
+Snapshots:   0 total
+Time:        16.985 s
