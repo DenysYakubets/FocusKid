@@ -79,24 +79,28 @@ describe('F4 - Save button lives at the bottom of the task form', () => {
   });
 });
 
-describe('F7 - PinPad is tighter (smaller keys, smaller gaps)', () => {
-  it('uses the small spacing step between keys and a compact key height', async () => {
+describe('C1 (was F7) - PinPad is a tight calculator-like cluster', () => {
+  it('uses the spec gap (8-12dp, both axes) and a compact key height', async () => {
     const screen = await render(
       <PinPad onComplete={jest.fn()} value="" onChange={jest.fn()} />
     );
 
     const grid = screen.getByTestId('pinpad-grid');
     const gridStyle = flat(grid);
-    const rowStyle = flat(grid.children[0]);
+    const cluster: any = grid.children[0];
+    const clusterStyle = flat(cluster);
+    const rowStyle = flat(cluster.children[0]);
 
-    // horizontal gap between digit keys must be the compact step, not 12dp
-    const gap = rowStyle.gap ?? gridStyle.gap;
+    // horizontal gap between digit keys: PIN_KEYPAD_SPEC §2 (8/10/12dp max)
+    const gap = rowStyle.gap ?? clusterStyle.gap ?? gridStyle.gap;
     expect(gap).toBeDefined();
-    expect(gap).toBeLessThanOrEqual(8);
+    expect(gap).toBeGreaterThanOrEqual(8);
+    expect(gap).toBeLessThanOrEqual(12);
 
     const key = flat(screen.getByLabelText(uk.pin.digit(1)));
     expect(key.minHeight).toBeGreaterThanOrEqual(MIN_TOUCH_DP);
-    expect(key.minHeight).toBeLessThanOrEqual(52);
+    // spec key sizes are 56/64/72dp — never taller than the 72dp breakpoint
+    expect(key.minHeight).toBeLessThanOrEqual(72);
 
     // keys must not be pushed apart vertically across the whole screen
     expect(gridStyle.justifyContent).not.toBe('space-evenly');
