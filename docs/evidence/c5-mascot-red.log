@@ -1,0 +1,37 @@
+FAIL src/ui/__tests__/mascotFloating.test.tsx
+  ● Test suite failed to run
+
+    Cannot find module '../components/MascotFloating' from 'src/ui/__tests__/mascotFloating.test.tsx'
+
+       7 | import { createNodeDb } from '../../../test/helpers/nodeDb';
+       8 | import { systemWallClock } from '../../services/clock/wallClock';
+    >  9 | import { MascotFloating } from '../components/MascotFloating';
+         | ^
+      10 | import { ChildTabsScreen } from '../../screens/ChildTabsScreen';
+      11 | import { PinGateScreen } from '../../screens/PinGateScreen';
+      12 | import { ParentHomeScreen } from '../../screens/ParentHomeScreen';
+
+      at Resolver._throwModNotFoundError (node_modules/jest-resolve/build/index.js:1031:11)
+      at Object.require (src/ui/__tests__/mascotFloating.test.tsx:9:1)
+
+FAIL src/screens/__tests__/mascotSelect.test.tsx
+  ● Test suite failed to run
+
+    Cannot find module '../MascotSelectScreen' from 'src/screens/__tests__/mascotSelect.test.tsx'
+
+       6 | import { createNodeDb } from '../../../test/helpers/nodeDb';
+       7 | import { systemWallClock } from '../../services/clock/wallClock';
+    >  8 | import { MascotSelectScreen } from '../MascotSelectScreen';
+         | ^
+       9 | import { useMascotStore } from '../../state/mascotStore';
+      10 | import { DEFAULT_MASCOT } from '../../ui/theme';
+      11 | import { uk } from '../../i18n/uk';
+
+      at Resolver._throwModNotFoundError (node_modules/jest-resolve/build/index.js:1031:11)
+      at Object.require (src/screens/__tests__/mascotSelect.test.tsx:8:1)
+
+Test Suites: 2 failed, 2 total
+Tests:       0 total
+Snapshots:   0 total
+Time:        2.094 s
+Ran all test suites matching src/screens/__tests__/mascotSelect.test.tsx|src/ui/__tests__/mascotFloating.test.tsx.
