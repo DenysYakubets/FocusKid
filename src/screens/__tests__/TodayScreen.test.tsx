@@ -90,7 +90,7 @@ describe('TodayScreen', () => {
     expect(idlePills.length).toBeGreaterThan(0);
   });
 
-  it('starts task and navigates when tapping an Idle task', async () => {
+  it('does NOT auto-start on tap (C3 explicit start) but still navigates to Timer', async () => {
     const db = createNodeDb();
     const clock = createFakeClock(1000);
 
@@ -104,11 +104,13 @@ describe('TodayScreen', () => {
       fireEvent.press(task1Button);
     });
 
+    // C3: navigate to Timer in READY state — no session started
     expect(mockNavigation.navigate).toHaveBeenCalledWith('Timer', { taskId: 1 });
-    expect(timerStore.getSnapshot().state.kind).toBe('Running');
+    expect(timerStore.getSnapshot().state.kind).toBe('Idle');
+    expect(timerStore.getSnapshot().sessionId).toBeNull();
   });
 
-  it('starting a second task while one is Running shows AS-05 error and does not navigate', async () => {
+  it('tapping a second task while one is Running still navigates (Timer handles ACTIVE_SESSION_EXISTS)', async () => {
     const db = createNodeDb();
     const clock = createFakeClock(1000);
 
@@ -123,16 +125,15 @@ describe('TodayScreen', () => {
     });
     mockNavigation.navigate.mockClear();
 
-    // Now tap Task 2 ("Домашнє завдання")
+    // Now tap Task 2 ("Домашнє завдання") — C3: navigate only, no start attempt
     const task2Button = await findByLabelText(/Домашнє завдання/);
     await act(async () => {
       fireEvent.press(task2Button);
     });
 
-    // Should NOT navigate to Task 2
-    expect(mockNavigation.navigate).not.toHaveBeenCalled();
-
-    // Should display AS-05 friendly error message
-    expect(await findByText(uk.today.activeSessionError)).toBeTruthy();
+    // C3: always navigate (the Timer screen's Start button handles conflicts)
+    expect(mockNavigation.navigate).toHaveBeenCalledWith('Timer', { taskId: 2 });
+    // No AS-05 error from TodayScreen — the error surface moved to Timer
+    expect(mockNavigation.navigate).not.toHaveBeenCalledWith('Timer', { taskId: 1 });
   });
 });

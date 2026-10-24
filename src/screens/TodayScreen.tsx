@@ -45,28 +45,9 @@ export function TodayScreen({ navigation }: Props) {
   const handleTaskPress = async (task: TodayTaskView) => {
     setErrorMessage(null);
 
-    if (task.status === 'idle') {
-      if (startPending) return;
-      setStartPending(true);
-      try {
-        const ok = await startTimer(task.id);
-        if (ok) {
-          await refreshToday(services);
-          navigation.navigate('Timer', { taskId: task.id });
-        } else {
-          const error = useTimerStore.getState().lastError;
-          if (error === 'ACTIVE_SESSION_EXISTS') {
-            setErrorMessage(uk.today.activeSessionError);
-          } else {
-            setErrorMessage(uk.today.startError);
-          }
-        }
-      } finally {
-        setStartPending(false);
-      }
-    } else {
-      navigation.navigate('Timer', { taskId: task.id });
-    }
+    // C3: explicit start — do NOT auto-start. Open the Timer screen in its
+    // IDLE/READY state; the child presses «Почати» there to begin the countdown.
+    navigation.navigate('Timer', { taskId: task.id });
   };
 
   const handleParentPress = () => {
