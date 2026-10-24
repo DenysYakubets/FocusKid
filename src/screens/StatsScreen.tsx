@@ -8,7 +8,6 @@ import { ParentGuard } from '../navigation/ParentGuard';
 import { WeekSummary, TaskStat } from '../domain/stats/aggregate';
 import { AppText } from '../ui/components/AppText';
 import { AppToolbar } from '../ui/components/AppToolbar';
-import { MascotFloating } from '../ui/components/MascotFloating';
 import { StatBar } from '../ui/components/StatBar';
 import { useOrientation } from '../ui/hooks/useOrientation';
 import { uk } from '../i18n/uk';
@@ -185,9 +184,11 @@ export function StatsScreen({ navigation }: Props) {
             {taskStats.length > 0 ? taskSectionNode : null}
           </ScrollView>
         )}
-
-        {/* C5: companion sits bottom-left here — charts own the right side. */}
-        <MascotFloating corner="bottom-left" />
+        {/* Round-1 MED / INV-05: no companion here. Statistics is a
+            parent-only screen — the C5 brief's "bottom-left Stats" contradicted
+            INV-05/AS-19 ("statistics are parent-only"), and the orchestrator
+            resolved it in favour of the invariant: the companion is a child-side
+            affordance only. Rationale recorded in docs/UX_FIXES_NOTES.md. */}
       </View>
     </ParentGuard>
   );

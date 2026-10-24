@@ -193,6 +193,7 @@ export const uk = {
     previewLabel: (name: string) => `Обраний персонаж: ${name}`,
     cardLabel: (name: string) => `${name} — персонаж`,
     floatingLabel: (name: string, mood: string) => `${name}, ${mood}`,
+    saveError: 'Не вдалося зберегти вибраного персонажа. Спробуйте ще раз.',
     moods: {
       happy: 'Щасливий',
       excited: 'Радісний',

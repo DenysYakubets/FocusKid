@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Image, ScrollView, StyleSheet, View, ViewStyle } from 'react-native';
 import { AppText } from '../ui/components/AppText';
+import { NoticeBox } from '../ui/components/NoticeBox';
 import { TapTarget } from '../ui/components/TapTarget';
 import { useMascot } from '../ui/hooks/useMascot';
 import { useScreenGutter } from '../ui/hooks/useScreenGutter';
@@ -30,11 +31,16 @@ export function MascotSelectScreen() {
   // Last tapped card wins the preview; before any tap the persisted choice is
   // shown (it may still be hydrating from the settings store).
   const [tapped, setTapped] = useState<MascotName | null>(null);
+  const [saveError, setSaveError] = useState(false);
   const shown = tapped ?? mascot;
 
   const handlePick = (name: MascotName) => {
     setTapped(name);
-    void select(name);
+    setSaveError(false);
+    // Round-1 LOW: select() rethrows when the settings write fails — catch it
+    // here (the store already rolled the visible choice back) instead of
+    // leaving an unhandled rejection.
+    void select(name).catch(() => setSaveError(true));
   };
 
   return (
@@ -50,6 +56,10 @@ export function MascotSelectScreen() {
           {uk.mascot.hint}
         </AppText>
       </View>
+
+      {saveError ? (
+        <NoticeBox testID="mascot-save-error" tone="error" message={uk.mascot.saveError} />
+      ) : null}
 
       <View
         testID="mascot-preview"

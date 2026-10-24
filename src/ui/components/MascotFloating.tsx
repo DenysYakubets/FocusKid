@@ -17,6 +17,33 @@ import { uk } from '../../i18n/uk';
 
 export type MascotCorner = 'bottom-right' | 'bottom-left' | 'top-right';
 
+/**
+ * Round-1 MED: vertical clearance a primary CTA must keep from the companion.
+ * The mascot is the last sibling of the child content area, so child
+ * scrollables reserve their own bottom corner instead of letting the last row
+ * (a TaskCard, a sheet button) render underneath it.
+ */
+export const MASCOT_CLEARANCE_DP = 48;
+
+/** Rendered target size: 64dp in the 320dp class, 72dp from 340dp up. */
+export function mascotSize(width: number): number {
+  return width < 340 ? 64 : 72;
+}
+
+/** Corner offset from the content edge (spacing.md compact, spacing.lg else). */
+export function mascotOffset(width: number): number {
+  return width < 340 ? spacing.md : spacing.lg;
+}
+
+/**
+ * Bottom inset (dp) a child scrollable must add so its last row ends at least
+ * MASCOT_CLEARANCE_DP above the companion's top edge:
+ * corner offset + target height + clearance.
+ */
+export function mascotBottomInset(width: number): number {
+  return mascotOffset(width) + mascotSize(width) + MASCOT_CLEARANCE_DP;
+}
+
 export interface MascotFloatingProps {
   /** Per-screen corner (MASCOT_DESIGN §6). Defaults to bottom-right. */
   corner?: MascotCorner;
@@ -35,8 +62,9 @@ export interface MascotFloatingProps {
  * - tapping cycles the mood happy -> excited -> neutral -> sleepy with a small
  *   bounce; the TalkBack label announces the current mood.
  * - a subtle 250ms entrance fade/scale, skipped entirely under reduce motion.
- * - never rendered on PIN/parent screens: only the child shell, Timer and
- *   Stats mount it (INV-05).
+ * - never rendered on PIN/parent screens: only the child shell (with its
+ *   bottom content inset / hidden behind the Calendar day sheet) and the Timer
+ *   mount it (INV-05 — Stats is parent-only and must NOT show it).
  */
 export function MascotFloating({
   corner = 'bottom-right',
@@ -47,8 +75,8 @@ export function MascotFloating({
   const { width, height } = useScreenGutter();
   const insets = useSafeAreaInsets();
 
-  const size = width < 340 ? 64 : 72;
-  const offset = width < 340 ? spacing.md : spacing.lg;
+  const size = mascotSize(width);
+  const offset = mascotOffset(width);
 
   const [mood, setMood] = useState<MascotMood>('happy');
   const [reduceMotion, setReduceMotion] = useState(false);

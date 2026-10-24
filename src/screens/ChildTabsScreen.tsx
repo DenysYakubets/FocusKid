@@ -29,10 +29,12 @@ const TABS: readonly BottomNavTab<ChildTabKey>[] = [
  * C5: a third tab opens the mascot selection screen, and the floating
  * companion overlays the content tabs (bottom-right, above the tab bar). The
  * companion is NOT rendered on the selection tab — the roster is the focus
- * there (MASCOT_DESIGN §6).
+ * there (MASCOT_DESIGN §6) — and NOT while the Calendar day sheet is open,
+ * whose right-aligned «Перевірити» lives in the mascot's corner (round-1 MED).
  */
 export function ChildTabsScreen({ route, navigation }: Props) {
   const [tab, setTab] = useState<ChildTabKey>('tasks');
+  const [dayDetailOpen, setDayDetailOpen] = useState(false);
 
   return (
     <View testID="child-tabs" style={styles.root}>
@@ -40,12 +42,18 @@ export function ChildTabsScreen({ route, navigation }: Props) {
         {tab === 'tasks' ? (
           <TodayScreen route={route} navigation={navigation} />
         ) : tab === 'calendar' ? (
-          <CalendarScreen route={route} navigation={navigation} />
+          <CalendarScreen
+            route={route}
+            navigation={navigation}
+            onDayDetailChange={setDayDetailOpen}
+          />
         ) : (
           <MascotSelectScreen />
         )}
 
-        {tab === 'mascot' ? null : <MascotFloating corner="bottom-right" />}
+        {tab === 'mascot' || dayDetailOpen ? null : (
+          <MascotFloating corner="bottom-right" />
+        )}
       </View>
       <BottomNav
         testID="child-tab-bar"

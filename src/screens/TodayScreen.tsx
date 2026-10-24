@@ -11,6 +11,7 @@ import { AppText } from '../ui/components/AppText';
 import { NoticeBox } from '../ui/components/NoticeBox';
 import { StatusChip } from '../ui/components/StatusChip';
 import { CONTENT_MAX_WIDTH, useScreenGutter } from '../ui/hooks/useScreenGutter';
+import { mascotBottomInset } from '../ui/components/MascotFloating';
 import { uk } from '../i18n/uk';
 import { colors, spacing } from '../ui/theme';
 import { TodayTaskView } from '../domain/tasks/types';
@@ -19,7 +20,7 @@ type Props = NativeStackScreenProps<RootStackParamList, 'Today'>;
 
 export function TodayScreen({ navigation }: Props) {
   const services = useServices();
-  const { gutter, isLandscape } = useScreenGutter();
+  const { width, gutter, isLandscape } = useScreenGutter();
 
   const todayTasks = useTasksStore((s) => s.todayTasks);
   const refreshToday = useTasksStore((s) => s.refreshToday);
@@ -87,7 +88,11 @@ export function TodayScreen({ navigation }: Props) {
 
       {errorMessage ? <NoticeBox tone="error" message={errorMessage} /> : null}
 
+      {/* Round-1 MED: the list reserves the bottom-right corner for the
+          floating companion (offset + target + 48dp) so a full-width
+          TaskCard can never end underneath it. */}
       <FlatList
+        testID="today-list"
         style={[styles.list, isLandscape && styles.listLandscape]}
         data={todayTasks}
         keyExtractor={(item) => String(item.id)}
@@ -98,7 +103,7 @@ export function TodayScreen({ navigation }: Props) {
             disabled={startPending}
           />
         )}
-        contentContainerStyle={styles.listContent}
+        contentContainerStyle={[styles.listContent, { paddingBottom: mascotBottomInset(width) }]}
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
             <AppText variant="body" style={styles.emptyText}>

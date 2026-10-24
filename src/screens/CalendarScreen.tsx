@@ -18,7 +18,14 @@ import { useScreenGutter } from '../ui/hooks/useScreenGutter';
 import { uk } from '../i18n/uk';
 import { MIN_TOUCH_DP, colors, radius, shadows, spacing } from '../ui/theme';
 
-type Props = NativeStackScreenProps<RootStackParamList, 'Today'>;
+type Props = NativeStackScreenProps<RootStackParamList, 'Today'> & {
+  /**
+   * Round-1 MED: the child shell hides the floating companion while the
+   * day-detail sheet is open — its right-aligned «Перевірити» sits exactly in
+   * the mascot's bottom-right corner.
+   */
+  onDayDetailChange?: (open: boolean) => void;
+};
 
 /**
  * F6: the Calendar tab of the child flow. Data comes from the existing
@@ -27,7 +34,7 @@ type Props = NativeStackScreenProps<RootStackParamList, 'Today'>;
  * earned this week / this month. Approving always routes through the parent
  * PIN gate (INV-05); this screen never verifies anything by itself.
  */
-export function CalendarScreen({ navigation }: Props) {
+export function CalendarScreen({ navigation, onDayDetailChange }: Props) {
   const { statsService, wall } = useServices();
   const { gutter, isLandscape } = useScreenGutter();
 
@@ -69,6 +76,13 @@ export function CalendarScreen({ navigation }: Props) {
   useEffect(() => {
     void reload();
   }, [reload]);
+
+  // Round-1 MED: tell the child shell whether the day sheet (and its
+  // right-aligned «Перевірити») is on screen so it can hide the companion.
+  useEffect(() => {
+    onDayDetailChange?.(selectedDay !== null);
+    return () => onDayDetailChange?.(false);
+  }, [onDayDetailChange, selectedDay]);
 
   useEffect(() => {
     const unsubscribe = navigation.addListener?.('focus', () => {
