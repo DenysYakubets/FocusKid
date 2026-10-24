@@ -53,7 +53,9 @@ export function TaskCard({ task, onPress, disabled }: TaskCardProps) {
   const minutesLabel = formatMinutesUk(task.targetMinutes);
   // C4: show '2/3' style progress only when the task has a target > 1 per day.
   const targetPerDay = task.targetPerDay ?? 1;
-  const completedToday = task.completedToday ?? 0;
+  // Round-1 LOW: the parent may lower the target below what is already
+  // completed today — clamp so the label can never read '4/3'.
+  const completedToday = Math.min(task.completedToday ?? 0, targetPerDay);
   const showProgress = targetPerDay > 1;
   const progressLabel = `${completedToday}/${targetPerDay}`;
   const isDoneToday = showProgress && completedToday >= targetPerDay;

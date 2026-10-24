@@ -59,6 +59,10 @@ export function createTasksRepo(db: Db): TasksRepo {
   return {
     async listToday(localDate: string, weekdayIdx: number): Promise<TodayTaskView[]> {
       const weekdayMask = 1 << weekdayIdx;
+      // One row per task even when several non-abandoned runs exist on the
+      // day (C4, round-1 HIGH): the LEFT JOIN targets the LATEST of today's
+      // runs via a correlated subquery — a plain join would duplicate the task
+      // card once per run.
       const rows = await db.all<TodayTaskRow>(
         `SELECT t.id, t.title, t.emoji, t.target_minutes, t.days_mask, t.sort_order, t.archived, t.created_at, t.updated_at,
                 t.target_per_day,
@@ -67,7 +71,11 @@ export function createTasksRepo(db: Db): TasksRepo {
                   WHERE sc.task_id = t.id AND sc.local_date = ?
                     AND sc.status IN ('completed', 'verified')) AS completed_today
          FROM tasks t
-         LEFT JOIN sessions s ON s.task_id = t.id AND s.local_date = ? AND s.status <> 'abandoned'
+         LEFT JOIN sessions s ON s.id = (
+           SELECT s2.id FROM sessions s2
+           WHERE s2.task_id = t.id AND s2.local_date = ? AND s2.status <> 'abandoned'
+           ORDER BY s2.id DESC LIMIT 1
+         )
          WHERE t.archived = 0 AND (t.days_mask & ?) <> 0
          ORDER BY t.sort_order ASC, t.id ASC;`,
         [localDate, localDate, weekdayMask]
