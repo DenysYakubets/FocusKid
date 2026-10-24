@@ -16,6 +16,8 @@ import { SessionRow } from '../services/repos/sessionsRepo';
 import { restore } from '../services/timer/timerService';
 import { useServices } from '../state/appServices';
 import { useTimerStore } from '../state/timerStore';
+import { useMascotStore } from '../state/mascotStore';
+import { playCompletionJingle } from '../audio/celebrationSound';
 import { AppButton } from '../ui/components/AppButton';
 import { AppText } from '../ui/components/AppText';
 import { NoticeBox } from '../ui/components/NoticeBox';
@@ -35,7 +37,7 @@ type Props = NativeStackScreenProps<RootStackParamList, 'Timer'>;
 const STACK_ACTION_COLUMN_DP = 260;
 
 export function TimerScreen({ route, navigation }: Props) {
-  const { clock, tasksRepo, sessionsRepo, wall } = useServices();
+  const { clock, tasksRepo, sessionsRepo, settingsRepo, wall } = useServices();
   const { width, gutter, isLandscape } = useScreenGutter();
 
   const snapshot = useTimerStore((s) => s.snapshot);
@@ -198,8 +200,20 @@ export function TimerScreen({ route, navigation }: Props) {
       AccessibilityInfo.announceForAccessibility(uk.timer.autoResumed);
     } else if (prev !== 'Completed' && current === 'Completed') {
       AccessibilityInfo.announceForAccessibility(uk.timer.completedAnnouncement);
+      // C8 (JINGLE_DESIGN §3.2): the mascot's jingle on a LIVE completion.
+      // This child screen is the only place the trigger exists — parent/PIN
+      // screens never mount TimerScreen, so playback can't fire there (INV-05).
+      if (isLive) {
+        void playCompletionJingle(settingsRepo, useMascotStore.getState().mascot);
+      }
+    } else if (prev !== 'Verified' && current === 'Verified') {
+      // Verified lands while the child's Timer is mounted too (parent approval
+      // of the very session being watched) — same jingle, still child-only.
+      if (isLive) {
+        void playCompletionJingle(settingsRepo, useMascotStore.getState().mascot);
+      }
     }
-  }, [displayState.kind]);
+  }, [displayState.kind, isLive, settingsRepo]);
 
   useEffect(() => {
     if (displayState.kind === 'Running') {
