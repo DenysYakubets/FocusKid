@@ -56,10 +56,17 @@ export function TimerScreen({ route, navigation }: Props) {
   const loadSeqRef = useRef(0);
   const restoredBaseRef = useRef<{ key: string; base: number }>({ key: '', base: 0 });
   // C9: celebration fires exactly once per live Completed/Verified transition.
-  // `celebratedSessionId` guards against re-render re-triggers (the overlay
-  // stays mounted until the flight finishes, then unmounts).
+  //  - `celebratedSessionId` drives the overlay (non-null = mounted);
+  //  - `celebratedRef` remembers WHICH session already flew — `onFinished`
+  //    clears only the state, never this ref, so the render-phase block cannot
+  //    re-arm the overlay after the flight (round-1 MED);
+  //  - `celebrationInitRef` makes the FIRST render record-only: a screen that
+  //    mounts onto an already-Completed/Verified snapshot never flies again
+  //    (round-1 LOW — mirrors how the jingle's prev-kind ref init prevents a
+  //    re-fire on remount).
   const [celebratedSessionId, setCelebratedSessionId] = useState<number | null>(null);
   const celebratedRef = useRef<number | null>(null);
+  const celebrationInitRef = useRef(false);
 
   useEffect(() => {
     let isMounted = true;
@@ -246,7 +253,13 @@ export function TimerScreen({ route, navigation }: Props) {
   // Trigger synchronously during render (not in useEffect) so the overlay is
   // present in the same commit the state flips to Completed — the test queries
   // right after `await timerStore.tick()` inside act().
-  if (celebrateSessionId !== null && celebratedRef.current !== celebrateSessionId) {
+  if (!celebrationInitRef.current) {
+    // First render: RECORD only, never fire. A screen mounted while the
+    // snapshot is already Completed/Verified (leaving to Today and back)
+    // must not replay a flight that already happened (round-1 LOW).
+    celebrationInitRef.current = true;
+    celebratedRef.current = celebrateSessionId;
+  } else if (celebrateSessionId !== null && celebratedRef.current !== celebrateSessionId) {
     celebratedRef.current = celebrateSessionId;
     setCelebratedSessionId(celebrateSessionId);
   } else if (celebrateSessionId === null && celebratedRef.current !== null) {
@@ -255,8 +268,12 @@ export function TimerScreen({ route, navigation }: Props) {
   }
 
   const handleCelebrationFinished = useCallback(() => {
+    // Round-1 MED: unmount the overlay after the flight. `celebratedRef` keeps
+    // the session id on purpose — the render-phase block above then sees
+    // "already celebrated" and does NOT re-arm it (it used to, which parked a
+    // static duplicate mascot on MascotFloating's corner for the whole
+    // Completed/Verified state, permanently so for reduce-motion users).
     setCelebratedSessionId(null);
-    celebratedRef.current = null;
   }, []);
 
   const isCelebrating = celebratedSessionId !== null;

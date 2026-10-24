@@ -133,19 +133,33 @@ export function MascotSelectScreen() {
           >
             <AppText variant="bodyLarge">+</AppText>
           </TapTarget>
+          {/* JINGLE_DESIGN §3.3 testID table: Test is disabled ONLY when
+              `jingle_enabled === false` (round-1 LOW — the extra volume === 0
+              gate was an undocumented deviation; volume 0 simply plays
+              silence). */}
           <TapTarget
             accessibilityRole="button"
             accessibilityLabel={uk.mascot.jingleTest}
             testID="jingle-test"
             size="sm"
             style={styles.jingleButton}
-            disabled={!enabled || volume === 0}
+            disabled={!enabled}
             onPress={handleJingleTest}
           >
             <AppText variant="bodyLarge">{uk.mascot.jingleTest}</AppText>
           </TapTarget>
         </View>
       </View>
+
+      {/* Round-1 LOW: the disabled-jingle state gets a visible notice —
+          `uk.mascot.jingleDisabled` was a dead string until now. */}
+      {!enabled ? (
+        <NoticeBox
+          testID="jingle-disabled"
+          tone="info"
+          message={uk.mascot.jingleDisabled}
+        />
+      ) : null}
 
       {jingleSaveError ? (
         <NoticeBox

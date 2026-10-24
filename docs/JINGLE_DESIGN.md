@@ -402,6 +402,16 @@ python3 scripts/gen_jingles.py
 python3 scripts/verify_jingles.py   # exits 0 only if all 7 pass every constraint
 ```
 
+Both scripts resolve `sfx/jingles/` relative to the repo root and take an
+optional directory argument (generator: output dir, verifier: asset dir), so a
+byte-identical regeneration can be diff-checked without touching the committed
+assets:
+
+```bash
+python3 scripts/gen_jingles.py /tmp/jingle-check && diff -r sfx/jingles /tmp/jingle-check
+python3 scripts/verify_jingles.py /tmp/jingle-check
+```
+
 ---
 
 **Spec complete.** Assets generated and verified; no application code, no

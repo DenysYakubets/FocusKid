@@ -6,20 +6,29 @@ import { useMascot } from '../hooks/useMascot';
 import { mascotOffset, mascotSize } from './MascotFloating';
 import { mascotColor } from '../mascotRoster';
 import { motion, radius, spacing } from '../theme';
+import { uk } from '../../i18n/uk';
 
 /**
  * C9: the mascot celebration flight (INV-04 — gentle, non-jarring).
  *
  * - `pointerEvents="box-none"` overlay: passes every touch through, never
  *   blocks the Timer's buttons (INV-04/INV-10 non-blocking).
+ * - Exposed to assistive tech: `accessible` + `uk.mascot.celebrationLabel`
+ *   (round-1 LOW — decorative does not mean invisible to a screen reader).
  * - Fires **once per completion**: the parent (`TimerScreen`) mounts it only
- *   when the FSM reaches `Completed`/`Verified` from a LIVE transition and
- *   removes it after the flight finishes; re-renders while still `Completed`
- *   keep the same instance (React reconciliation, keyed by sessionId).
+ *   when a LIVE session reaches `Completed`/`Verified` (never on a remount
+ *   that starts on an already-Completed snapshot) and removes it once the
+ *   flight settles — `onFinished` is the single "settle the UI" signal and is
+ *   fired on BOTH outcomes (finished or interrupted) so no frozen duplicate
+ *   mascot is ever left parked on MascotFloating's corner (round-1 MED).
  * - A short (~1.8s) arc across the screen and back to the resting corner,
- *   ease-in-out, with a scale/rotate pulse — skipped entirely under reduce
- *   motion (the overlay still renders so the trigger is observable, but no
- *   Animated work runs).
+ *   ease-in-out, with a scale/rotate pulse.
+ * - Round-1 HIGH: reduce motion is resolved BEFORE anything is committed. The
+ *   async `AccessibilityInfo.isReduceMotionEnabled()` answer gates the start
+ *   effect (`motion` state), so the flight can never begin while the answer is
+ *   in flight, and the reduce branch stays reachable (`startedRef` is only
+ *   latched once the query has settled). Under reduce motion the overlay still
+ *   mounts — so the trigger stays observable — but no `Animated` work runs.
  * - Decorative motion is skipped under `NODE_ENV=test` (same gate as
  *   `MascotFloating`) so jest never sees async Animated updates.
  */
@@ -38,7 +47,13 @@ export function MascotCelebration({
 }: MascotCelebrationProps) {
   const { mascot } = useMascot();
   const insets = useSafeAreaInsets();
-  const [reduceMotion, setReduceMotion] = useState(false);
+  // Round-1 HIGH: one state object so `queried` and `reduce` always land in
+  // the same commit — the start effect can never see "queried, reduce=false"
+  // for one render and start the arc before the answer is really in.
+  const [motion, setMotion] = useState<{ queried: boolean; reduce: boolean }>({
+    queried: false,
+    reduce: false,
+  });
 
   const progress = useRef(new Animated.Value(0)).current;
   const scale = useRef(new Animated.Value(1)).current;
@@ -50,26 +65,42 @@ export function MascotCelebration({
   const size = 64;
   const offset = spacing.md;
 
+  // Effect 1: resolve reduce motion FIRST. `motion.queried` flips only when
+  // the promise settles (a missing/throwing API means "assume motion is
+  // allowed"), and nothing is committed before that.
   useEffect(() => {
-    let mounted = true;
+    let active = true;
+    const settle = (reduce: boolean) => {
+      if (!active) return;
+      setMotion({ queried: true, reduce });
+    };
     try {
-      const pending = AccessibilityInfo.isReduceMotionEnabled();
-      void pending.then((enabled) => {
-        if (mounted) setReduceMotion(Boolean(enabled));
-      });
+      const pending: unknown = AccessibilityInfo.isReduceMotionEnabled();
+      if (pending && typeof (pending as Promise<boolean>).then === 'function') {
+        void (pending as Promise<boolean>).then(
+          (enabled) => settle(Boolean(enabled)),
+          () => settle(false)
+        );
+      } else {
+        settle(Boolean(pending));
+      }
     } catch {
       // Platform without the API: assume motion is allowed.
+      settle(false);
     }
     return () => {
-      mounted = false;
+      active = false;
     };
   }, []);
 
+  // Effect 2: the flight itself — unreachable until the query has settled
+  // (`motion.queried`), which is what keeps the reduce branch reachable and
+  // stops the arc from starting ahead of the answer.
   useEffect(() => {
-    if (startedRef.current) return;
+    if (!motion.queried || startedRef.current) return;
     startedRef.current = true;
 
-    if (reduceMotion || !motionEnabled) {
+    if (motion.reduce || !motionEnabled) {
       // Respect reduced motion: no flight; still signal completion so the
       // parent can settle the UI without waiting on an animation that will
       // never run.
@@ -80,7 +111,7 @@ export function MascotCelebration({
     const duration = 1800; // ~1.5–2.5s window, gentle arc
     const easing = Easing.inOut(Easing.ease);
 
-    Animated.parallel([
+    const flight = Animated.parallel([
       Animated.timing(progress, {
         toValue: 1,
         duration,
@@ -115,10 +146,22 @@ export function MascotCelebration({
           useNativeDriver: false,
         }),
       ]),
-    ]).start(({ finished }) => {
-      if (finished) onFinished?.();
+    ]);
+
+    let active = true;
+    flight.start(() => {
+      // Round-1 MED: settle the parent on ANY end of the one-shot flight
+      // (finished OR interrupted) — a silent callback used to leave a static
+      // duplicate mascot parked over MascotFloating for the whole Completed
+      // state. The guard keeps an unmount-triggered stop from calling back
+      // into a parent that is already tearing down.
+      if (active) onFinished?.();
     });
-  }, [motionEnabled, onFinished, progress, reduceMotion, rotate, scale]);
+    return () => {
+      active = false;
+      flight.stop();
+    };
+  }, [motion, motionEnabled, onFinished, progress, rotate, scale]);
 
   // Arc: start at the resting corner (top-right), dip down-left mid-flight,
   // return to rest. translateX in dp — width comes from useWindowDimensions.
@@ -137,10 +180,16 @@ export function MascotCelebration({
   });
 
   return (
-    <View testID={testID} pointerEvents="box-none" style={[styles.wrapper, {
-      top: spacing.xl + 56 + spacing.md + insets.top,
-      right: offset + insets.right,
-    }]}>
+    <View
+      testID={testID}
+      pointerEvents="box-none"
+      accessible
+      accessibilityLabel={uk.mascot.celebrationLabel}
+      style={[styles.wrapper, {
+        top: spacing.xl + 56 + spacing.md + insets.top,
+        right: offset + insets.right,
+      }]}
+    >
       <Animated.View
         style={{
           transform: [
