@@ -215,3 +215,60 @@ Gates (direct runs, no pipes): `npx tsc --noEmit` → `TSC_EXIT=0`;
 
 Commits: `test(review): … (RED)` → `fix(timer):` → `fix(tasks):` → `fix(mascot):` → `chore:`. Branch
 pushed only — no PR, no merge.
+
+
+## Celebration round (`feat/celebration`) — C9 + C6
+
+RED evidence: `docs/evidence/celebration-red.log` — 2 suites / 4 tests failed on the
+pre-fix tree (`JEST_EXIT=1`), one failing test per assertion. GREEN:
+`docs/evidence/celebration-green-1.log` / `-green-2.log` — **73 suites / 282 tests**,
+`JEST_EXIT=0` twice (direct runs, no pipes/tee). `npx tsc --noEmit` → `TSC_EXIT=0`;
+`bash scripts/check-invariants.sh` → `INV_EXIT=0` (`celebration-invariants.log`).
+
+### C9 — mascot celebration flight (INV-04 gentle, non-jarring)
+- New `src/ui/components/MascotCelebration.tsx`: one-shot overlay, `pointerEvents="box-none"`
+  (passes every touch through — never blocks Timer buttons), 1.8s ease-in-out arc across the
+  screen and back to the resting corner with a scale/rotate pulse on the `excited` mood.
+  Skipped entirely under `AccessibilityInfo.isReduceMotionEnabled()` (the overlay still renders
+  so the trigger is observable, but no Animated work runs) and under `NODE_ENV=test` (same gate
+  as `MascotFloating`, so jest never sees async Animated updates).
+- Trigger: `TimerScreen` mounts the overlay only when a **LIVE** session (`isLive=true`, i.e.
+  the store snapshot, not the cold-start `routeSession` restore) reaches `Completed`/`Verified`.
+  The `celebratedRef`/`celebratedSessionId` pair makes it **exactly once per session** — re-renders
+  while still `Completed` keep the same instance (keyed by sessionId), and a second completion of
+  the same session would need a new sessionId. After the flight finishes the overlay unmounts.
+- INV-05: `PinGateScreen` / `ParentHomeScreen` never mount `MascotCelebration` (asserted by
+  `queryByTestId('mascot-celebration') === null` in the RED test).
+
+### C6 — pluggable timer-complete jingle hook (volume from settings)
+- New `src/audio/celebrationSound.ts`:
+  - `getJingleVolume(settingsRepo)` reads the `jingle_volume` key from the SQLite `settings`
+    table (INV-07), default **0.5** when the row is absent or malformed, clamped to `[0, 1]`.
+  - `onTimerComplete(cb)` / `emitTimerComplete(payload)` — a module-level `Set` of listeners;
+    returns an unsubscribe. `timerStore` subscribes once and fires **exactly once per Completed
+    transition** (`prev.kind !== 'Completed' && next.kind === 'Completed'`), so hydrate/setService
+    (which start FROM `Completed`) never re-emit. Listener errors are swallowed so a broken
+    listener can never break the completion path (INV-04).
+  - `playCelebrationSound(mascot, volume)` — pluggable player, default impl is a guarded dynamic
+    `require('expo-audio')` → `require('expo-av')` behind nested try/catch. **Zero new deps**: neither
+    module is installed on this branch (both are in `expo`'s `bundledNativeModules.json` but not in
+    `package.json`), so the default is a silent no-op and the app never crashes. The follow-up
+    commit drops in WAV assets per `docs/JINGLE_DESIGN.md` (absent on this branch) and swaps the impl.
+- Wired: `timerStore` subscribes to `onTimerComplete` at module scope; `TimerScreen` mounts
+  `MascotCelebration` on the same transition. The two are independent — the jingle fires even
+  if the animation is skipped (reduce motion), and vice versa.
+
+### Tests (RED → GREEN)
+- `src/screens/__tests__/mascotCelebration.test.tsx` — celebration fires exactly once on
+  `Completed` (not `Running`/`Paused`), overlay is `box-none`, re-render does not spawn a second,
+  and the overlay is absent on `PinGate`/`ParentHome` (INV-05).
+- `src/screens/__tests__/jingleHook.test.tsx` — `getJingleVolume` returns 0.5 when the row is
+  absent and the custom `0.75` when set; `onTimerComplete` emits exactly once on `Completed`
+  (not on `Running`/`Paused`); `playCelebrationSound` and `onTimerComplete` are functions
+  (pluggable interface).
+- Both suites share the `mockNavigation` pattern with `addListener: jest.fn(() => () => {})`
+  (the previous `mockNavigation` lacked it, causing `ParentHomeScreen`'s focus listener to throw).
+
+Commits: `test(celebration): RED` → `feat(celebration): C9 flight + C6 jingle hook`. Branch
+pushed only — no PR, no merge.
+

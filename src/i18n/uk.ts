@@ -209,5 +209,7 @@ export const uk = {
       Glow: 'М’яке світіння, що освітлює статистику й досягнення',
       Spark: 'Маленька зірка, що запалює мотивацію у складні моменти',
     },
+    // C9: celebration flight a11y label (INV-04 gentle — announced once).
+    celebrationLabel: 'Святкування завершення',
   },
 } as const;

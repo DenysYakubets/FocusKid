@@ -22,6 +22,7 @@ import { NoticeBox } from '../ui/components/NoticeBox';
 import { ProgressBar } from '../ui/components/ProgressBar';
 import { AppToolbar } from '../ui/components/AppToolbar';
 import { MascotFloating } from '../ui/components/MascotFloating';
+import { MascotCelebration } from '../ui/components/MascotCelebration';
 import { formatMinutesUk } from '../ui/components/TaskCard';
 import { useScreenGutter } from '../ui/hooks/useScreenGutter';
 import { uk } from '../i18n/uk';
@@ -52,6 +53,11 @@ export function TimerScreen({ route, navigation }: Props) {
   const [showStopDialog, setShowStopDialog] = useState(false);
   const loadSeqRef = useRef(0);
   const restoredBaseRef = useRef<{ key: string; base: number }>({ key: '', base: 0 });
+  // C9: celebration fires exactly once per live Completed/Verified transition.
+  // `celebratedSessionId` guards against re-render re-triggers (the overlay
+  // stays mounted until the flight finishes, then unmounts).
+  const [celebratedSessionId, setCelebratedSessionId] = useState<number | null>(null);
+  const celebratedRef = useRef<number | null>(null);
 
   useEffect(() => {
     let isMounted = true;
@@ -216,6 +222,30 @@ export function TimerScreen({ route, navigation }: Props) {
   const isCompleted = displayState.kind === 'Completed';
   const isVerified = displayState.kind === 'Verified';
   const isPaused = displayState.kind === 'Paused';
+
+  // C9: fire the celebration once when a LIVE session reaches Completed/Verified.
+  // `isLive` excludes the cold-start restore path (routeSession), so a prior-day
+  // Completed row never re-triggers the flight. The sessionId guard makes it
+  // exactly-once per session even across re-renders while still Completed.
+  const liveCelebration = isLive && (isCompleted || isVerified);
+  const celebrateSessionId = liveCelebration ? displaySessionId : null;
+  // Trigger synchronously during render (not in useEffect) so the overlay is
+  // present in the same commit the state flips to Completed — the test queries
+  // right after `await timerStore.tick()` inside act().
+  if (celebrateSessionId !== null && celebratedRef.current !== celebrateSessionId) {
+    celebratedRef.current = celebrateSessionId;
+    setCelebratedSessionId(celebrateSessionId);
+  } else if (celebrateSessionId === null && celebratedRef.current !== null) {
+    celebratedRef.current = null;
+    setCelebratedSessionId(null);
+  }
+
+  const handleCelebrationFinished = useCallback(() => {
+    setCelebratedSessionId(null);
+    celebratedRef.current = null;
+  }, []);
+
+  const isCelebrating = celebratedSessionId !== null;
   // C3/C4 (round-1 HIGH): READY = no ACTIVE session on this route AND today's
   // target not reached yet.
   //  - a prior-day session never blocks (it is not in routeSession at all);
@@ -456,6 +486,15 @@ export function TimerScreen({ route, navigation }: Props) {
         {/* C5: companion goes top-right (below the toolbar) so it never sits
             on the countdown digits or the action buttons (MASCOT_DESIGN §6). */}
         <MascotFloating corner="top-right" />
+
+        {/* C9: celebration flight — one-shot overlay on a live Completed/Verified
+            transition; box-none so it never blocks touches (INV-04 gentle). */}
+        {isCelebrating ? (
+          <MascotCelebration
+            key={`celebration-${celebratedSessionId}`}
+            onFinished={handleCelebrationFinished}
+          />
+        ) : null}
       </View>
 
       {/* F3 confirm dialog: full-screen card, the same shape as PinGate's. */}

@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { TimerService, TimerSnapshot } from '../services/timer/timerService';
+import { emitTimerComplete } from '../audio/celebrationSound';
 
 export interface TimerStoreState {
   snapshot: TimerSnapshot;
@@ -221,6 +222,20 @@ export const useTimerStore = create<TimerStoreState>((set, get) => ({
     return snap;
   },
 }));
+
+// C6: emit the pluggable timer-complete hook EXACTLY ONCE per Completed
+// transition (prev.kind !== 'Completed' && next.kind === 'Completed').
+// Hydrate/setService/verify start from Completed so they never re-emit.
+useTimerStore.subscribe((state, prev) => {
+  const prevKind = prev.snapshot.state.kind;
+  const nextKind = state.snapshot.state.kind;
+  if (prevKind !== 'Completed' && nextKind === 'Completed') {
+    emitTimerComplete({
+      sessionId: state.snapshot.sessionId,
+      taskId: state.snapshot.taskId,
+    });
+  }
+});
 
 export const timerStore = Object.assign(useTimerStore, {
   hydrate: (service?: TimerService) => useTimerStore.getState().hydrate(service),
