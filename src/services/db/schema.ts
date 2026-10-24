@@ -96,4 +96,14 @@ DROP TABLE parent_auth;
 ALTER TABLE parent_auth_v2 RENAME TO parent_auth;
 `;
 
-export const MIGRATIONS: readonly string[] = [V1_SQL, V2_SQL];
+/**
+ * V3 (owner item C4): parent task creation gains a 'Скільки разів на день'
+ * (times-per-day) field. `target_per_day` defaults to 1 (range 1..10) so every
+ * existing task keeps its current behaviour (complete once per day).
+ */
+const V3_SQL = `
+ALTER TABLE tasks ADD COLUMN target_per_day INTEGER NOT NULL DEFAULT 1
+  CHECK (target_per_day BETWEEN 1 AND 10);
+`;
+
+export const MIGRATIONS: readonly string[] = [V1_SQL, V2_SQL, V3_SQL];

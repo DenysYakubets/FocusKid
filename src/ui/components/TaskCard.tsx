@@ -51,6 +51,12 @@ export interface TaskCardProps {
 export function TaskCard({ task, onPress, disabled }: TaskCardProps) {
   const statusLabel = uk.status[task.status] ?? uk.status.idle;
   const minutesLabel = formatMinutesUk(task.targetMinutes);
+  // C4: show '2/3' style progress only when the task has a target > 1 per day.
+  const targetPerDay = task.targetPerDay ?? 1;
+  const completedToday = task.completedToday ?? 0;
+  const showProgress = targetPerDay > 1;
+  const progressLabel = `${completedToday}/${targetPerDay}`;
+  const isDoneToday = showProgress && completedToday >= targetPerDay;
   const a11yLabel = `${task.title}, ${minutesLabel}, ${statusLabel}`;
 
   return (
@@ -78,7 +84,21 @@ export function TaskCard({ task, onPress, disabled }: TaskCardProps) {
             {`${task.targetMinutes} хв`}
           </AppText>
 
-          <StatusChip status={getStatusThemeKey(task.status)} label={statusLabel} />
+          {showProgress ? (
+            <AppText
+              testID={`task-progress-${task.id}`}
+              variant="body"
+              accessibilityLabel={`${task.title}: ${progressLabel}`}
+              style={isDoneToday ? styles.progressDone : styles.progress}
+            >
+              {progressLabel}
+            </AppText>
+          ) : null}
+
+          <StatusChip
+            status={isDoneToday ? 'verified' : getStatusThemeKey(task.status)}
+            label={isDoneToday ? uk.taskCrud.doneToday : statusLabel}
+          />
 
           <AppText variant="heading" style={styles.chevron}>
             ›
@@ -132,5 +152,15 @@ const styles = StyleSheet.create({
   },
   chevron: {
     color: colors.textSecondary,
+  },
+  progress: {
+    color: colors.primary,
+    fontVariant: ['tabular-nums'],
+    fontWeight: '700',
+  },
+  progressDone: {
+    color: colors.verified,
+    fontVariant: ['tabular-nums'],
+    fontWeight: '700',
   },
 });

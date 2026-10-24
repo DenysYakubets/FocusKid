@@ -136,7 +136,7 @@ describe('INV-10 Accessibility & Touch Targets', () => {
   });
 
   it('TaskCard generates correct accessibilityLabel with title, minutes, and status', async () => {
-    const task: TodayTaskView = {
+    const task = {
       id: 1,
       title: 'Читання',
       emoji: '📚',
@@ -148,7 +148,9 @@ describe('INV-10 Accessibility & Touch Targets', () => {
       updatedAt: '2026-10-23T00:00:00Z',
       sessionId: null,
       status: 'idle',
-    };
+      targetPerDay: 1,
+      completedToday: 0,
+    } as unknown as TodayTaskView;
 
     const { getByRole } = await render(
       <TaskCard task={task} onPress={() => {}} />

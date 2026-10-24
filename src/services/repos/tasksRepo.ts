@@ -11,11 +11,13 @@ interface TaskRow {
   archived: number;
   created_at: string;
   updated_at: string;
+  target_per_day: number;
 }
 
 interface TodayTaskRow extends TaskRow {
   session_id: number | null;
   status: 'running' | 'paused' | 'completed' | 'verified' | null;
+  completed_today: number;
 }
 
 function mapTask(row: TaskRow): Task {
@@ -29,6 +31,7 @@ function mapTask(row: TaskRow): Task {
     archived: row.archived === 1,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
+    targetPerDay: row.target_per_day ?? 1,
   };
 }
 
@@ -37,6 +40,7 @@ function mapTodayTask(row: TodayTaskRow): TodayTaskView {
     ...mapTask(row),
     sessionId: row.session_id,
     status: row.status ?? 'idle',
+    completedToday: row.completed_today ?? 0,
   };
 }
 
@@ -57,12 +61,16 @@ export function createTasksRepo(db: Db): TasksRepo {
       const weekdayMask = 1 << weekdayIdx;
       const rows = await db.all<TodayTaskRow>(
         `SELECT t.id, t.title, t.emoji, t.target_minutes, t.days_mask, t.sort_order, t.archived, t.created_at, t.updated_at,
-                s.id AS session_id, s.status
+                t.target_per_day,
+                s.id AS session_id, s.status,
+                (SELECT COUNT(*) FROM sessions sc
+                  WHERE sc.task_id = t.id AND sc.local_date = ?
+                    AND sc.status IN ('completed', 'verified')) AS completed_today
          FROM tasks t
          LEFT JOIN sessions s ON s.task_id = t.id AND s.local_date = ? AND s.status <> 'abandoned'
          WHERE t.archived = 0 AND (t.days_mask & ?) <> 0
          ORDER BY t.sort_order ASC, t.id ASC;`,
-        [localDate, weekdayMask]
+        [localDate, localDate, weekdayMask]
       );
       return rows.map(mapTodayTask);
     },
@@ -89,14 +97,15 @@ export function createTasksRepo(db: Db): TasksRepo {
       }
 
       const res = await db.run(
-        `INSERT INTO tasks (title, emoji, target_minutes, days_mask, sort_order, archived, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, 0, ?, ?);`,
+        `INSERT INTO tasks (title, emoji, target_minutes, days_mask, sort_order, archived, target_per_day, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, 0, ?, ?, ?);`,
         [
           task.title,
           task.emoji ?? null,
           task.targetMinutes,
           task.daysMask,
           sortOrder,
+          task.targetPerDay ?? 1,
           nowIso,
           nowIso,
         ]
@@ -120,12 +129,13 @@ export function createTasksRepo(db: Db): TasksRepo {
       const targetMinutes = patch.targetMinutes ?? existing.targetMinutes;
       const daysMask = patch.daysMask ?? existing.daysMask;
       const sortOrder = patch.sortOrder ?? existing.sortOrder;
+      const targetPerDay = patch.targetPerDay ?? existing.targetPerDay;
 
       await db.run(
         `UPDATE tasks
-         SET title = ?, emoji = ?, target_minutes = ?, days_mask = ?, sort_order = ?, updated_at = ?
+         SET title = ?, emoji = ?, target_minutes = ?, days_mask = ?, sort_order = ?, target_per_day = ?, updated_at = ?
          WHERE id = ?;`,
-        [title, emoji, targetMinutes, daysMask, sortOrder, nowIso, id]
+        [title, emoji, targetMinutes, daysMask, sortOrder, targetPerDay, nowIso, id]
       );
 
       const updated = await this.get(id);
