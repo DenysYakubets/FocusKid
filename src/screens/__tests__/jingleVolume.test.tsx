@@ -223,4 +223,62 @@ describe('C8 - jingle volume stepper + Test preview (JINGLE_DESIGN §3.3)', () =
 
     screen.unmount();
   });
+
+  it('round-1 LOW: jingle_enabled=false surfaces the uk.mascot.jingleDisabled notice', async () => {
+    const db = createNodeDb();
+    const clock = createFakeClock(1000);
+
+    const first = await renderWithApp(<MascotSelectScreen />, {
+      db,
+      clock,
+      wall: systemWallClock,
+    });
+    await first.services.settingsRepo.set('@focuskid/jingle_enabled', 'false');
+    first.unmount();
+    restartJingleStore();
+
+    const screen = await renderWithApp(<MascotSelectScreen />, {
+      db,
+      clock,
+      wall: systemWallClock,
+    });
+    await flush();
+
+    expect(await screen.findByTestId('jingle-disabled')).toBeTruthy();
+    expect(screen.getByText(uk.mascot.jingleDisabled)).toBeTruthy();
+    // ...and the Test button is disabled in the same state.
+    expect(screen.getByTestId('jingle-test').props.accessibilityState?.disabled).toBe(true);
+
+    screen.unmount();
+  });
+
+  it('round-1 LOW: Test stays ENABLED at volume 0 (JINGLE_DESIGN disables only on jingle_enabled=false)', async () => {
+    const db = createNodeDb();
+    const clock = createFakeClock(1000);
+
+    // Volume pinned to 0, jingle enabled — the spec's exact state.
+    useJingleStore.setState({ volume: 0, enabled: true, hydrated: true });
+
+    const screen = await renderWithApp(<MascotSelectScreen />, {
+      db,
+      clock,
+      wall: systemWallClock,
+    });
+    await flush();
+
+    expect(screen.getByTestId('jingle-volume-value').props.accessibilityLabel).toBe(
+      uk.mascot.jingleVolume(0)
+    );
+    expect(screen.getByTestId('jingle-test').props.accessibilityState?.disabled).toBe(false);
+    expect(screen.queryByTestId('jingle-disabled')).toBeNull();
+
+    // Pressing it must be a silent no-op at volume 0, never a crash.
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('jingle-test'));
+    });
+    await flush();
+    expect(audio.createAudioPlayer).not.toHaveBeenCalled();
+
+    screen.unmount();
+  });
 });
