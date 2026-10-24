@@ -20,7 +20,7 @@ import { AppButton } from '../ui/components/AppButton';
 import { AppText } from '../ui/components/AppText';
 import { NoticeBox } from '../ui/components/NoticeBox';
 import { ProgressBar } from '../ui/components/ProgressBar';
-import { ScreenTopBar } from '../ui/components/ScreenTopBar';
+import { AppToolbar } from '../ui/components/AppToolbar';
 import { formatMinutesUk } from '../ui/components/TaskCard';
 import { useScreenGutter } from '../ui/hooks/useScreenGutter';
 import { uk } from '../i18n/uk';
@@ -207,6 +207,17 @@ export function TimerScreen({ route, navigation }: Props) {
   const isCompleted = displayState.kind === 'Completed';
   const isVerified = displayState.kind === 'Verified';
   const isPaused = displayState.kind === 'Paused';
+  // C3: READY = idle display state with no live session → show «Почати».
+  const isReady = displayState.kind === 'Idle';
+
+  const start = useTimerStore((s) => s.start);
+
+  const handleStart = async () => {
+    const ok = await start(route.params.taskId);
+    if (ok) {
+      await refreshRouteSession();
+    }
+  };
 
   const handleBack = () => {
     navigation.navigate('Today');
@@ -314,7 +325,19 @@ export function TimerScreen({ route, navigation }: Props) {
       onPress={handleShowParent}
       style={isLandscape ? undefined : styles.flexButton}
     />
-  ) : isVerified ? null : (
+  ) : isVerified ? null : isReady ? (
+    /* C3: explicit start — READY state shows only «Почати»; pressing it
+       begins the countdown (START event in the FSM). */
+    <AppButton
+      label={uk.timer.start}
+      variant="primary"
+      size="lg"
+      onPress={() => {
+        void handleStart();
+      }}
+      style={isLandscape ? undefined : styles.flexButton}
+    />
+  ) : (
     <>
       {isLive && displayState.kind === 'Running' ? (
         <AppButton
@@ -383,7 +406,7 @@ export function TimerScreen({ route, navigation }: Props) {
         testID={layoutTestID}
         style={[styles.container, { paddingHorizontal: gutter }]}
       >
-        <ScreenTopBar
+        <AppToolbar
           onBack={handleBack}
           title={task ? (task.emoji ? `${task.emoji} ${task.title}` : task.title) : undefined}
         />

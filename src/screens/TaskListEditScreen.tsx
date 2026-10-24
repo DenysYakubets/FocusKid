@@ -7,7 +7,7 @@ import { parentSessionStore } from '../state/parentSessionStore';
 import { Task } from '../domain/tasks/types';
 import { AppButton } from '../ui/components/AppButton';
 import { AppText } from '../ui/components/AppText';
-import { ScreenTopBar } from '../ui/components/ScreenTopBar';
+import { AppToolbar } from '../ui/components/AppToolbar';
 import { TapTarget } from '../ui/components/TapTarget';
 import { ParentGuard } from '../navigation/ParentGuard';
 import { CONTENT_MAX_WIDTH, useScreenGutter } from '../ui/hooks/useScreenGutter';
@@ -54,7 +54,7 @@ export function TaskListEditScreen({ navigation }: Props) {
     <ParentGuard navigation={navigation}>
       <View style={[styles.container, { padding: gutter }]}>
         {/* Row B = full-width primary "add" action (pinned by layoutResponsive). */}
-        <ScreenTopBar
+        <AppToolbar
           testID="tasklistedit-topbar"
           onBack={() => {
             parentSessionStore.touch();
