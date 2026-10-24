@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { AppText } from './AppText';
 import { TapTarget } from './TapTarget';
-import { colors, radius, spacing } from '../theme';
+import { MIN_TOUCH_DP, colors, radius, spacing } from '../theme';
 import { uk } from '../../i18n/uk';
 
 export interface PinPadProps {
@@ -13,10 +13,12 @@ export interface PinPadProps {
 }
 
 /**
- * 4-dot indicator + 3x4 keypad (spec §4.1). Keys are `flex: 1` with no
- * maxWidth cap, `minHeight: 56`, `radius.lg` and a `borderStrong` outline, so
- * all 10 digits + ⌫ fit at 320dp without scrolling; the grid keeps `flex: 1`
- * (pinned by layoutResponsive.test) and the screen behind it scrolls instead.
+ * 4-dot indicator + 3x4 keypad (spec §4.1, tightened per owner item F7): keys
+ * are `flex: 1` with no maxWidth cap, `minHeight` at the 48dp INV-10 floor and
+ * the compact `spacing.sm` gap between them, and both the grid and the pad use
+ * `space-between` instead of `space-evenly` so the digits no longer drift apart
+ * vertically. All 10 digits + ⌫ still fit at 320dp; the grid keeps `flex: 1`
+ * (pinned by layoutResponsive.test).
  */
 export function PinPad({
   onComplete,
@@ -115,16 +117,16 @@ const styles = StyleSheet.create({
   container: {
     width: '100%',
     flex: 1,
-    justifyContent: 'space-evenly',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: spacing.md,
+    paddingVertical: spacing.sm,
   },
   dotsContainer: {
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: spacing.sm,
-    gap: spacing.md,
+    gap: spacing.sm,
   },
   dot: {
     width: 16,
@@ -142,17 +144,17 @@ const styles = StyleSheet.create({
   grid: {
     width: '100%',
     flex: 1,
-    justifyContent: 'space-evenly',
-    gap: spacing.s12,
+    justifyContent: 'space-between',
+    gap: spacing.sm,
   },
   row: {
     flexDirection: 'row',
-    gap: spacing.s12,
+    gap: spacing.sm,
     alignItems: 'stretch',
   },
   keyButton: {
     flex: 1,
-    minHeight: 56,
+    minHeight: MIN_TOUCH_DP,
     borderRadius: radius.lg,
     borderCurve: 'continuous',
     backgroundColor: colors.surface,
@@ -166,7 +168,7 @@ const styles = StyleSheet.create({
   },
   keyPlaceholder: {
     flex: 1,
-    minHeight: 56,
+    minHeight: MIN_TOUCH_DP,
   },
   keyText: {
     color: colors.text,
