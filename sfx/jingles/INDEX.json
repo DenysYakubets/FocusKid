@@ -1,0 +1,44 @@
+[
+  {
+    "mascot": "Bubblo",
+    "path": "sfx/jingles/Bubblo-complete.wav",
+    "duration_ms": 1000,
+    "peak_amplitude": 0.5
+  },
+  {
+    "mascot": "Stella",
+    "path": "sfx/jingles/Stella-complete.wav",
+    "duration_ms": 900,
+    "peak_amplitude": 0.5
+  },
+  {
+    "mascot": "Wobble",
+    "path": "sfx/jingles/Wobble-complete.wav",
+    "duration_ms": 1100,
+    "peak_amplitude": 0.5
+  },
+  {
+    "mascot": "Aqua",
+    "path": "sfx/jingles/Aqua-complete.wav",
+    "duration_ms": 1200,
+    "peak_amplitude": 0.5
+  },
+  {
+    "mascot": "Bud",
+    "path": "sfx/jingles/Bud-complete.wav",
+    "duration_ms": 850,
+    "peak_amplitude": 0.5
+  },
+  {
+    "mascot": "Glow",
+    "path": "sfx/jingles/Glow-complete.wav",
+    "duration_ms": 1150,
+    "peak_amplitude": 0.5
+  },
+  {
+    "mascot": "Spark",
+    "path": "sfx/jingles/Spark-complete.wav",
+    "duration_ms": 950,
+    "peak_amplitude": 0.5
+  }
+]
