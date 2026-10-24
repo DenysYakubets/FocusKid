@@ -2,4 +2,7 @@
 Test Suites: 62 passed, 62 total
 Tests:       236 passed, 236 total
 Snapshots:   0 total
-Time:        10.528 s, estimated 12 s
+Time:        10.97 s
+Ran all test suites.
+
+JEST_EXIT=0  (direct redirect, no pipe — real jest exit code)
