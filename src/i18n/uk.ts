@@ -22,6 +22,12 @@ export const uk = {
     completedAnnouncement: 'Час вийшов! Очікує перевірки',
     minuteLeft: 'залишилося',
     pauseBudgetExhausted: 'Час паузи вичерпано. Таймер продовжиться автоматично.',
+    // F3: child-initiated stop (confirm dialog, owner wording)
+    stop: 'Зупинити завдання',
+    stopTitle: 'Зупинити завдання?',
+    stopMessage: 'Справді зупинити?',
+    stopConfirm: 'Так',
+    stopCancel: 'Ні',
     errors: {
       parentAuthRequired: 'Потрібен свіжий батьківський PIN-код. Спробуйте ще раз.',
       notCompleted: 'Сесія ще не завершена: перевірити можна лише після завершення таймера.',
@@ -97,6 +103,13 @@ export const uk = {
     delete: 'Видалити',
     moveUp: 'Вгору',
     moveDown: 'Вниз',
+    // F5: emoji picker dialog (no system keyboard for picking)
+    emojiTitle: 'Оберіть емодзі',
+    emojiSearch: 'Пошук емодзі',
+    emojiNone: 'Нічого не знайдено',
+    emojiClear: 'Без емодзі',
+    emojiPlaceholder: 'Не вибрано',
+    emojiFieldLabel: 'Емодзі для завдання',
     weekdays: ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Нд'],
     errors: {
       titleEmpty: 'Введіть назву завдання',
@@ -128,6 +141,39 @@ export const uk = {
   errorBoundary: {
     title: 'Щось пішло не так',
     retry: 'Спробувати ще',
+  },
+  // F6: bottom navigation of the child flow
+  nav: {
+    tasks: 'Завдання',
+    calendar: 'Календар',
+  },
+  // F6: calendar screen (approved vs pending sessions, minutes earned)
+  calendar: {
+    title: 'Календар',
+    months: [
+      'Січень',
+      'Лютий',
+      'Березень',
+      'Квітень',
+      'Травень',
+      'Червень',
+      'Липень',
+      'Серпень',
+      'Вересень',
+      'Жовтень',
+      'Листопад',
+      'Грудень',
+    ],
+    prevMonth: 'Попередній місяць',
+    nextMonth: 'Наступний місяць',
+    weekEarned: 'За тиждень',
+    monthEarned: 'За місяць',
+    minutesUnit: 'хв',
+    dayHint: 'Торкніться дня, щоб побачити завдання',
+    dayEmpty: 'Цього дня немає завдань',
+    dayVerified: 'перевірено',
+    dayPending: 'очікує',
+    close: 'Закрити',
   },
   loading: 'Завантаження...',
 } as const;
