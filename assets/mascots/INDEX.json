@@ -1,0 +1,86 @@
+[
+  {
+    "name": "Bubblo",
+    "personality": "Cheerful water droplet who loves watching kids focus",
+    "moods": [
+      "happy",
+      "neutral",
+      "excited",
+      "sleepy"
+    ],
+    "primaryColor": "#3B82F6",
+    "previewPath": "assets/mascots/Bubblo/happy.png"
+  },
+  {
+    "name": "Stella",
+    "personality": "Bright star who guides kids through their day",
+    "moods": [
+      "happy",
+      "neutral",
+      "excited",
+      "sleepy"
+    ],
+    "primaryColor": "#F59E0B",
+    "previewPath": "assets/mascots/Stella/happy.png"
+  },
+  {
+    "name": "Wobble",
+    "personality": "Squishy blob who celebrates every small win",
+    "moods": [
+      "happy",
+      "neutral",
+      "excited",
+      "sleepy"
+    ],
+    "primaryColor": "#8B5CF6",
+    "previewPath": "assets/mascots/Wobble/happy.png"
+  },
+  {
+    "name": "Aqua",
+    "personality": "Calm sphere who keeps time during focus sessions",
+    "moods": [
+      "happy",
+      "neutral",
+      "excited",
+      "sleepy"
+    ],
+    "primaryColor": "#06B6D4",
+    "previewPath": "assets/mascots/Aqua/happy.png"
+  },
+  {
+    "name": "Bud",
+    "personality": "Friendly leaf companion who grows with progress",
+    "moods": [
+      "happy",
+      "neutral",
+      "excited",
+      "sleepy"
+    ],
+    "primaryColor": "#10B981",
+    "previewPath": "assets/mascots/Bud/happy.png"
+  },
+  {
+    "name": "Glow",
+    "personality": "Soft glow orb who lights up stats and achievements",
+    "moods": [
+      "happy",
+      "neutral",
+      "excited",
+      "sleepy"
+    ],
+    "primaryColor": "#EC4899",
+    "previewPath": "assets/mascots/Glow/happy.png"
+  },
+  {
+    "name": "Spark",
+    "personality": "Tiny star who sparks motivation during tough tasks",
+    "moods": [
+      "happy",
+      "neutral",
+      "excited",
+      "sleepy"
+    ],
+    "primaryColor": "#EF4444",
+    "previewPath": "assets/mascots/Spark/happy.png"
+  }
+]
