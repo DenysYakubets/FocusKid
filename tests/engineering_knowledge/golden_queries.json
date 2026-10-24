@@ -1,0 +1,56 @@
+[
+  {
+    "id": "wiki-stop-dialog-and-pin",
+    "query": "child stop dialog parent PIN verification",
+    "knowledge_types": ["wiki"],
+    "expected_sources": ["docs/wiki/timer-fsm.md"]
+  },
+  {
+    "id": "failure-signature",
+    "query": "investigate daily limit behavior",
+    "error_signature": "SESSION_LIMIT_REACHED_TODAY",
+    "knowledge_types": ["wiki"],
+    "expected_sources": ["docs/wiki/failure-signatures.md"]
+  },
+  {
+    "id": "accepted-learning-by-changed-path",
+    "query": "unrelated maintenance request",
+    "changed_paths": ["src/screens/TimerScreen.tsx"],
+    "knowledge_types": ["learning"],
+    "expected_sources": ["docs/wiki/patterns/route-session-today-only.md"],
+    "expected_provenance": {
+      "knowledge_status": "accepted",
+      "changed_path_match": true
+    }
+  },
+  {
+    "id": "graph-code-with-callers-and-tests",
+    "query": "createTimerService",
+    "changed_paths": ["src/services/timer/timerService.ts"],
+    "knowledge_types": ["code"],
+    "expected_sources": ["src/services/timer/timerService.ts"],
+    "expected_related_refs": {
+      "callers": ["src/screens/TimerScreen.tsx#L16"],
+      "tests": ["src/screens/__tests__/timerReadyToday.test.tsx#L10"]
+    }
+  },
+  {
+    "id": "all-three-agent-context-sections",
+    "query": "createTimerService stop PIN verification",
+    "changed_paths": [
+      "src/services/timer/timerService.ts",
+      "src/screens/TimerScreen.tsx"
+    ],
+    "knowledge_types": ["wiki", "learning", "code"],
+    "expected_sources": [
+      "docs/wiki/timer-fsm.md",
+      "docs/wiki/patterns/route-session-today-only.md",
+      "src/services/timer/timerService.ts"
+    ],
+    "expected_sections": {
+      "patterns": ["docs/wiki/patterns/route-session-today-only.md"],
+      "knowledge": ["docs/wiki/timer-fsm.md"],
+      "graphify": ["src/services/timer/timerService.ts"]
+    }
+  }
+]

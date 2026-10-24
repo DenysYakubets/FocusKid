@@ -1,0 +1,111 @@
+{
+  "project_id": "focuskid",
+  "query": "Investigate the daily session limit regression",
+  "error_signature": "UNIQUE constraint failed: sessions.task_id",
+  "sections": {
+    "patterns": [
+      {
+        "knowledge_type": "learning",
+        "content": "\n# A partial UNIQUE index cannot express \"N per day\" — enforce it in the service layer\n\n## Symptom\n\nWith `tasks.target_per_day = 2`, starting a second session for the same task on the same local day\nfailed with `UNIQUE constraint failed: sessions.task_id, sessions.local_date` (AS-04 behaviour)\nwhile the product rule allows up to N non-abandoned runs per day. RED evidence:\n`docs/evidence/companion-round-r2-red.log` (\"V5: two non-abandoned sessions can share a task/day…\").\n\n## Cause\n\nMigration V1 created `CREATE UNIQUE INDEX ux_sessions_task_day ON sessions (task_id, local_date)\nWHERE status <> 'abandoned'` — a partial index that can only express **one** row per key. N-per-day\ncannot be expressed as `UNIQUE` at all, because N varies per row (`target_per_day`), so no fixed\nindex can encode the rule.\n\n## Resolution\n\n- **Migration V5** drops `ux_sessions_task_day` (fresh installs create it in V1 and drop it in V5;\n  the upgrade path runs the same statement) and deliberately leaves `ux_sessions_one_active`\n  (AS-05, one *active* session) untouched.\n- The rule moves into `timerService.doStart`: reject when\n  `sessionsRepo.countForTaskOnDay(taskId, today) >= task.targetPerDay` with the error code\n  `SESSION_LIMIT_REACHED_TODAY`, and **repeat the check inside the same transaction** as the insert.\n  AS-05 keeps precedence except when the day is full.\n- `tasksRepo.listToday` LEFT JOINs the *latest* of today's runs through a correlated subquery so\n  several runs on one day cannot duplicate the task card; `TaskCard` clamps `completedToday` to the\n  target (never renders `4/3`).\n\n## Evidence\n\n`src/services/db/__tests__/migrations.test.ts` §V5 (two non-abandoned sessions share a task/day,\none ACTIVE session stays unique, upgrade path V1→V5), `src/services/timer/__tests__/timerServiceDailyLimit.test.ts`\n(2nd run allowed pre-fix RED, 3rd rejected for `target_per_day = 2`, default 1 keeps its cap),\n`docs/UX_FIXES_NOTES.md` §\"C4 is now enforced end to end\" (lines 158–171).",
+        "source_ref": "docs/wiki/patterns/partial-unique-index-blocks-n-per-day.md#L21",
+        "score": 1.0,
+        "provenance": {
+          "project_id": "focuskid",
+          "knowledge_status": "accepted",
+          "learning_id": "partial-unique-index-blocks-n-per-day",
+          "reviewed_by": "owner",
+          "reviewed_at": "2026-10-24",
+          "source_refs": [
+            "src/services/db/schema.ts#L122-L131",
+            "src/services/timer/timerService.ts#L141-L149",
+            "src/services/db/__tests__/migrations.test.ts#L57-L73"
+          ],
+          "changed_path_match": true,
+          "commit": "8c6a2e8715445e014efe3e4bbb1baae2f4c85c30"
+        }
+      },
+      {
+        "knowledge_type": "learning",
+        "content": "\n# Gradle outlives the 420 s foreground cap — run it tracked-background + poll\n\n## Symptom\n\n`./gradlew assembleDebug` / `assembleRelease` started as a foreground terminal command was killed\ntwice at exactly the **420.0 s** tool timeout mid-build (v0.1.4 APK round), losing the run. A\ndetached retry via `setsid`/`nohup` was rejected outright by the tooling, and earlier gate runs piped\nthrough `| tee` had reported exit 0 for failing suites (see the `jest-tee-masks-exit-code` learning).\n\n## Cause\n\nA cold Gradle build of this app takes 6–12 minutes, well past the 420 s foreground command cap, so\nany foreground invocation is doomed to be reaped mid-compile. Shell-level background wrappers\n(`nohup`/`disown`/`setsid`) are rejected because they detach the process from the tracker: its\noutput becomes unreadable and its exit code unreachable. A pipe through `tee` additionally replaces\nthe build's exit status with tee's.\n\n## Resolution\n\nRun Gradle as a **tracked background process** (`terminal(command=…, background=true)` — the runtime\nassigns a session id), redirect its output to a log file with `>` (**no pipe**), then poll the log\nand `ps` in separate short calls until `BUILD SUCCESSFUL`/`BUILD FAILED` appears; finish by reading\nthe tracked process's real exit code. Never `nohup`, never `setsid`, never `cmd | tee` on a gate.\nKeep `scripts/release-apk.sh`'s step order (npm ci → test → tsc → invariants → prebuild →\n`./gradlew assembleDebug`) as the canonical build sequence.\n\n## Evidence\n\nv0.1.4 round: two foreground kills at `timed out after 420.0s`, one rejected `setsid nohup` attempt,\nthen the tracked-background recipe completed release (6 m 19 s) and debug builds with logs\n`gradle-release-014.log` / `gradle-debug-014.log` polled every ~300 s and exit codes read directly.\nRepo anchors: `scripts/release-apk.sh` step 6 (`cd android && ./gradlew assembleDebug`) and the\nrelease procedure in `README.md`.",
+        "source_ref": "docs/wiki/patterns/foreground-gradle-420s-cap.md#L35",
+        "score": 0.3,
+        "provenance": {
+          "project_id": "focuskid",
+          "knowledge_status": "accepted",
+          "learning_id": "foreground-gradle-420s-cap",
+          "reviewed_by": "owner",
+          "reviewed_at": "2026-10-24",
+          "source_refs": [
+            "scripts/release-apk.sh#L39-L40",
+            "README.md#L48"
+          ],
+          "changed_path_match": false,
+          "commit": "8c6a2e8715445e014efe3e4bbb1baae2f4c85c30"
+        }
+      }
+    ],
+    "knowledge": [
+      {
+        "knowledge_type": "wiki",
+        "content": "\n```bash\npython3 scripts/knowledge.py retrieve \"Fix the daily session limit regression\" \\\n  --error-signature \"UNIQUE constraint failed: sessions.task_id\" \\\n  --changed-path src/services/timer/timerService.ts\n```\n\nThe JSON response has a fixed `project_id` (`focuskid`) and three explicit groups under `sections`:\n`patterns` contains only accepted learning records, `knowledge` contains Wiki/ADR pages, and\n`graphify` contains derived code context. Every item carries a repository-relative `source_ref` and\nsource-specific provenance. `degraded_sources` identifies adapters that failed (an absent\n`graphify-out/graph.json` degrades `graphify-code-index`). `context_chars` bounds the serialized\n`sections` object in characters; it is not a model-token count. A stale index or a dirty working\ntree is returned with `stale_index: true` — rebuild the index and validate paths against the\ncheckout before relying on code relationships.\n\nThe package contract can be embedded from Python (`KnowledgeRequest`, `KnowledgeStore`,\n`KnowledgeResult` from `packages/engineering_knowledge/`). Other agents call the same local CLI and\nconsume its JSON. No HTTP service is exposed.\n\n## Learning lifecycle\n\n1. After a verified fix, capture a focused reusable lesson with\n   `python3 scripts/knowledge.py propose-learning` (symptom, cause, resolution, evidence, and\n   existing repository-relative source references).\n2. The CLI creates a `candidate`; candidates are never retrieved and the command cannot mark a\n   record accepted.\n3. A human reviews the code/test evidence, scope, privacy, and duplicates in a Git change and\n   records the decision.\n4. Set the status to `accepted`, `rejected`, or `superseded`. Accepted records require a stable\n   ID, reviewer, review date, and source references. Superseded records name their replacement.\n5. Accepted retrieval includes the record's provenance. A correction creates a new record that\n   supersedes the previous one; it never silently rewrites history.\n\nSee [`patterns/README.md`](patterns/README.md) for the record template. The four seed records in\n`patterns/` were accepted during the owner-approved knowledge-system setup because each one is\nbacked by committed evidence (`docs/evidence/*.log`, RED→GREEN test history) documented in the\nstage notes.\n\n## Isolation and data boundaries\n\n- The CLI fixes the project scope and repository root; the adapters reject a request whose project\n  ID does not match their configured scope.\n- The Markdown adapter reads only direct `docs/wiki/*.md` pages. Stage notes, plans, `VISION.md`,\n  and other repository Markdown are not automatically retrieved; they are cited by ADRs instead.\n- Accepted learnings are read from `docs/wiki/patterns/*.md` under the stricter review rules above.\n  Graphify source references are restricted to existing code files and exclude secret, fixture,\n  seed-data, and personal-data paths.\n- Context size and result count have hard limits; source references are retained when content is\n  shortened.\n- Never store child names, task contents, PINs or PIN hashes, session rows, device data, or raw\n  incident payloads in this store. Evidence fields hold concise, sanitized summaries only.\n\n## Graphify relationship\n\nGraphify remains the code index and retains its own workflow and output format. The adapter reads\nthe local `graphify-out/graph.json` NetworkX-style nodes and links, returns matched symbols with up\nto three callers, callees, and test references, and marks the indexed commit; relationship\nreferences are in `provenance.related_refs`. It never writes to the store or makes Wiki decisions\nfrom Graphify data.\n\n`graphify-out/` and `.graphify/` are gitignored (derived, rebuildable — mirroring Agentic ERP).\nRebuild options, in order of preference:\n\n1. **Graphify AST builder** (tree-sitter quality; requires the `graphifyy` package — present in\n   sdlc-buddy's backend venv on the build machine):\n\n   ```bash\n   cat > /tmp/graphify_focuskid.py <<'PY'\n   import importlib.util, json\n   spec = importlib.util.spec_from_file_location(\"gtool\", \"/home/hermes/sdlc-buddy/tools/graphify.py\")\n   m = importlib.util.module_from_spec(spec); spec.loader.exec_module(m)\n   if __name__ == \"__main__\":\n       print(json.dumps(m.run_graphify_ast_scan(\"/home/hermes/work/FocusKid\",\n                                                output_dir=\"graphify-out\", force=True)))\n   PY\n   /home/hermes/sdlc-buddy/backend/.venv/bin/python /tmp/graphify_focuskid.py\n   ```\n\n   (Run it from a real file, never a heredoc/`-c` stdin: the builder's watch pipeline re-imports\n   `__main__` through multiprocessing and fails on `<stdin>`. Its bare CLI default writes to\n   `docs/wiki/graph.json`, so `output_dir=\"graphify-out\"` must be passed explicitly.)\n\n2. **Dependency-free fallback:** `python3 scripts/build-graph-index.py` — a stdlib-only file/symbol\n   scan that writes the same `graphify-out/graph.json` shape (used when the Graphify toolchain is\n   not installed).",
+        "source_ref": "docs/wiki/knowledge-store.md#L33",
+        "score": 0.9,
+        "provenance": {
+          "project_id": "focuskid",
+          "knowledge_status": "unverified",
+          "source_role": "canonical-wiki",
+          "changed_path_match": false,
+          "commit": "8c6a2e8715445e014efe3e4bbb1baae2f4c85c30",
+          "sha256": "daea300cb70f48b0076b3fbb087c3b13d2ffb45dabe523b2e326bd109e91e193"
+        }
+      }
+    ],
+    "graphify": [
+      {
+        "knowledge_type": "code",
+        "content": "restore (src/services/timer/timerService.ts)\nGraphify community: src/services/timer\nCallers: active (src/services/timer/timerService.ts#L116)\nCallees: getSnapshot (src/services/timer/timerService.ts#L109)",
+        "source_ref": "src/services/timer/timerService.ts#L24",
+        "score": 0.26,
+        "provenance": {
+          "project_id": "focuskid",
+          "index_commit": "8c6a2e8715445e014efe3e4bbb1baae2f4c85c30",
+          "current_commit": "8c6a2e8715445e014efe3e4bbb1baae2f4c85c30",
+          "stale_index": true,
+          "working_tree_dirty": true,
+          "changed_path_match": true,
+          "related_refs": {
+            "callers": [
+              "src/services/timer/timerService.ts#L116"
+            ],
+            "callees": [
+              "src/services/timer/timerService.ts#L109"
+            ],
+            "tests": []
+          }
+        }
+      },
+      {
+        "knowledge_type": "code",
+        "content": "createTimerService (src/services/timer/timerService.ts)\nGraphify community: src/services/timer",
+        "source_ref": "src/services/timer/timerService.ts#L85",
+        "score": 0.26,
+        "provenance": {
+          "project_id": "focuskid",
+          "index_commit": "8c6a2e8715445e014efe3e4bbb1baae2f4c85c30",
+          "current_commit": "8c6a2e8715445e014efe3e4bbb1baae2f4c85c30",
+          "stale_index": true,
+          "working_tree_dirty": true,
+          "changed_path_match": true,
+          "related_refs": {
+            "callers": [],
+            "callees": [],
+            "tests": []
+          }
+        }
+      }
+    ]
+  },
+  "degraded_sources": [],
+  "context_chars": 11702
+}
+RET_EXIT=0

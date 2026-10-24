@@ -46,3 +46,12 @@ dist/
 *.aab
 *.keystore
 .expo/
+
+# Graphify derived code index + cache (rebuild: docs/wiki/knowledge-store.md)
+graphify-out/
+.graphify/
+
+# Python (knowledge CLI + tests)
+__pycache__/
+*.pyc
+.pytest_cache/
