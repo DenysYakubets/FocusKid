@@ -50,11 +50,21 @@ export function CalendarScreen({ navigation }: Props) {
       setMonthMinutes(month.verifiedMinutes);
       setDays(month.days);
       setGrid(buildMonthGrid(anchor, wall.weekdayIndex(anchor)));
+      // Round-1 MED: approving from this sheet goes through PinGate, whose
+      // goBack() refocuses this screen and runs reload() — the ONLY refresh
+      // after an approve. Without re-reading daySessions the open sheet kept
+      // the stale «Очікує перевірки» chip and the «Перевірити» button (a repeat
+      // press reached timerService.verify and failed with VERIFIED_IMMUTABLE)
+      // while the day cell was already green. Chosen fix: keep the sheet open
+      // and refresh it, so the parent sees the approved state in place.
+      if (selectedDay !== null) {
+        setDaySessions(await statsService.daySessions(selectedDay));
+      }
     } catch {
       // Keep the last known data on screen; the four-state rule is handled by
       // the empty markers below (data is local and synchronous in practice).
     }
-  }, [statsService, wall, anchor]);
+  }, [statsService, wall, anchor, selectedDay]);
 
   useEffect(() => {
     void reload();

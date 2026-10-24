@@ -129,6 +129,69 @@ describe('F6 - statsService calendar data (single source of truth: sessions tabl
     expect(week.totalVerified).toBe(1);
   });
 
+  it('keeps month boundaries strict: 2026-09-30 and 2026-11-01 never leak into October (round-1 LOW)', async () => {
+    const db = createNodeDb();
+    await migrate(db);
+    await seedIfEmpty(db, wall); // task 1 = Читання, task 2 = Домашнє завдання
+
+    const insertSession = async (
+      localDate: string,
+      taskId: number,
+      minutes: number,
+      finalStatus: 'completed' | 'verified'
+    ): Promise<number> => {
+      const created = await db.run(
+        `INSERT INTO sessions (task_id, local_date, status, target_ms, elapsed_run_ms, started_at, updated_at)
+         VALUES (?, ?, 'running', 3600000, 0, ?, ?);`,
+        [taskId, localDate, `${localDate}T09:00:00Z`, `${localDate}T09:00:00Z`]
+      );
+      await db.run(`UPDATE sessions SET status = 'completed', elapsed_run_ms = ? WHERE id = ?;`, [
+        minutes * 60000,
+        created.lastInsertRowId,
+      ]);
+      if (finalStatus === 'verified') {
+        await db.run(`UPDATE sessions SET status = 'verified' WHERE id = ?;`, [
+          created.lastInsertRowId,
+        ]);
+      }
+      return created.lastInsertRowId;
+    };
+
+    await insertSession('2026-09-30', 1, 60, 'verified'); // September, must stay out
+    await insertSession('2026-10-15', 1, 35, 'verified'); // October approved
+    await insertSession('2026-10-20', 2, 15, 'completed'); // October pending
+    await insertSession('2026-11-01', 2, 45, 'completed'); // November, must stay out
+
+    const statsService = createStatsService({ db, wall, sessionsRepo: createSessionsRepo(db) });
+
+    // dayStats over the October range only ever sees October rows
+    const days = await statsService.dayStats('2026-10-01', '2026-10-31');
+    expect(days.map((d) => d.localDate)).toEqual(['2026-10-15', '2026-10-20']);
+    expect(days[0]).toEqual({
+      localDate: '2026-10-15',
+      verified: 1,
+      pending: 0,
+      verifiedMinutes: 35,
+      pendingMinutes: 0,
+    });
+
+    // monthSummary for the October anchor excludes both neighbours entirely
+    const summary = await statsService.monthSummary('2026-10-24');
+    expect(summary.start).toBe('2026-10-01');
+    expect(summary.end).toBe('2026-10-31');
+    expect(summary.verifiedMinutes).toBe(35);
+    expect(summary.pendingMinutes).toBe(15);
+    expect(summary.days.map((d) => d.localDate)).toEqual(['2026-10-15', '2026-10-20']);
+
+    // Each neighbour month still reports its own session (nothing double-counted)
+    const september = await statsService.monthSummary('2026-09-15');
+    expect(september.verifiedMinutes).toBe(60);
+    expect(september.pendingMinutes).toBe(0);
+    const november = await statsService.monthSummary('2026-11-15');
+    expect(november.verifiedMinutes).toBe(0);
+    expect(november.pendingMinutes).toBe(45);
+  });
+
   it('daySessions lists the day tasks with their approval state for the detail sheet', async () => {
     const { statsService } = await buildStats();
     const approved = await statsService.daySessions('2026-10-21');

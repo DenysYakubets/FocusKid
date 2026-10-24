@@ -131,6 +131,54 @@ describe('F6 - Calendar screen (earnings + approved/pending markers)', () => {
     });
   });
 
+  it('refreshes the open day sheet when the screen regains focus after the PIN gate approves (round-1 MED)', async () => {
+    const { db, clock, services } = await setup();
+
+    // Capture the focus listener the screen registers (PinGate's goBack
+    // refocuses this screen and that is what triggers reload()).
+    let refocus: (() => void) | undefined;
+    const nav: any = {
+      ...mockNavigation,
+      addListener: jest.fn((event: string, cb: () => void) => {
+        if (event === 'focus') refocus = cb;
+        return () => {};
+      }),
+    };
+
+    const screen = await renderWithApp(
+      <CalendarScreen navigation={nav} route={{} as any} />,
+      { db, clock, wall, services }
+    );
+
+    // The pending day sheet shows the «Очікує перевірки» chip + approve action
+    await act(async () => {
+      fireEvent.press(await screen.findByTestId('calendar-day-2026-10-22'));
+    });
+    expect(await screen.findByText('Домашнє завдання', {}, { timeout: 3000 })).toBeTruthy();
+    expect(screen.getByText(uk.timer.awaiting)).toBeTruthy();
+    expect(screen.getByLabelText(uk.parentHome.verify)).toBeTruthy();
+
+    // The parent approves in the PIN gate (row flips to verified) and
+    // navigation.goBack() refocuses the Calendar screen.
+    await db.run(
+      `UPDATE sessions SET status = 'verified' WHERE local_date = '2026-10-22' AND status = 'completed';`
+    );
+    await act(async () => {
+      refocus?.();
+    });
+
+    // The sheet must now read the verified state — no stale awaiting chip
+    // and no approve button left to press (that press hit VERIFIED_IMMUTABLE).
+    expect(await screen.findByText(uk.status.verified, {}, { timeout: 3000 })).toBeTruthy();
+    expect(screen.queryByText(uk.timer.awaiting)).toBeNull();
+    expect(screen.queryByLabelText(uk.parentHome.verify)).toBeNull();
+
+    // ...and it agrees with the now-green day cell (the reported inconsistency).
+    expect(flat(screen.getByTestId('calendar-day-2026-10-22')).backgroundColor).toBe(
+      colors.verified
+    );
+  });
+
   it('shows the empty state for a day with no sessions', async () => {
     const { db, clock, services } = await setup();
 

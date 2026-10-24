@@ -1,0 +1,676 @@
+FAIL src/screens/__tests__/calendarScreen.test.tsx (5.012 s)
+  ● F6 - Calendar screen (earnings + approved/pending markers) › refreshes the open day sheet when the screen regains focus after the PIN gate approves (round-1 MED)
+
+    Unable to find an element with text: Перевірено
+
+    [36m<View[39m
+      [33mtestID[39m=[32m"calendar-layout-portrait"[39m
+    [36m>[39m
+      [36m<View[39m
+        [33mtestID[39m=[32m"calendar-header"[39m
+      [36m>[39m
+        [36m<Text[39m
+          [33maccessibilityRole[39m=[32m"header"[39m
+        [36m>[39m
+          [0mКалендар[0m
+        [36m</Text>[39m
+        [36m<View>[39m
+          [36m<View[39m
+            [33maccessibilityLabel[39m=[32m"Попередній місяць"[39m
+            [33maccessibilityRole[39m=[32m"button"[39m
+            [33maccessibilityState[39m=[32m{
+              {
+                "disabled": false,
+              }
+            }[39m
+            [33maccessible[39m=[32m{true}[39m
+          [36m>[39m
+            [36m<Text>[39m
+              [0m‹[0m
+            [36m</Text>[39m
+          [36m</View>[39m
+          [36m<Text>[39m
+            [0mЖовтень 2026[0m
+          [36m</Text>[39m
+          [36m<View[39m
+            [33maccessibilityLabel[39m=[32m"Наступний місяць"[39m
+            [33maccessibilityRole[39m=[32m"button"[39m
+            [33maccessibilityState[39m=[32m{
+              {
+                "disabled": false,
+              }
+            }[39m
+            [33maccessible[39m=[32m{true}[39m
+          [36m>[39m
+            [36m<Text>[39m
+              [0m›[0m
+            [36m</Text>[39m
+          [36m</View>[39m
+        [36m</View>[39m
+      [36m</View>[39m
+      [36m<View[39m
+        [33mtestID[39m=[32m"calendar-summary"[39m
+      [36m>[39m
+        [36m<View>[39m
+          [36m<Text>[39m
+            [0mЗа тиждень[0m
+          [36m</Text>[39m
+          [36m<Text>[39m
+            [0m50 хв[0m
+          [36m</Text>[39m
+        [36m</View>[39m
+        [36m<View>[39m
+          [36m<Text>[39m
+            [0mЗа місяць[0m
+          [36m</Text>[39m
+          [36m<Text>[39m
+            [0m50 хв[0m
+          [36m</Text>[39m
+        [36m</View>[39m
+      [36m</View>[39m
+      [36m<RCTScrollView>[39m
+        [36m<View>[39m
+          [36m<View>[39m
+            [36m<View>[39m
+              [36m<View>[39m
+                [36m<Text>[39m
+                  [0mПн[0m
+                [36m</Text>[39m
+              [36m</View>[39m
+              [36m<View>[39m
+                [36m<Text>[39m
+                  [0mВт[0m
+                [36m</Text>[39m
+              [36m</View>[39m
+              [36m<View>[39m
+                [36m<Text>[39m
+                  [0mСр[0m
+                [36m</Text>[39m
+              [36m</View>[39m
+              [36m<View>[39m
+                [36m<Text>[39m
+                  [0mЧт[0m
+                [36m</Text>[39m
+              [36m</View>[39m
+              [36m<View>[39m
+                [36m<Text>[39m
+                  [0mПт[0m
+                [36m</Text>[39m
+              [36m</View>[39m
+              [36m<View>[39m
+                [36m<Text>[39m
+                  [0mСб[0m
+                [36m</Text>[39m
+              [36m</View>[39m
+              [36m<View>[39m
+                [36m<Text>[39m
+                  [0mНд[0m
+                [36m</Text>[39m
+              [36m</View>[39m
+            [36m</View>[39m
+            [36m<View>[39m
+              [36m<View />[39m
+              [36m<View />[39m
+              [36m<View />[39m
+              [36m<View[39m
+                [33maccessibilityLabel[39m=[32m"1 Жовтень: 0 перевірено, 0 очікує"[39m
+                [33maccessibilityRole[39m=[32m"button"[39m
+                [33maccessibilityState[39m=[32m{
+                  {
+                    "disabled": false,
+                  }
+                }[39m
+                [33maccessible[39m=[32m{true}[39m
+                [33mtestID[39m=[32m"calendar-day-2026-10-01"[39m
+              [36m>[39m
+                [36m<Text>[39m
+                  [0m1[0m
+                [36m</Text>[39m
+              [36m</View>[39m
+              [36m<View[39m
+                [33maccessibilityLabel[39m=[32m"2 Жовтень: 0 перевірено, 0 очікує"[39m
+                [33maccessibilityRole[39m=[32m"button"[39m
+                [33maccessibilityState[39m=[32m{
+                  {
+                    "disabled": false,
+                  }
+                }[39m
+                [33maccessible[39m=[32m{true}[39m
+                [33mtestID[39m=[32m"calendar-day-2026-10-02"[39m
+              [36m>[39m
+                [36m<Text>[39m
+                  [0m2[0m
+                [36m</Text>[39m
+              [36m</View>[39m
+              [36m<View[39m
+                [33maccessibilityLabel[39m=[32m"3 Жовтень: 0 перевірено, 0 очікує"[39m
+                [33maccessibilityRole[39m=[32m"button"[39m
+                [33maccessibilityState[39m=[32m{
+                  {
+                    "disabled": false,
+                  }
+                }[39m
+                [33maccessible[39m=[32m{true}[39m
+                [33mtestID[39m=[32m"calendar-day-2026-10-03"[39m
+              [36m>[39m
+                [36m<Text>[39m
+                  [0m3[0m
+                [36m</Text>[39m
+              [36m</View>[39m
+              [36m<View[39m
+                [33maccessibilityLabel[39m=[32m"4 Жовтень: 0 перевірено, 0 очікує"[39m
+                [33maccessibilityRole[39m=[32m"button"[39m
+                [33maccessibilityState[39m=[32m{
+                  {
+                    "disabled": false,
+                  }
+                }[39m
+                [33maccessible[39m=[32m{true}[39m
+                [33mtestID[39m=[32m"calendar-day-2026-10-04"[39m
+              [36m>[39m
+                [36m<Text>[39m
+                  [0m4[0m
+                [36m</Text>[39m
+              [36m</View>[39m
+            [36m</View>[39m
+            [36m<View>[39m
+              [36m<View[39m
+                [33maccessibilityLabel[39m=[32m"5 Жовтень: 0 перевірено, 0 очікує"[39m
+                [33maccessibilityRole[39m=[32m"button"[39m
+                [33maccessibilityState[39m=[32m{
+                  {
+                    "disabled": false,
+                  }
+                }[39m
+                [33maccessible[39m=[32m{true}[39m
+                [33mtestID[39m=[32m"calendar-day-2026-10-05"[39m
+              [36m>[39m
+                [36m<Text>[39m
+                  [0m5[0m
+                [36m</Text>[39m
+              [36m</View>[39m
+              [36m<View[39m
+                [33maccessibilityLabel[39m=[32m"6 Жовтень: 0 перевірено, 0 очікує"[39m
+                [33maccessibilityRole[39m=[32m"button"[39m
+                [33maccessibilityState[39m=[32m{
+                  {
+                    "disabled": false,
+                  }
+                }[39m
+                [33maccessible[39m=[32m{true}[39m
+                [33mtestID[39m=[32m"calendar-day-2026-10-06"[39m
+              [36m>[39m
+                [36m<Text>[39m
+                  [0m6[0m
+                [36m</Text>[39m
+              [36m</View>[39m
+              [36m<View[39m
+                [33maccessibilityLabel[39m=[32m"7 Жовтень: 0 перевірено, 0 очікує"[39m
+                [33maccessibilityRole[39m=[32m"button"[39m
+                [33maccessibilityState[39m=[32m{
+                  {
+                    "disabled": false,
+                  }
+                }[39m
+                [33maccessible[39m=[32m{true}[39m
+                [33mtestID[39m=[32m"calendar-day-2026-10-07"[39m
+              [36m>[39m
+                [36m<Text>[39m
+                  [0m7[0m
+                [36m</Text>[39m
+              [36m</View>[39m
+              [36m<View[39m
+                [33maccessibilityLabel[39m=[32m"8 Жовтень: 0 перевірено, 0 очікує"[39m
+                [33maccessibilityRole[39m=[32m"button"[39m
+                [33maccessibilityState[39m=[32m{
+                  {
+                    "disabled": false,
+                  }
+                }[39m
+                [33maccessible[39m=[32m{true}[39m
+                [33mtestID[39m=[32m"calendar-day-2026-10-08"[39m
+              [36m>[39m
+                [36m<Text>[39m
+                  [0m8[0m
+                [36m</Text>[39m
+              [36m</View>[39m
+              [36m<View[39m
+                [33maccessibilityLabel[39m=[32m"9 Жовтень: 0 перевірено, 0 очікує"[39m
+                [33maccessibilityRole[39m=[32m"button"[39m
+                [33maccessibilityState[39m=[32m{
+                  {
+                    "disabled": false,
+                  }
+                }[39m
+                [33maccessible[39m=[32m{true}[39m
+                [33mtestID[39m=[32m"calendar-day-2026-10-09"[39m
+              [36m>[39m
+                [36m<Text>[39m
+                  [0m9[0m
+                [36m</Text>[39m
+              [36m</View>[39m
+              [36m<View[39m
+                [33maccessibilityLabel[39m=[32m"10 Жовтень: 0 перевірено, 0 очікує"[39m
+                [33maccessibilityRole[39m=[32m"button"[39m
+                [33maccessibilityState[39m=[32m{
+                  {
+                    "disabled": false,
+                  }
+                }[39m
+                [33maccessible[39m=[32m{true}[39m
+                [33mtestID[39m=[32m"calendar-day-2026-10-10"[39m
+              [36m>[39m
+                [36m<Text>[39m
+                  [0m10[0m
+                [36m</Text>[39m
+              [36m</View>[39m
+              [36m<View[39m
+                [33maccessibilityLabel[39m=[32m"11 Жовтень: 0 перевірено, 0 очікує"[39m
+                [33maccessibilityRole[39m=[32m"button"[39m
+                [33maccessibilityState[39m=[32m{
+                  {
+                    "disabled": false,
+                  }
+                }[39m
+                [33maccessible[39m=[32m{true}[39m
+                [33mtestID[39m=[32m"calendar-day-2026-10-11"[39m
+              [36m>[39m
+                [36m<Text>[39m
+                  [0m11[0m
+                [36m</Text>[39m
+              [36m</View>[39m
+            [36m</View>[39m
+            [36m<View>[39m
+              [36m<View[39m
+                [33maccessibilityLabel[39m=[32m"12 Жовтень: 0 перевірено, 0 очікує"[39m
+                [33maccessibilityRole[39m=[32m"button"[39m
+                [33maccessibilityState[39m=[32m{
+                  {
+                    "disabled": false,
+                  }
+                }[39m
+                [33maccessible[39m=[32m{true}[39m
+                [33mtestID[39m=[32m"calendar-day-2026-10-12"[39m
+              [36m>[39m
+                [36m<Text>[39m
+                  [0m12[0m
+                [36m</Text>[39m
+              [36m</View>[39m
+              [36m<View[39m
+                [33maccessibilityLabel[39m=[32m"13 Жовтень: 0 перевірено, 0 очікує"[39m
+                [33maccessibilityRole[39m=[32m"button"[39m
+                [33maccessibilityState[39m=[32m{
+                  {
+                    "disabled": false,
+                  }
+                }[39m
+                [33maccessible[39m=[32m{true}[39m
+                [33mtestID[39m=[32m"calendar-day-2026-10-13"[39m
+              [36m>[39m
+                [36m<Text>[39m
+                  [0m13[0m
+                [36m</Text>[39m
+              [36m</View>[39m
+              [36m<View[39m
+                [33maccessibilityLabel[39m=[32m"14 Жовтень: 0 перевірено, 0 очікує"[39m
+                [33maccessibilityRole[39m=[32m"button"[39m
+                [33maccessibilityState[39m=[32m{
+                  {
+                    "disabled": false,
+                  }
+                }[39m
+                [33maccessible[39m=[32m{true}[39m
+                [33mtestID[39m=[32m"calendar-day-2026-10-14"[39m
+              [36m>[39m
+                [36m<Text>[39m
+                  [0m14[0m
+                [36m</Text>[39m
+              [36m</View>[39m
+              [36m<View[39m
+                [33maccessibilityLabel[39m=[32m"15 Жовтень: 0 перевірено, 0 очікує"[39m
+                [33maccessibilityRole[39m=[32m"button"[39m
+                [33maccessibilityState[39m=[32m{
+                  {
+                    "disabled": false,
+                  }
+                }[39m
+                [33maccessible[39m=[32m{true}[39m
+                [33mtestID[39m=[32m"calendar-day-2026-10-15"[39m
+              [36m>[39m
+                [36m<Text>[39m
+                  [0m15[0m
+                [36m</Text>[39m
+              [36m</View>[39m
+              [36m<View[39m
+                [33maccessibilityLabel[39m=[32m"16 Жовтень: 0 перевірено, 0 очікує"[39m
+                [33maccessibilityRole[39m=[32m"button"[39m
+                [33maccessibilityState[39m=[32m{
+                  {
+                    "disabled": false,
+                  }
+                }[39m
+                [33maccessible[39m=[32m{true}[39m
+                [33mtestID[39m=[32m"calendar-day-2026-10-16"[39m
+              [36m>[39m
+                [36m<Text>[39m
+                  [0m16[0m
+                [36m</Text>[39m
+              [36m</View>[39m
+              [36m<View[39m
+                [33maccessibilityLabel[39m=[32m"17 Жовтень: 0 перевірено, 0 очікує"[39m
+                [33maccessibilityRole[39m=[32m"button"[39m
+                [33maccessibilityState[39m=[32m{
+                  {
+                    "disabled": false,
+                  }
+                }[39m
+                [33maccessible[39m=[32m{true}[39m
+                [33mtestID[39m=[32m"calendar-day-2026-10-17"[39m
+              [36m>[39m
+                [36m<Text>[39m
+                  [0m17[0m
+                [36m</Text>[39m
+              [36m</View>[39m
+              [36m<View[39m
+                [33maccessibilityLabel[39m=[32m"18 Жовтень: 0 перевірено, 0 очікує"[39m
+                [33maccessibilityRole[39m=[32m"button"[39m
+                [33maccessibilityState[39m=[32m{
+                  {
+                    "disabled": false,
+                  }
+                }[39m
+                [33maccessible[39m=[32m{true}[39m
+                [33mtestID[39m=[32m"calendar-day-2026-10-18"[39m
+              [36m>[39m
+                [36m<Text>[39m
+                  [0m18[0m
+                [36m</Text>[39m
+              [36m</View>[39m
+            [36m</View>[39m
+            [36m<View>[39m
+              [36m<View[39m
+                [33maccessibilityLabel[39m=[32m"19 Жовтень: 0 перевірено, 0 очікує"[39m
+                [33maccessibilityRole[39m=[32m"button"[39m
+                [33maccessibilityState[39m=[32m{
+                  {
+                    "disabled": false,
+                  }
+                }[39m
+                [33maccessible[39m=[32m{true}[39m
+                [33mtestID[39m=[32m"calendar-day-2026-10-19"[39m
+              [36m>[39m
+                [36m<Text>[39m
+                  [0m19[0m
+                [36m</Text>[39m
+              [36m</View>[39m
+              [36m<View[39m
+                [33maccessibilityLabel[39m=[32m"20 Жовтень: 0 перевірено, 0 очікує"[39m
+                [33maccessibilityRole[39m=[32m"button"[39m
+                [33maccessibilityState[39m=[32m{
+                  {
+                    "disabled": false,
+                  }
+                }[39m
+                [33maccessible[39m=[32m{true}[39m
+                [33mtestID[39m=[32m"calendar-day-2026-10-20"[39m
+              [36m>[39m
+                [36m<Text>[39m
+                  [0m20[0m
+                [36m</Text>[39m
+              [36m</View>[39m
+              [36m<View[39m
+                [33maccessibilityLabel[39m=[32m"21 Жовтень: 1 перевірено, 0 очікує"[39m
+                [33maccessibilityRole[39m=[32m"button"[39m
+                [33maccessibilityState[39m=[32m{
+                  {
+                    "disabled": false,
+                  }
+                }[39m
+                [33maccessible[39m=[32m{true}[39m
+                [33mtestID[39m=[32m"calendar-day-2026-10-21"[39m
+              [36m>[39m
+                [36m<Text>[39m
+                  [0m21[0m
+                [36m</Text>[39m
+              [36m</View>[39m
+              [36m<View[39m
+                [33maccessibilityLabel[39m=[32m"22 Жовтень: 1 перевірено, 0 очікує"[39m
+                [33maccessibilityRole[39m=[32m"button"[39m
+                [33maccessibilityState[39m=[32m{
+                  {
+                    "disabled": false,
+                  }
+                }[39m
+                [33maccessible[39m=[32m{true}[39m
+                [33mtestID[39m=[32m"calendar-day-2026-10-22"[39m
+              [36m>[39m
+                [36m<Text>[39m
+                  [0m22[0m
+                [36m</Text>[39m
+              [36m</View>[39m
+              [36m<View[39m
+                [33maccessibilityLabel[39m=[32m"23 Жовтень: 0 перевірено, 0 очікує"[39m
+                [33maccessibilityRole[39m=[32m"button"[39m
+                [33maccessibilityState[39m=[32m{
+                  {
+                    "disabled": false,
+                  }
+                }[39m
+                [33maccessible[39m=[32m{true}[39m
+                [33mtestID[39m=[32m"calendar-day-2026-10-23"[39m
+              [36m>[39m
+                [36m<Text>[39m
+                  [0m23[0m
+                [36m</Text>[39m
+              [36m</View>[39m
+              [36m<View[39m
+                [33maccessibilityLabel[39m=[32m"24 Жовтень: 0 перевірено, 0 очікує"[39m
+                [33maccessibilityRole[39m=[32m"button"[39m
+                [33maccessibilityState[39m=[32m{
+                  {
+                    "disabled": false,
+                  }
+                }[39m
+                [33maccessible[39m=[32m{true}[39m
+                [33mtestID[39m=[32m"calendar-day-2026-10-24"[39m
+              [36m>[39m
+                [36m<Text>[39m
+                  [0m24[0m
+                [36m</Text>[39m
+              [36m</View>[39m
+              [36m<View[39m
+                [33maccessibilityLabel[39m=[32m"25 Жовтень: 0 перевірено, 0 очікує"[39m
+                [33maccessibilityRole[39m=[32m"button"[39m
+                [33maccessibilityState[39m=[32m{
+                  {
+                    "disabled": false,
+                  }
+                }[39m
+                [33maccessible[39m=[32m{true}[39m
+                [33mtestID[39m=[32m"calendar-day-2026-10-25"[39m
+              [36m>[39m
+                [36m<Text>[39m
+                  [0m25[0m
+                [36m</Text>[39m
+              [36m</View>[39m
+            [36m</View>[39m
+            [36m<View>[39m
+              [36m<View[39m
+                [33maccessibilityLabel[39m=[32m"26 Жовтень: 0 перевірено, 0 очікує"[39m
+                [33maccessibilityRole[39m=[32m"button"[39m
+                [33maccessibilityState[39m=[32m{
+                  {
+                    "disabled": false,
+                  }
+                }[39m
+                [33maccessible[39m=[32m{true}[39m
+                [33mtestID[39m=[32m"calendar-day-2026-10-26"[39m
+              [36m>[39m
+                [36m<Text>[39m
+                  [0m26[0m
+                [36m</Text>[39m
+              [36m</View>[39m
+              [36m<View[39m
+                [33maccessibilityLabel[39m=[32m"27 Жовтень: 0 перевірено, 0 очікує"[39m
+                [33maccessibilityRole[39m=[32m"button"[39m
+                [33maccessibilityState[39m=[32m{
+                  {
+                    "disabled": false,
+                  }
+                }[39m
+                [33maccessible[39m=[32m{true}[39m
+                [33mtestID[39m=[32m"calendar-day-2026-10-27"[39m
+              [36m>[39m
+                [36m<Text>[39m
+                  [0m27[0m
+                [36m</Text>[39m
+              [36m</View>[39m
+              [36m<View[39m
+                [33maccessibilityLabel[39m=[32m"28 Жовтень: 0 перевірено, 0 очікує"[39m
+                [33maccessibilityRole[39m=[32m"button"[39m
+                [33maccessibilityState[39m=[32m{
+                  {
+                    "disabled": false,
+                  }
+                }[39m
+                [33maccessible[39m=[32m{true}[39m
+                [33mtestID[39m=[32m"calendar-day-2026-10-28"[39m
+              [36m>[39m
+                [36m<Text>[39m
+                  [0m28[0m
+                [36m</Text>[39m
+              [36m</View>[39m
+              [36m<View[39m
+                [33maccessibilityLabel[39m=[32m"29 Жовтень: 0 перевірено, 0 очікує"[39m
+                [33maccessibilityRole[39m=[32m"button"[39m
+                [33maccessibilityState[39m=[32m{
+                  {
+                    "disabled": false,
+                  }
+                }[39m
+                [33maccessible[39m=[32m{true}[39m
+                [33mtestID[39m=[32m"calendar-day-2026-10-29"[39m
+              [36m>[39m
+                [36m<Text>[39m
+                  [0m29[0m
+                [36m</Text>[39m
+              [36m</View>[39m
+              [36m<View[39m
+                [33maccessibilityLabel[39m=[32m"30 Жовтень: 0 перевірено, 0 очікує"[39m
+                [33maccessibilityRole[39m=[32m"button"[39m
+                [33maccessibilityState[39m=[32m{
+                  {
+                    "disabled": false,
+                  }
+                }[39m
+                [33maccessible[39m=[32m{true}[39m
+                [33mtestID[39m=[32m"calendar-day-2026-10-30"[39m
+              [36m>[39m
+                [36m<Text>[39m
+                  [0m30[0m
+                [36m</Text>[39m
+              [36m</View>[39m
+              [36m<View[39m
+                [33maccessibilityLabel[39m=[32m"31 Жовтень: 0 перевірено, 0 очікує"[39m
+                [33maccessibilityRole[39m=[32m"button"[39m
+                [33maccessibilityState[39m=[32m{
+                  {
+                    "disabled": false,
+                  }
+                }[39m
+                [33maccessible[39m=[32m{true}[39m
+                [33mtestID[39m=[32m"calendar-day-2026-10-31"[39m
+              [36m>[39m
+                [36m<Text>[39m
+                  [0m31[0m
+                [36m</Text>[39m
+              [36m</View>[39m
+              [36m<View />[39m
+            [36m</View>[39m
+          [36m</View>[39m
+        [36m</View>[39m
+      [36m</RCTScrollView>[39m
+      [36m<Text>[39m
+        [0mТоркніться дня, щоб побачити завдання[0m
+      [36m</Text>[39m
+      [36m<RCTScrollView[39m
+        [33mtestID[39m=[32m"calendar-day-detail"[39m
+      [36m>[39m
+        [36m<View>[39m
+          [36m<View>[39m
+            [36m<Text[39m
+              [33maccessibilityRole[39m=[32m"header"[39m
+            [36m>[39m
+              [0m22 Жовтень[0m
+            [36m</Text>[39m
+            [36m<View[39m
+              [33maccessibilityLabel[39m=[32m"Закрити"[39m
+              [33maccessibilityRole[39m=[32m"button"[39m
+              [33maccessibilityState[39m=[32m{
+                {
+                  "disabled": false,
+                }
+              }[39m
+              [33maccessible[39m=[32m{true}[39m
+            [36m>[39m
+              [36m<Text>[39m
+                [0mЗакрити[0m
+              [36m</Text>[39m
+            [36m</View>[39m
+          [36m</View>[39m
+          [36m<View>[39m
+            [36m<View>[39m
+              [36m<View>[39m
+                [36m<Text>[39m
+                  [0m📝[0m
+                [36m</Text>[39m
+                [36m<Text>[39m
+                  [0mДомашнє завдання[0m
+                [36m</Text>[39m
+              [36m</View>[39m
+              [36m<Text>[39m
+                [0m15 хв[0m
+              [36m</Text>[39m
+            [36m</View>[39m
+            [36m<View>[39m
+              [36m<Text>[39m
+                [0mОчікує перевірки[0m
+              [36m</Text>[39m
+            [36m</View>[39m
+            [36m<View[39m
+              [33maccessibilityLabel[39m=[32m"Перевірити"[39m
+              [33maccessibilityRole[39m=[32m"button"[39m
+              [33maccessibilityState[39m=[32m{
+                {
+                  "disabled": false,
+                }
+              }[39m
+              [33maccessible[39m=[32m{true}[39m
+            [36m>[39m
+              [36m<Text>[39m
+                [0mПеревірити[0m
+              [36m</Text>[39m
+            [36m</View>[39m
+          [36m</View>[39m
+        [36m</View>[39m
+      [36m</RCTScrollView>[39m
+    [36m</View>[39m
+
+      170 |     // The sheet must now read the verified state — no stale awaiting chip
+      171 |     // and no approve button left to press (that press hit VERIFIED_IMMUTABLE).
+    > 172 |     expect(await screen.findByText(uk.status.verified, {}, { timeout: 3000 })).toBeTruthy();
+          |                         ^
+      173 |     expect(screen.queryByText(uk.timer.awaiting)).toBeNull();
+      174 |     expect(screen.queryByLabelText(uk.parentHome.verify)).toBeNull();
+      175 |
+
+      at Object.findByText (src/screens/__tests__/calendarScreen.test.tsx:172:25)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+Test Suites: 1 failed, 2 passed, 3 total
+Tests:       1 failed, 18 passed, 19 total
+Snapshots:   0 total
+Time:        5.56 s
+Ran all test suites matching src/screens/__tests__/calendarScreen.test.tsx|src/services/auth/__tests__/fastPinVerify.test.ts|src/domain/stats/__tests__/calendar.test.ts.
+JEST_EXIT=1
