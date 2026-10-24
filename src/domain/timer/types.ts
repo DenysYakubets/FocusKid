@@ -22,6 +22,7 @@ export type TimerEvent =
   | { type: 'RESUME'; now: number }
   | { type: 'ADD_TIME'; now: number; ms: number }
   | { type: 'COMPLETE'; now: number } // child "I'm done" request
+  | { type: 'STOP'; now: number } // F3: child-initiated stop -> abandoned
   | { type: 'VERIFY'; now: number; parentAuthorized: boolean }
   | { type: 'PARENT_ABANDON'; now: number; parentAuthorized: boolean };
 

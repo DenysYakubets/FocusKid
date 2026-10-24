@@ -73,6 +73,8 @@ export interface TimerService {
   addTime(ms?: number): Promise<TimerServiceResult>;
   tick(): Promise<TimerServiceResult>;
   requestComplete(): Promise<TimerServiceResult>;
+  /** F3: child-initiated stop — no parent token required. */
+  stop(): Promise<TimerServiceResult>;
   verify(sessionId: number, token?: ParentToken): Promise<TimerServiceResult>;
   abandon(sessionId: number, token?: ParentToken): Promise<TimerServiceResult>;
   checkpoint(): Promise<void>;
@@ -465,6 +467,54 @@ export function createTimerService(deps: {
     return { ok: true, state };
   }
 
+  /**
+   * F3: child-initiated stop. Terminates the live session through the existing
+   * abandon path (status -> 'abandoned', audit event appended) without any
+   * parent token: no minutes are earned, nothing reaches Completed/Verified,
+   * and the task can be started again today (no penalty, INV-09).
+   */
+  async function doStop(): Promise<TimerServiceResult> {
+    if (!sessionId || (state.kind !== 'Running' && state.kind !== 'Paused')) {
+      return { ok: false, error: 'INVALID_TRANSITION' };
+    }
+
+    const now = clock.now();
+    const fromKind = state.kind;
+    const res = transition(state, { type: 'STOP', now });
+    if (!res.ok) {
+      return { ok: false, error: res.error };
+    }
+
+    const currentSessionId = sessionId;
+    const currentRunMs = runElapsed(state, now);
+    const currentPausedMs = Math.min(PAUSE_BUDGET_MS, pausedElapsed(state, now));
+    const nowIso = wall.nowIso();
+
+    await db.transaction(async (tx) => {
+      const txSessionsRepo = createSessionsRepo(tx);
+      await txSessionsRepo.setStatus(currentSessionId, 'abandoned', {
+        elapsedRunMs: currentRunMs,
+        pausedTotalMs: currentPausedMs,
+        updatedAt: nowIso,
+      });
+
+      await txSessionsRepo.appendEvent({
+        sessionId: currentSessionId,
+        event: 'STOP',
+        fromState: fromKind.toLowerCase(),
+        toState: 'abandoned',
+        runMs: currentRunMs,
+        createdAt: nowIso,
+      });
+    });
+
+    state = { kind: 'Idle' };
+    sessionId = null;
+    taskId = null;
+
+    return { ok: true, state };
+  }
+
   async function doCheckpoint(): Promise<void> {
     if (!sessionId || (state.kind !== 'Running' && state.kind !== 'Paused')) {
       return;
@@ -578,6 +628,7 @@ export function createTimerService(deps: {
     addTime: (ms?: number) => enqueue(() => doAddTime(ms)),
     tick: () => enqueue(() => doTick()),
     requestComplete: () => enqueue(() => doRequestComplete()),
+    stop: () => enqueue(() => doStop()),
     verify: (targetSessionId: number, token?: ParentToken) =>
       enqueue(() => doVerify(targetSessionId, token)),
     abandon: (targetSessionId: number, token?: ParentToken) =>
