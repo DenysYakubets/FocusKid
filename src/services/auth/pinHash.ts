@@ -2,7 +2,22 @@ import { pbkdf2 } from '@noble/hashes/pbkdf2';
 import { sha256 } from '@noble/hashes/sha256';
 import { bytesToHex, hexToBytes, utf8ToBytes } from '@noble/hashes/utils';
 
-export const PBKDF2_ITERATIONS = 50_000;
+/**
+ * Owner item F1: PIN verification must feel instant (<200ms). The previous
+ * 50 000-iteration cost blocked Hermes for ~430ms on a desktop CPU and ~5s on
+ * the owner's phone (Hermes has no JIT), which read as a freeze right after the
+ * correct PIN was entered. This is a local-only kid app (INV-01, no network), so
+ * a cheap salted PBKDF2/SHA-256 cost keeps the VISION.md algorithm contract
+ * (`pbkdf2-sha256`) while making verification effectively instant.
+ *
+ * Records written by older builds carry `iterations = 50000`; `authService`
+ * still verifies them with their stored cost and then lazily re-hashes them onto
+ * this fast cost on the first successful entry (see attempt()).
+ */
+export const PBKDF2_ITERATIONS = 1_000;
+
+/** Cost used by pre-fix builds (kept for lazy migration + tests). */
+export const LEGACY_PBKDF2_ITERATIONS = 50_000;
 
 export interface AuthRecord {
   saltHex: string;

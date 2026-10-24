@@ -1,0 +1,62 @@
+FAIL src/domain/stats/__tests__/calendar.test.ts
+  ● F6 - statsService calendar data (single source of truth: sessions table) › keeps month boundaries strict: 2026-09-30 and 2026-11-01 never leak into October (round-1 LOW)
+
+    expect(received).toEqual(expected) // deep equality
+
+    - Expected  - 0
+    + Received  + 2
+
+      Array [
+    +   "2026-09-30",
+        "2026-10-15",
+        "2026-10-20",
+    +   "2026-11-01",
+      ]
+
+      167 |     // dayStats over the October range only ever sees October rows
+      168 |     const days = await statsService.dayStats('2026-10-01', '2026-10-31');
+    > 169 |     expect(days.map((d) => d.localDate)).toEqual(['2026-10-15', '2026-10-20']);
+          |                                          ^
+      170 |     expect(days[0]).toEqual({
+      171 |       localDate: '2026-10-15',
+      172 |       verified: 1,
+
+      at Object.toEqual (src/domain/stats/__tests__/calendar.test.ts:169:42)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+FAIL src/services/auth/__tests__/fastPinVerify.test.ts
+  ● F1 - instant PIN verification (cheap KDF, no artificial delay) › runs the real V1->V2 migration for an existing install: legacy 50k row + failed_attempts survive (round-1 LOW)
+
+    SqliteError: CHECK constraint failed: iterations >= 50000
+
+      13 |     async run(sql: string, params: readonly SqlParam[] = []): Promise<RunResult> {
+      14 |       const stmt = db.prepare(sql);
+    > 15 |       const res = stmt.run(...params);
+         |                        ^
+      16 |       return {
+      17 |         changes: res.changes,
+      18 |         lastInsertRowId: Number(res.lastInsertRowid),
+
+      at run (test/helpers/nodeDb.ts:15:24)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+      at node_modules/@babel/runtime/helpers/asyncToGenerator.js:22:7
+      at Object.<anonymous> (node_modules/@babel/runtime/helpers/asyncToGenerator.js:14:12)
+      at Object.apply [as run] (test/helpers/nodeDb.ts:19:9)
+      at run (src/services/repos/authRepo.ts:59:16)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+      at node_modules/@babel/runtime/helpers/asyncToGenerator.js:22:7
+      at node_modules/@babel/runtime/helpers/asyncToGenerator.js:14:12
+      at Object.upsert (src/services/repos/authRepo.ts:70:9)
+      at Object.upsert (src/services/auth/__tests__/fastPinVerify.test.ts:165:20)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+Test Suites: 2 failed, 2 total
+Tests:       2 failed, 12 skipped, 14 total
+Snapshots:   0 total
+Time:        3.086 s, estimated 4 s
+Ran all test suites matching src/services/auth/__tests__/fastPinVerify.test.ts|src/domain/stats/__tests__/calendar.test.ts with tests matching "round-1".
+JEST_EXIT=1

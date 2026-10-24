@@ -1,5 +1,9 @@
 import { getRandomBytes } from 'expo-crypto';
-import { bytesToHex, randomBytes as nobleRandomBytes } from '@noble/hashes/utils';
+import {
+  bytesToHex,
+  hexToBytes,
+  randomBytes as nobleRandomBytes,
+} from '@noble/hashes/utils';
 import { MonotonicClock } from '../clock/monotonic';
 import { WallClock, systemWallClock } from '../clock/wallClock';
 import { AuthRepo } from '../repos/authRepo';
@@ -146,7 +150,21 @@ export function createAuthService(options: CreateAuthServiceOptions): AuthServic
 
     if (isMatch) {
       lockedUntilMonotonic = null;
-      await authRepo.setFailedAttempts(0, wall.nowIso());
+      if (record.iterations === iterations && record.algo === 'pbkdf2-sha256') {
+        await authRepo.setFailedAttempts(0, wall.nowIso());
+      } else {
+        // F1 lazy migration: a record written with the old 50k cost is re-hashed
+        // onto the fast cost right here (the PIN is known only at this moment),
+        // so every later gate entry verifies in a few milliseconds.
+        await authRepo.upsert(
+          {
+            saltHex: record.saltHex,
+            hashHex: hashPin(pin, hexToBytes(record.saltHex), iterations),
+            iterations,
+          },
+          wall.nowIso()
+        );
+      }
       return 'SUCCESS';
     } else {
       const nextFailures = record.failedAttempts + 1;

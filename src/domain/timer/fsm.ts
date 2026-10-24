@@ -110,6 +110,16 @@ export function transition(state: TimerState, event: TimerEvent): TransitionResu
         return { ok: false, state, error: 'ADD_TIME_LIMIT' };
       }
 
+      // F3: child-initiated stop — the session is abandoned (no minutes earned),
+      // never Completed/Verified, so INV-03 stays intact.
+      if (event.type === 'STOP') {
+        return {
+          ok: true,
+          state: { kind: 'Idle' },
+          effects: ['ABANDONED'],
+        };
+      }
+
       if (event.type === 'PARENT_ABANDON') {
         if (event.parentAuthorized) {
           return {
@@ -217,6 +227,14 @@ export function transition(state: TimerState, event: TimerEvent): TransitionResu
 
       if (event.type === 'COMPLETE') {
         return { ok: false, state, error: 'EARLY_TERMINATION_FORBIDDEN' };
+      }
+
+      if (event.type === 'STOP') {
+        return {
+          ok: true,
+          state: { kind: 'Idle' },
+          effects: ['ABANDONED'],
+        };
       }
 
       if (event.type === 'VERIFY') {

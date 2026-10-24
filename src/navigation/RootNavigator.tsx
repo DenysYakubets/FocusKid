@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { RootStackParamList } from './routes';
-import { TodayScreen } from '../screens/TodayScreen';
+import { ChildTabsScreen } from '../screens/ChildTabsScreen';
 import { TimerScreen } from '../screens/TimerScreen';
 import { PinSetupScreen } from '../screens/PinSetupScreen';
 import { PinGateScreen } from '../screens/PinGateScreen';
@@ -73,7 +73,8 @@ export function RootNavigator({ initialRouteName }: RootNavigatorProps) {
       }}
     >
       <Stack.Screen name="PinSetup" component={PinSetupScreen} />
-      <Stack.Screen name="Today" component={TodayScreen} />
+      {/* F6: Today hosts the child bottom nav (Tasks | Calendar). */}
+      <Stack.Screen name="Today" component={ChildTabsScreen} />
       <Stack.Screen name="Timer" component={TimerScreen} />
       <Stack.Screen name="PinGate" component={PinGateScreen} />
       <Stack.Screen name="ParentHome" component={ParentHomeScreen} />

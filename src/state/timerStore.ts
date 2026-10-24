@@ -12,6 +12,8 @@ export interface TimerStoreState {
   addTime: (ms?: number) => Promise<boolean>;
   tick: () => Promise<void>;
   requestComplete: () => Promise<boolean>;
+  /** F3: child-initiated stop (no parent token). */
+  stop: () => Promise<boolean>;
   verify: (sessionId: number, token?: unknown) => Promise<boolean>;
   abandon: (sessionId: number, token?: unknown) => Promise<boolean>;
   hydrate: (serviceOverride?: TimerService) => Promise<TimerSnapshot>;
@@ -148,6 +150,26 @@ export const useTimerStore = create<TimerStoreState>((set, get) => ({
     }
   },
 
+  stop: async () => {
+    try {
+      const service = get().service;
+      if (!service) throw new Error('TimerService not attached to timerStore');
+      const res = await service.stop();
+      set({
+        snapshot: service.getSnapshot(),
+        lastError: res.ok ? null : res.error,
+      });
+      return res.ok;
+    } catch (err) {
+      const service = get().service;
+      set({
+        snapshot: service ? service.getSnapshot() : get().snapshot,
+        lastError: err instanceof Error ? err.message : 'OPERATION_FAILED',
+      });
+      return false;
+    }
+  },
+
   verify: async (sessionId: number, token?: unknown) => {
     try {
       const service = get().service;
@@ -208,6 +230,7 @@ export const timerStore = Object.assign(useTimerStore, {
   addTime: (ms?: number) => useTimerStore.getState().addTime(ms),
   tick: () => useTimerStore.getState().tick(),
   requestComplete: () => useTimerStore.getState().requestComplete(),
+  stop: () => useTimerStore.getState().stop(),
   verify: (sessionId: number, token?: unknown) =>
     useTimerStore.getState().verify(sessionId, token),
   abandon: (sessionId: number, token?: unknown) =>

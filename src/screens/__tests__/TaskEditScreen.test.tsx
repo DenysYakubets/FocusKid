@@ -115,8 +115,12 @@ describe('TaskEditScreen (Task CRUD & validation)', () => {
     await act(async () => {
       fireEvent.changeText(screen.getByTestId('task-title-input'), 'Плавання');
     });
+    // F5: the emoji now comes from the picker dialog, not the system keyboard.
     await act(async () => {
-      fireEvent.changeText(screen.getByTestId('task-emoji-input'), '🏊');
+      fireEvent.press(screen.getByTestId('task-emoji-field'));
+    });
+    await act(async () => {
+      fireEvent.press(screen.getByLabelText('🏊'));
     });
     await act(async () => {
       fireEvent.press(screen.getByLabelText(uk.taskCrud.save));
@@ -124,6 +128,9 @@ describe('TaskEditScreen (Task CRUD & validation)', () => {
 
     expect(mockNav.goBack).toHaveBeenCalled();
     screen.unmount();
+
+    const created = await services.tasksRepo.listAll();
+    expect(created.find((t) => t.title === 'Плавання')?.emoji).toBe('🏊');
 
     // Check TodayScreen
     const mockTodayNav: any = { addListener: jest.fn(() => () => {}) };

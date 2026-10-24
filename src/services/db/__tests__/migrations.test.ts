@@ -1,6 +1,7 @@
 /** @jest-environment node */
 import { createNodeDb } from '../../../../test/helpers/nodeDb';
 import { migrate } from '../migrations';
+import { MIGRATIONS } from '../schema';
 
 describe('Database migrations', () => {
   it('is idempotent and creates all tables, indexes, and triggers', async () => {
@@ -10,13 +11,13 @@ describe('Database migrations', () => {
     await migrate(db);
 
     const versionRow1 = await db.get<{ user_version: number }>('PRAGMA user_version;');
-    expect(versionRow1?.user_version).toBe(1);
+    expect(versionRow1?.user_version).toBe(MIGRATIONS.length);
 
     // Second run (idempotent)
     await migrate(db);
 
     const versionRow2 = await db.get<{ user_version: number }>('PRAGMA user_version;');
-    expect(versionRow2?.user_version).toBe(1);
+    expect(versionRow2?.user_version).toBe(MIGRATIONS.length);
 
     // Check tables in sqlite_master
     const tables = await db.all<{ name: string }>(

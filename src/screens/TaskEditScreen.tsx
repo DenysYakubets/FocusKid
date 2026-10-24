@@ -8,6 +8,7 @@ import { parentSessionStore } from '../state/parentSessionStore';
 import { validateTask, TaskValidationError } from '../domain/tasks/validation';
 import { AppButton } from '../ui/components/AppButton';
 import { AppText } from '../ui/components/AppText';
+import { EmojiPicker } from '../ui/components/EmojiPicker';
 import { NoticeBox } from '../ui/components/NoticeBox';
 import { ScreenTopBar } from '../ui/components/ScreenTopBar';
 import { TapTarget } from '../ui/components/TapTarget';
@@ -32,6 +33,7 @@ export function TaskEditScreen({ route, navigation }: Props) {
   const [daysMask, setDaysMask] = useState(127); // all 7 days by default
   const [hasSessions, setHasSessions] = useState(false);
   const [errors, setErrors] = useState<TaskValidationError[]>([]);
+  const [emojiPickerOpen, setEmojiPickerOpen] = useState(false);
 
   useEffect(() => {
     if (isEditing && taskId) {
@@ -131,190 +133,218 @@ export function TaskEditScreen({ route, navigation }: Props) {
 
   return (
     <ParentGuard navigation={navigation}>
-      <ScrollView
-        contentContainerStyle={[styles.container, { padding: gutter }]}
-        keyboardShouldPersistTaps="handled"
-        onScroll={() => parentSessionStore.touch()}
-        scrollEventThrottle={1000}
-      >
-        {/* Wrapping top bar: Row A = cancel + title, Row B = full-width Save,
-            so the primary action can never sit under the keyboard. */}
-        <ScreenTopBar
-          testID="taskedit-topbar"
-          onBack={() => {
-            parentSessionStore.touch();
-            navigation.goBack();
-          }}
-          backLabel={uk.taskCrud.cancel}
-          title={isEditing ? uk.taskCrud.editTask : uk.taskCrud.createTask}
-          actions={
-            <AppButton
-              label={uk.taskCrud.save}
-              variant="primary"
-              size="md"
-              onPress={handleSave}
-            />
-          }
-        />
-
-        {/* Validation errors */}
-        {errors.map((err) => (
-          <NoticeBox key={err} tone="error" message={getErrorMessage(err)} />
-        ))}
-
-        {/* Title Input */}
-        <View style={styles.field}>
-          <AppText variant="body" style={styles.fieldLabel}>
-            {uk.taskCrud.titleLabel}
-          </AppText>
-          <TextInput
-            testID="task-title-input"
-            value={title}
-            onChangeText={(t) => {
+      <View style={styles.shell}>
+        <ScrollView
+          contentContainerStyle={[styles.container, { padding: gutter }]}
+          keyboardShouldPersistTaps="handled"
+          onScroll={() => parentSessionStore.touch()}
+          scrollEventThrottle={1000}
+        >
+          {/* Row A only — the primary action lives in the bottom footer (F4). */}
+          <ScreenTopBar
+            testID="taskedit-topbar"
+            onBack={() => {
               parentSessionStore.touch();
-              setTitle(t);
+              navigation.goBack();
             }}
-            placeholder={uk.taskCrud.errors.titleEmpty}
-            placeholderTextColor={colors.textSecondary}
-            style={styles.textInput}
+            backLabel={uk.taskCrud.cancel}
+            title={isEditing ? uk.taskCrud.editTask : uk.taskCrud.createTask}
           />
-        </View>
 
-        {/* Emoji Input */}
-        <View style={styles.field}>
-          <AppText variant="body" style={styles.fieldLabel}>
-            {uk.taskCrud.emojiLabel}
-          </AppText>
-          <TextInput
-            testID="task-emoji-input"
-            value={emoji}
-            onChangeText={(e) => {
-              parentSessionStore.touch();
-              setEmoji(e);
-            }}
-            placeholder="📚"
-            placeholderTextColor={colors.textSecondary}
-            style={styles.textInput}
-            maxLength={8}
-          />
-        </View>
+          {/* Validation errors */}
+          {errors.map((err) => (
+            <NoticeBox key={err} tone="error" message={getErrorMessage(err)} />
+          ))}
 
-        {/* Target Minutes Stepper */}
-        <View style={styles.field}>
-          <AppText variant="body" style={styles.fieldLabel}>
-            {uk.taskCrud.targetMinutesLabel}
-          </AppText>
-          <View testID="taskedit-stepper" style={styles.stepperRow}>
-            <TapTarget
-              accessibilityRole="button"
-              accessibilityLabel={uk.taskCrud.stepLess5}
-              onPress={() => handleAdjustMinutes(-5)}
-              style={styles.stepperButton}
-            >
-              <AppText variant="body" style={styles.stepperButtonText}>
-                -5
-              </AppText>
-            </TapTarget>
-
-            <TapTarget
-              accessibilityRole="button"
-              accessibilityLabel={uk.taskCrud.stepLess1}
-              onPress={() => handleAdjustMinutes(-1)}
-              style={styles.stepperButton}
-            >
-              <AppText variant="body" style={styles.stepperButtonText}>
-                -1
-              </AppText>
-            </TapTarget>
-
-            <AppText variant="heading" style={styles.minutesDisplay}>
-              {`${targetMinutes} хв`}
+          {/* Title Input */}
+          <View style={styles.field}>
+            <AppText variant="body" style={styles.fieldLabel}>
+              {uk.taskCrud.titleLabel}
             </AppText>
+            <TextInput
+              testID="task-title-input"
+              value={title}
+              onChangeText={(t) => {
+                parentSessionStore.touch();
+                setTitle(t);
+              }}
+              placeholder={uk.taskCrud.errors.titleEmpty}
+              placeholderTextColor={colors.textSecondary}
+              style={styles.textInput}
+            />
+          </View>
 
+          {/* F5: emoji picker trigger (no free keyboard entry) */}
+          <View style={styles.field}>
+            <AppText variant="body" style={styles.fieldLabel}>
+              {uk.taskCrud.emojiLabel}
+            </AppText>
             <TapTarget
+              testID="task-emoji-field"
               accessibilityRole="button"
-              accessibilityLabel={uk.taskCrud.stepMore1}
-              onPress={() => handleAdjustMinutes(1)}
-              style={styles.stepperButton}
+              accessibilityLabel={
+                emoji
+                  ? `${uk.taskCrud.emojiLabel}: ${emoji}`
+                  : `${uk.taskCrud.emojiLabel}: ${uk.taskCrud.emojiPlaceholder}`
+              }
+              onPress={() => {
+                parentSessionStore.touch();
+                setEmojiPickerOpen(true);
+              }}
+              style={styles.emojiField}
             >
-              <AppText variant="body" style={styles.stepperButtonText}>
-                +1
+              <AppText variant="title" style={styles.emojiFieldValue}>
+                {emoji ? emoji : uk.taskCrud.emojiPlaceholder}
               </AppText>
-            </TapTarget>
-
-            <TapTarget
-              accessibilityRole="button"
-              accessibilityLabel={uk.taskCrud.stepMore5}
-              onPress={() => handleAdjustMinutes(5)}
-              style={styles.stepperButton}
-            >
-              <AppText variant="body" style={styles.stepperButtonText}>
-                +5
+              <AppText variant="body" style={styles.emojiFieldHint}>
+                {`› ${uk.taskCrud.emojiTitle}`}
               </AppText>
             </TapTarget>
           </View>
-        </View>
 
-        {/* Weekday Toggles */}
-        <View style={styles.field}>
-          <AppText variant="body" style={styles.fieldLabel}>
-            {uk.taskCrud.weekdaysLabel}
-          </AppText>
-          <View testID="taskedit-weekdays" style={styles.weekdaysRow}>
-            {WEEKDAYS.map((day) => {
-              const isSelected = (daysMask & (1 << day.bit)) !== 0;
-              return (
-                <TapTarget
-                  key={day.bit}
-                  accessibilityRole="button"
-                  accessibilityLabel={`${day.label}: ${isSelected ? uk.taskCrud.daySelected : uk.taskCrud.dayUnselected}`}
-                  onPress={() => toggleDay(day.bit)}
-                  style={[
-                    styles.dayButton,
-                    isSelected ? styles.dayButtonSelected : styles.dayButtonUnselected,
-                  ]}
-                >
-                  <AppText
-                    variant="body"
+          {/* Target Minutes Stepper */}
+          <View style={styles.field}>
+            <AppText variant="body" style={styles.fieldLabel}>
+              {uk.taskCrud.targetMinutesLabel}
+            </AppText>
+            <View testID="taskedit-stepper" style={styles.stepperRow}>
+              <TapTarget
+                accessibilityRole="button"
+                accessibilityLabel={uk.taskCrud.stepLess5}
+                onPress={() => handleAdjustMinutes(-5)}
+                style={styles.stepperButton}
+              >
+                <AppText variant="body" style={styles.stepperButtonText}>
+                  -5
+                </AppText>
+              </TapTarget>
+
+              <TapTarget
+                accessibilityRole="button"
+                accessibilityLabel={uk.taskCrud.stepLess1}
+                onPress={() => handleAdjustMinutes(-1)}
+                style={styles.stepperButton}
+              >
+                <AppText variant="body" style={styles.stepperButtonText}>
+                  -1
+                </AppText>
+              </TapTarget>
+
+              <AppText variant="heading" style={styles.minutesDisplay}>
+                {`${targetMinutes} хв`}
+              </AppText>
+
+              <TapTarget
+                accessibilityRole="button"
+                accessibilityLabel={uk.taskCrud.stepMore1}
+                onPress={() => handleAdjustMinutes(1)}
+                style={styles.stepperButton}
+              >
+                <AppText variant="body" style={styles.stepperButtonText}>
+                  +1
+                </AppText>
+              </TapTarget>
+
+              <TapTarget
+                accessibilityRole="button"
+                accessibilityLabel={uk.taskCrud.stepMore5}
+                onPress={() => handleAdjustMinutes(5)}
+                style={styles.stepperButton}
+              >
+                <AppText variant="body" style={styles.stepperButtonText}>
+                  +5
+                </AppText>
+              </TapTarget>
+            </View>
+          </View>
+
+          {/* Weekday Toggles */}
+          <View style={styles.field}>
+            <AppText variant="body" style={styles.fieldLabel}>
+              {uk.taskCrud.weekdaysLabel}
+            </AppText>
+            <View testID="taskedit-weekdays" style={styles.weekdaysRow}>
+              {WEEKDAYS.map((day) => {
+                const isSelected = (daysMask & (1 << day.bit)) !== 0;
+                return (
+                  <TapTarget
+                    key={day.bit}
+                    accessibilityRole="button"
+                    accessibilityLabel={`${day.label}: ${isSelected ? uk.taskCrud.daySelected : uk.taskCrud.dayUnselected}`}
+                    onPress={() => toggleDay(day.bit)}
                     style={[
-                      styles.dayText,
-                      isSelected ? styles.dayTextSelected : styles.dayTextUnselected,
+                      styles.dayButton,
+                      isSelected ? styles.dayButtonSelected : styles.dayButtonUnselected,
                     ]}
                   >
-                    {day.label}
-                  </AppText>
-                </TapTarget>
-              );
-            })}
+                    <AppText
+                      variant="body"
+                      style={[
+                        styles.dayText,
+                        isSelected ? styles.dayTextSelected : styles.dayTextUnselected,
+                      ]}
+                    >
+                      {day.label}
+                    </AppText>
+                  </TapTarget>
+                );
+              })}
+            </View>
           </View>
+
+          {/* Action: Archive or Delete */}
+          {isEditing ? (
+            <View style={styles.dangerZone}>
+              {hasSessions ? (
+                <AppButton
+                  label={uk.taskCrud.archive}
+                  variant="secondary"
+                  size="md"
+                  onPress={handleArchive}
+                />
+              ) : (
+                <AppButton
+                  label={uk.taskCrud.delete}
+                  variant="danger"
+                  size="md"
+                  onPress={handleDelete}
+                />
+              )}
+            </View>
+          ) : null}
+        </ScrollView>
+
+        {/* F4: full-width primary action pinned to the bottom of the screen. */}
+        <View testID="taskedit-footer" style={[styles.footer, { paddingHorizontal: gutter }]}>
+          <AppButton
+            label={uk.taskCrud.save}
+            variant="primary"
+            size="lg"
+            onPress={handleSave}
+          />
         </View>
 
-        {/* Action: Archive or Delete */}
-        {isEditing ? (
-          <View style={styles.dangerZone}>
-            {hasSessions ? (
-              <AppButton
-                label={uk.taskCrud.archive}
-                variant="secondary"
-                size="md"
-                onPress={handleArchive}
-              />
-            ) : (
-              <AppButton
-                label={uk.taskCrud.delete}
-                variant="danger"
-                size="md"
-                onPress={handleDelete}
-              />
-            )}
-          </View>
+        {emojiPickerOpen ? (
+          <EmojiPicker
+            value={emoji}
+            onSelect={(next) => {
+              parentSessionStore.touch();
+              setEmoji(next ?? '');
+            }}
+            onClose={() => setEmojiPickerOpen(false)}
+          />
         ) : null}
-      </ScrollView>
+      </View>
     </ParentGuard>
   );
 }
 
 const styles = StyleSheet.create({
+  shell: {
+    flex: 1,
+    width: '100%',
+    backgroundColor: colors.background,
+  },
   container: {
     flexGrow: 1,
     width: '100%',
@@ -339,6 +369,26 @@ const styles = StyleSheet.create({
     color: colors.text,
     minHeight: 56,
     fontSize: typography.body,
+  },
+  emojiField: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.borderStrong,
+    borderRadius: radius.md,
+    borderCurve: 'continuous',
+    padding: spacing.md,
+    minHeight: 56,
+    gap: spacing.sm,
+  },
+  emojiFieldValue: {
+    color: colors.text,
+  },
+  emojiFieldHint: {
+    color: colors.textSecondary,
+    flexShrink: 1,
   },
   stepperRow: {
     flexDirection: 'row',
@@ -405,5 +455,15 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: colors.divider,
     gap: spacing.md,
+  },
+  footer: {
+    width: '100%',
+    maxWidth: CONTENT_MAX_WIDTH.form,
+    alignSelf: 'center',
+    backgroundColor: colors.background,
+    borderTopWidth: 1,
+    borderTopColor: colors.divider,
+    paddingTop: spacing.md,
+    paddingBottom: spacing.md,
   },
 });

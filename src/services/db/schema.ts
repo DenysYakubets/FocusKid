@@ -74,4 +74,26 @@ CREATE TABLE parent_auth (               -- single row
 );
 `;
 
-export const MIGRATIONS: readonly string[] = [V1_SQL];
+/**
+ * V2 (owner item F1): the `iterations >= 50000` CHECK forced an expensive PIN
+ * verification. SQLite cannot alter a CHECK constraint, so the single-row table
+ * is rebuilt with `iterations >= 1`; row data (including legacy 50k records) is
+ * copied verbatim and verified with its stored cost exactly as before.
+ */
+const V2_SQL = `
+CREATE TABLE parent_auth_v2 (
+  id               INTEGER PRIMARY KEY CHECK (id = 1),
+  algo             TEXT    NOT NULL DEFAULT 'pbkdf2-sha256',
+  iterations       INTEGER NOT NULL CHECK (iterations >= 1),
+  salt_hex         TEXT    NOT NULL CHECK (length(salt_hex) = 32),
+  hash_hex         TEXT    NOT NULL CHECK (length(hash_hex) = 64),
+  failed_attempts  INTEGER NOT NULL DEFAULT 0 CHECK (failed_attempts >= 0),
+  updated_at       TEXT    NOT NULL
+);
+INSERT INTO parent_auth_v2 (id, algo, iterations, salt_hex, hash_hex, failed_attempts, updated_at)
+  SELECT id, algo, iterations, salt_hex, hash_hex, failed_attempts, updated_at FROM parent_auth;
+DROP TABLE parent_auth;
+ALTER TABLE parent_auth_v2 RENAME TO parent_auth;
+`;
+
+export const MIGRATIONS: readonly string[] = [V1_SQL, V2_SQL];

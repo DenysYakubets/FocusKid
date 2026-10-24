@@ -24,7 +24,7 @@ import { ScreenTopBar } from '../ui/components/ScreenTopBar';
 import { formatMinutesUk } from '../ui/components/TaskCard';
 import { useScreenGutter } from '../ui/hooks/useScreenGutter';
 import { uk } from '../i18n/uk';
-import { colors, radius, spacing, statusColors } from '../ui/theme';
+import { colors, radius, shadows, spacing, statusColors } from '../ui/theme';
 import { mapTimerError } from '../ui/timerErrors';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Timer'>;
@@ -41,9 +41,11 @@ export function TimerScreen({ route, navigation }: Props) {
   const pause = useTimerStore((s) => s.pause);
   const resume = useTimerStore((s) => s.resume);
   const addTime = useTimerStore((s) => s.addTime);
+  const stop = useTimerStore((s) => s.stop);
 
   const [task, setTask] = useState<Task | null>(null);
   const [routeSession, setRouteSession] = useState<SessionRow | null>(null);
+  const [showStopDialog, setShowStopDialog] = useState(false);
   const loadSeqRef = useRef(0);
   const restoredBaseRef = useRef<{ key: string; base: number }>({ key: '', base: 0 });
 
@@ -237,6 +239,18 @@ export function TimerScreen({ route, navigation }: Props) {
     }
   };
 
+  // F3: child-initiated stop — confirm first, then terminate the session.
+  const canStop =
+    isLive && (displayState.kind === 'Running' || displayState.kind === 'Paused');
+
+  const handleStopConfirm = async () => {
+    const ok = await stop();
+    setShowStopDialog(false);
+    if (ok) {
+      navigation.navigate('Today');
+    }
+  };
+
   const layoutTestID = isLandscape ? 'timer-layout-landscape' : 'timer-layout-portrait';
 
   // §4.3: two flex:1 buttons in a row — no minWidth, so nothing clips at 320dp.
@@ -352,33 +366,73 @@ export function TimerScreen({ route, navigation }: Props) {
       {pauseHintNode}
       {stateNode}
       {actionRow}
+      {canStop ? (
+        <AppButton
+          label={uk.timer.stop}
+          variant="danger"
+          size="md"
+          onPress={() => setShowStopDialog(true)}
+        />
+      ) : null}
     </View>
   );
 
   return (
-    <View
-      testID={layoutTestID}
-      style={[styles.container, { paddingHorizontal: gutter }]}
-    >
-      <ScreenTopBar
-        onBack={handleBack}
-        title={task ? (task.emoji ? `${task.emoji} ${task.title}` : task.title) : undefined}
-      />
+    <>
+      <View
+        testID={layoutTestID}
+        style={[styles.container, { paddingHorizontal: gutter }]}
+      >
+        <ScreenTopBar
+          onBack={handleBack}
+          title={task ? (task.emoji ? `${task.emoji} ${task.title}` : task.title) : undefined}
+        />
 
-      {lastError ? <NoticeBox tone="error" message={mapTimerError(lastError)} /> : null}
+        {lastError ? <NoticeBox tone="error" message={mapTimerError(lastError)} /> : null}
 
-      {isLandscape ? (
-        <View style={styles.landscapeRow}>
-          {displayNode}
-          <View style={styles.sideZone}>{bottomNode}</View>
+        {isLandscape ? (
+          <View style={styles.landscapeRow}>
+            {displayNode}
+            <View style={styles.sideZone}>{bottomNode}</View>
+          </View>
+        ) : (
+          <>
+            {displayNode}
+            {bottomNode}
+          </>
+        )}
+      </View>
+
+      {/* F3 confirm dialog: full-screen card, the same shape as PinGate's. */}
+      {showStopDialog ? (
+        <View testID="timer-stop-dialog" style={styles.dialogContainer}>
+          <View style={styles.dialogCard}>
+            <AppText variant="title" accessibilityRole="header" style={styles.dialogTitle}>
+              {uk.timer.stopTitle}
+            </AppText>
+            <AppText variant="body" style={styles.dialogMessage}>
+              {uk.timer.stopMessage}
+            </AppText>
+            <View style={styles.dialogButtons}>
+              <AppButton
+                label={uk.timer.stopConfirm}
+                variant="danger"
+                size="lg"
+                onPress={() => {
+                  void handleStopConfirm();
+                }}
+              />
+              <AppButton
+                label={uk.timer.stopCancel}
+                variant="secondary"
+                size="lg"
+                onPress={() => setShowStopDialog(false)}
+              />
+            </View>
+          </View>
         </View>
-      ) : (
-        <>
-          {displayNode}
-          {bottomNode}
-        </>
-      )}
-    </View>
+      ) : null}
+    </>
   );
 }
 
@@ -459,5 +513,39 @@ const styles = StyleSheet.create({
   verifiedText: {
     color: statusColors.verified.text,
     textAlign: 'center',
+  },
+  dialogContainer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: colors.background,
+    padding: spacing.lg,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  dialogCard: {
+    backgroundColor: colors.surface,
+    padding: spacing.xl,
+    borderRadius: radius.lg,
+    borderCurve: 'continuous',
+    boxShadow: shadows.overlay,
+    alignItems: 'center',
+    maxWidth: 480,
+    width: '100%',
+    gap: spacing.lg,
+  },
+  dialogTitle: {
+    color: colors.text,
+    textAlign: 'center',
+  },
+  dialogMessage: {
+    color: colors.textSecondary,
+    textAlign: 'center',
+  },
+  dialogButtons: {
+    width: '100%',
+    gap: spacing.md,
   },
 });

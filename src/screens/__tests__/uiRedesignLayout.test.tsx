@@ -163,7 +163,7 @@ describe('UI redesign layout pins (UI_REDESIGN_SPEC §4-§5)', () => {
       { db, clock, wall: systemWallClock, services: setup.services }
     );
 
-    let node: any = screen.getByLabelText(uk.taskCrud.save);
+    let node: any = screen.getByTestId('task-title-input');
     while (node && node.props.contentContainerStyle === undefined) node = node.parent;
     expect(node).toBeTruthy();
     const formStyle = StyleSheet.flatten(node.props.contentContainerStyle);
