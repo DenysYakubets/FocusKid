@@ -126,4 +126,32 @@ describe('C5 - mascot selection screen (MASCOT_DESIGN §4)', () => {
     expect(updated.props.accessibilityLabel).toContain('Wobble');
     expect(useMascotStore.getState().mascot).toBe('Wobble');
   });
+
+  it('surfaces a persistence failure instead of an unhandled select() rejection (round-1 LOW)', async () => {
+    const db = createNodeDb();
+    const clock = createFakeClock(1000);
+    const prep = await renderWithApp(<></>, { db, clock, wall: systemWallClock });
+    const setSpy = jest
+      .spyOn(prep.services.settingsRepo, 'set')
+      .mockRejectedValue(new Error('disk full'));
+    prep.unmount();
+
+    const screen = await renderWithApp(<MascotSelectScreen />, {
+      db,
+      clock,
+      wall: systemWallClock,
+      services: prep.services,
+    });
+
+    await act(async () => {
+      fireEvent.press(await screen.findByLabelText(uk.mascot.cardLabel('Stella')));
+    });
+    await flush();
+
+    // The rejection is caught and shown through the app's NoticeBox.
+    expect(await screen.findByTestId('mascot-save-error')).toBeTruthy();
+    // The optimistic pick still rolls back (mascotStore keeps its rollback).
+    expect(useMascotStore.getState().mascot).toBe(DEFAULT_MASCOT);
+    expect(setSpy).toHaveBeenCalled();
+  });
 });

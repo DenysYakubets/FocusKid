@@ -185,9 +185,10 @@ describe('TimerService', () => {
     await service.tick();
     expect(service.getSnapshot().state.kind).toBe('Completed');
 
-    // Attempt second start of task 1 on the same date -> rejected with SESSION_ALREADY_EXISTS_TODAY (AS-04)
+    // Attempt second start of task 1 on the same date -> target_per_day is 1
+    // (seeded default), so the day is full: SESSION_LIMIT_REACHED_TODAY (round-1 HIGH C4).
     const resSameDay = await service.start(1);
-    expect(resSameDay).toEqual({ ok: false, error: 'SESSION_ALREADY_EXISTS_TODAY' });
+    expect(resSameDay).toEqual({ ok: false, error: 'SESSION_LIMIT_REACHED_TODAY' });
 
     // Parent abandons task 1
     const abandonRes = await service.abandon(service.getSnapshot().sessionId!, 'token');
@@ -215,8 +216,9 @@ describe('TimerService', () => {
     // Task 2 starts -> foreign ACTIVE session
     expect((await service.start(2)).ok).toBe(true);
 
-    // Task 1 now holds both: today's row (AS-04) + foreign active session (AS-05).
-    // AS-05 must win so TodayScreen can show the friendly activeSessionError.
+    // Task 1 now holds both: today's full day (target 1 reached) + a foreign
+    // active session (AS-05). AS-05 must win so TodayScreen can show the
+    // friendly activeSessionError.
     expect(await service.start(1)).toEqual({ ok: false, error: 'ACTIVE_SESSION_EXISTS' });
   });
 
@@ -242,7 +244,7 @@ describe('TimerService', () => {
     expect(failures[0]).toEqual({ ok: false, error: 'ACTIVE_SESSION_EXISTS' });
   });
 
-  it('double start(1) results in one ok:true and other ok:false with SESSION_ALREADY_EXISTS_TODAY without throwing', async () => {
+  it('double start(1) results in one ok:true and other ok:false with SESSION_LIMIT_REACHED_TODAY without throwing', async () => {
     const clock = createFakeClock(1000);
     const sessionsRepo = createSessionsRepo(db);
     const tasksRepo = createTasksRepo(db);
@@ -261,10 +263,12 @@ describe('TimerService', () => {
 
     expect(successes).toHaveLength(1);
     expect(failures).toHaveLength(1);
-    expect(failures[0]).toEqual({ ok: false, error: 'SESSION_ALREADY_EXISTS_TODAY' });
+    // Seeded tasks default to target_per_day = 1: the first run fills the day,
+    // so the second start is rejected by the N-per-day rule (not AS-04).
+    expect(failures[0]).toEqual({ ok: false, error: 'SESSION_LIMIT_REACHED_TODAY' });
   });
 
-  it('DB-level: insertRunning twice for different tasks on same day rejects with UNIQUE constraint error', async () => {
+  it('DB-level: a second ACTIVE session is rejected by ux_sessions_one_active (AS-05, unchanged)', async () => {
     const sessionsRepo = createSessionsRepo(db);
     const nowIso = fakeWall.nowIso();
     const today = fakeWall.todayLocalDate();
