@@ -21,6 +21,7 @@ import { AppText } from '../ui/components/AppText';
 import { NoticeBox } from '../ui/components/NoticeBox';
 import { ProgressBar } from '../ui/components/ProgressBar';
 import { AppToolbar } from '../ui/components/AppToolbar';
+import { MascotFloating } from '../ui/components/MascotFloating';
 import { formatMinutesUk } from '../ui/components/TaskCard';
 import { useScreenGutter } from '../ui/hooks/useScreenGutter';
 import { uk } from '../i18n/uk';
@@ -424,6 +425,10 @@ export function TimerScreen({ route, navigation }: Props) {
             {bottomNode}
           </>
         )}
+
+        {/* C5: companion goes top-right (below the toolbar) so it never sits
+            on the countdown digits or the action buttons (MASCOT_DESIGN §6). */}
+        <MascotFloating corner="top-right" />
       </View>
 
       {/* F3 confirm dialog: full-screen card, the same shape as PinGate's. */}

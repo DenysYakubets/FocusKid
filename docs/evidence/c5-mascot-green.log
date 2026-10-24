@@ -1,0 +1,6 @@
+
+Test Suites: 2 passed, 2 total
+Tests:       7 passed, 7 total
+Snapshots:   0 total
+Time:        2.382 s, estimated 3 s
+Ran all test suites matching src/screens/__tests__/mascotSelect.test.tsx|src/ui/__tests__/mascotFloating.test.tsx.

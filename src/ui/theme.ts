@@ -136,3 +136,17 @@ export const motion = {
   base: 250,
   slow: 400,
 } as const;
+
+/** Mascot roster colors — one per selectable companion (MASCOT_DESIGN §7). */
+export const mascotColors = {
+  bubblo: '#3B82F6',
+  stella: '#F59E0B',
+  wobble: '#8B5CF6',
+  aqua: '#06B6D4',
+  bud: '#10B981',
+  glow: '#EC4899',
+  spark: '#EF4444',
+} as const;
+
+/** Default companion when no selection is persisted yet (MASCOT_DESIGN §7). */
+export const DEFAULT_MASCOT = 'Bubblo' as const;

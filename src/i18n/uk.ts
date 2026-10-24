@@ -183,4 +183,29 @@ export const uk = {
     close: 'Закрити',
   },
   loading: 'Завантаження...',
+  // C5: child-selectable companion mascot (MASCOT_DESIGN §3-§6)
+  mascot: {
+    tab: 'Персонаж',
+    title: 'Обери персонажа',
+    hint: 'Тапни, щоб пограти',
+    selected: 'Обрано',
+    previewLabel: (name: string) => `Обраний персонаж: ${name}`,
+    cardLabel: (name: string) => `${name} — персонаж`,
+    floatingLabel: (name: string, mood: string) => `${name}, ${mood}`,
+    moods: {
+      happy: 'Щасливий',
+      excited: 'Радісний',
+      neutral: 'Спокійний',
+      sleepy: 'Сонний',
+    },
+    personalities: {
+      Bubblo: 'Весела краплинка води, якій подобається, коли діти фокусуються',
+      Stella: 'Яскрава зірка, що веде дитину протягом дня',
+      Wobble: 'Пухкенький бульбаш, що радіє кожній маленькій перемозі',
+      Aqua: 'Спокійна кулька, що пильнує час під час фокусу',
+      Bud: 'Дружний листочок, що росте разом із прогресом',
+      Glow: 'М’яке світіння, що освітлює статистику й досягнення',
+      Spark: 'Маленька зірка, що запалює мотивацію у складні моменти',
+    },
+  },
 } as const;

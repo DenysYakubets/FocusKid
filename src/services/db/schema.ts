@@ -106,4 +106,17 @@ ALTER TABLE tasks ADD COLUMN target_per_day INTEGER NOT NULL DEFAULT 1
   CHECK (target_per_day BETWEEN 1 AND 10);
 `;
 
-export const MIGRATIONS: readonly string[] = [V1_SQL, V2_SQL, V3_SQL];
+/**
+ * V4 (C5): child settings key/value store. SQLite is the app's only storage
+ * (INV-07 / TSC-12 — no alternative key-value dependency), so the mascot
+ * choice (and any future preference) persists here.
+ */
+const V4_SQL = `
+CREATE TABLE settings (
+  key        TEXT PRIMARY KEY CHECK (length(trim(key)) BETWEEN 1 AND 64),
+  value      TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+`;
+
+export const MIGRATIONS: readonly string[] = [V1_SQL, V2_SQL, V3_SQL, V4_SQL];

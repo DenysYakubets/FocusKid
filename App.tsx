@@ -13,6 +13,7 @@ import { AppLifecycle } from './src/state/AppLifecycle';
 import { timerStore } from './src/state/timerStore';
 import { tasksStore } from './src/state/tasksStore';
 import { parentSessionStore } from './src/state/parentSessionStore';
+import { useMascotStore } from './src/state/mascotStore';
 import { RootNavigator } from './src/navigation/RootNavigator';
 import { ErrorBoundary } from './src/ui/components/ErrorBoundary';
 import { AppFrame } from './src/ui/components/AppFrame';
@@ -45,6 +46,8 @@ export function AppBootstrap() {
         tasksStore.setServices(svc);
         await tasksStore.refreshToday();
         parentSessionStore.setService(svc.authService);
+        // C5: read the persisted companion choice once, at bootstrap.
+        await useMascotStore.getState().hydrate(svc);
 
         if (mounted) {
           setServices(svc);

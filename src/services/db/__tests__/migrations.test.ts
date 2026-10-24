@@ -24,7 +24,9 @@ describe('Database migrations', () => {
       `SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%';`
     );
     const tableNames = tables.map((t) => t.name).sort();
-    expect(tableNames).toEqual(['parent_auth', 'session_events', 'sessions', 'tasks'].sort());
+    expect(tableNames).toEqual(
+      ['parent_auth', 'session_events', 'sessions', 'settings', 'tasks'].sort()
+    );
 
     // Check indexes
     const indexes = await db.all<{ name: string }>(
