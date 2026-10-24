@@ -97,6 +97,8 @@ export interface SessionsRepo {
   ): Promise<void>;
   getActive(): Promise<SessionRow | null>;
   getTodayForTask(taskId: number, localDate: string): Promise<SessionRow | null>;
+  /** C4: how many non-abandoned runs of this task exist on `localDate`. */
+  countForTaskOnDay(taskId: number, localDate: string): Promise<number>;
   getLatestForTask(taskId: number): Promise<SessionRow | null>;
   listCompleted(): Promise<SessionRow[]>;
   get(id: number): Promise<SessionRow | null>;
@@ -188,6 +190,14 @@ export function createSessionsRepo(db: Db): SessionsRepo {
         [taskId, localDate]
       );
       return row ? mapSession(row) : null;
+    },
+
+    async countForTaskOnDay(taskId: number, localDate: string): Promise<number> {
+      const row = await db.get<{ n: number }>(
+        `SELECT COUNT(*) AS n FROM sessions WHERE task_id = ? AND local_date = ? AND status <> 'abandoned';`,
+        [taskId, localDate]
+      );
+      return Number(row?.n ?? 0);
     },
 
     async getLatestForTask(taskId: number): Promise<SessionRow | null> {

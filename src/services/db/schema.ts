@@ -119,4 +119,15 @@ CREATE TABLE settings (
 );
 `;
 
-export const MIGRATIONS: readonly string[] = [V1_SQL, V2_SQL, V3_SQL, V4_SQL];
+/**
+ * V5 (round-1 HIGH C4): `target_per_day` needs up to N non-abandoned sessions
+ * per task per local day, and N-per-day cannot be expressed as a UNIQUE index
+ * (N varies per row) — so the one-per-day partial index is dropped and the rule
+ * is enforced in the service layer (`timerService.doStart` →
+ * SESSION_LIMIT_REACHED_TODAY). `ux_sessions_one_active` (AS-05) is untouched.
+ */
+const V5_SQL = `
+DROP INDEX ux_sessions_task_day;
+`;
+
+export const MIGRATIONS: readonly string[] = [V1_SQL, V2_SQL, V3_SQL, V4_SQL, V5_SQL];

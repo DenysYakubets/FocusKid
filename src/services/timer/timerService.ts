@@ -126,26 +126,31 @@ export function createTimerService(deps: {
 
   async function doStart(newTaskId: number): Promise<TimerServiceResult> {
     // AS-05: at most one active session (fast-path pre-check). Checked first so the friendly-mapped
-    // activeSessionError code wins when a task has both today's row and a foreign active session.
+    // activeSessionError code wins when a task has both today's runs and a foreign active session.
     const active = await sessionsRepo.getActive();
     if (active && active.taskId !== newTaskId) {
-      return { ok: false, error: 'ACTIVE_SESSION_EXISTS' };
-    }
-
-    // AS-04: one session per task per local calendar day (fast-path pre-check)
-    const today = wall.todayLocalDate();
-    const existingToday = await sessionsRepo.getTodayForTask(newTaskId, today);
-    if (existingToday) {
-      return { ok: false, error: 'SESSION_ALREADY_EXISTS_TODAY' };
-    }
-
-    if (active) {
       return { ok: false, error: 'ACTIVE_SESSION_EXISTS' };
     }
 
     const task = await tasksRepo.get(newTaskId);
     if (!task) {
       return { ok: false, error: 'TASK_NOT_FOUND' };
+    }
+    const targetPerDay = task.targetPerDay ?? 1;
+
+    // C4: up to target_per_day non-abandoned sessions per task per local day.
+    // The partial UNIQUE index that used to hard-cap this at 1 was dropped in
+    // migration V5 — N per day cannot be expressed as UNIQUE — so the rule
+    // lives here (and is re-checked inside the transaction below).
+    const today = wall.todayLocalDate();
+    const runsToday = await sessionsRepo.countForTaskOnDay(newTaskId, today);
+    if (runsToday >= targetPerDay) {
+      return { ok: false, error: 'SESSION_LIMIT_REACHED_TODAY' };
+    }
+
+    // AS-05: this task already holds the (only) active session.
+    if (active) {
+      return { ok: false, error: 'ACTIVE_SESSION_EXISTS' };
     }
 
     const targetMs = task.targetMinutes * 60_000;
@@ -158,16 +163,16 @@ export function createTimerService(deps: {
     const nowIso = wall.nowIso();
     type TxResult =
       | { ok: true; session: SessionRow }
-      | { ok: false; error: 'ACTIVE_SESSION_EXISTS' | 'SESSION_ALREADY_EXISTS_TODAY' };
+      | { ok: false; error: 'ACTIVE_SESSION_EXISTS' | 'SESSION_LIMIT_REACHED_TODAY' };
 
     let txRes: TxResult;
     try {
       txRes = await db.transaction<TxResult>(async (tx) => {
         const txSessionsRepo = createSessionsRepo(tx);
 
-        const inTxToday = await txSessionsRepo.getTodayForTask(newTaskId, today);
-        if (inTxToday) {
-          return { ok: false, error: 'SESSION_ALREADY_EXISTS_TODAY' };
+        const inTxRuns = await txSessionsRepo.countForTaskOnDay(newTaskId, today);
+        if (inTxRuns >= targetPerDay) {
+          return { ok: false, error: 'SESSION_LIMIT_REACHED_TODAY' };
         }
 
         const inTxActive = await txSessionsRepo.getActive();
@@ -205,15 +210,17 @@ export function createTimerService(deps: {
         code === 19;
 
       if (isUniqueConstraint) {
-        const existingAfter = await sessionsRepo.getTodayForTask(newTaskId, today);
-        if (existingAfter) {
-          return { ok: false, error: 'SESSION_ALREADY_EXISTS_TODAY' };
-        }
+        // V5 dropped the task/day UNIQUE index, so the only one left that can
+        // fire here is AS-05 `ux_sessions_one_active` — then the day's limit.
         const activeAfter = await sessionsRepo.getActive();
         if (activeAfter) {
           return { ok: false, error: 'ACTIVE_SESSION_EXISTS' };
         }
-        return { ok: false, error: 'SESSION_ALREADY_EXISTS_TODAY' };
+        const runsAfter = await sessionsRepo.countForTaskOnDay(newTaskId, today);
+        if (runsAfter >= targetPerDay) {
+          return { ok: false, error: 'SESSION_LIMIT_REACHED_TODAY' };
+        }
+        return { ok: false, error: msg || 'START_FAILED' };
       }
       return { ok: false, error: msg || 'START_FAILED' };
     }
