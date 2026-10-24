@@ -1,0 +1,64 @@
+
+> focuskid@0.1.0 test
+> jest --ci jingleVolume jinglePlayback
+
+FAIL src/screens/__tests__/jingleVolume.test.tsx
+  ● Test suite failed to run
+
+    Cannot find module '../../state/jingleStore' from 'src/screens/__tests__/jingleVolume.test.tsx'
+
+      16 | import { systemWallClock } from '../../services/clock/wallClock';
+      17 | import { MascotSelectScreen } from '../MascotSelectScreen';
+    > 18 | import { useJingleStore } from '../../state/jingleStore';
+         | ^
+      19 | import { jingleSources } from '../../ui/jingleSources';
+      20 | import { uk } from '../../i18n/uk';
+      21 |
+
+      at Resolver._throwModNotFoundError (node_modules/jest-resolve/build/index.js:1031:11)
+      at Object.require (src/screens/__tests__/jingleVolume.test.tsx:18:1)
+
+FAIL src/screens/__tests__/jinglePlayback.test.tsx
+  ● C8 - per-mascot jingle playback on timer completion › plays the selected mascot jingle exactly once on a LIVE Completed (not Running/Paused) at the settings volume, then unloads
+
+    expect(jest.fn()).toHaveBeenCalledTimes(expected)
+
+    Expected number of calls: 1
+    Received number of calls: 0
+
+      94 |     await flush();
+      95 |
+    > 96 |     expect(audio.createAudioPlayer).toHaveBeenCalledTimes(1);
+         |                                     ^
+      97 |     expect(audio.createAudioPlayer).toHaveBeenCalledWith(jingleSources.Bubblo);
+      98 |     expect(audio.setAudioModeAsync).toHaveBeenCalled();
+      99 |     expect(audio.__players[0]?.volume).toBeCloseTo(0.5, 5);
+
+      at Object.toHaveBeenCalledTimes (src/screens/__tests__/jinglePlayback.test.tsx:96:37)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+  ● C8 - per-mascot jingle playback on timer completion › honours a custom volume + a non-default mascot from the settings store
+
+    expect(jest.fn()).toHaveBeenCalledTimes(expected)
+
+    Expected number of calls: 1
+    Received number of calls: 0
+
+      141 |     await flush();
+      142 |
+    > 143 |     expect(audio.createAudioPlayer).toHaveBeenCalledTimes(1);
+          |                                     ^
+      144 |     expect(audio.createAudioPlayer).toHaveBeenCalledWith(jingleSources.Stella);
+      145 |     expect(audio.__players[0]?.volume).toBeCloseTo(0.8, 5);
+      146 |
+
+      at Object.toHaveBeenCalledTimes (src/screens/__tests__/jinglePlayback.test.tsx:143:37)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+Test Suites: 2 failed, 2 total
+Tests:       2 failed, 3 passed, 5 total
+Snapshots:   0 total
+Time:        3.86 s
+Ran all test suites matching jingleVolume|jinglePlayback.
