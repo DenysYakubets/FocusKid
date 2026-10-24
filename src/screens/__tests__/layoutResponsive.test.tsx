@@ -73,7 +73,7 @@ describe('Group A - Responsive Layout Tests', () => {
     expect(titleNode.props.numberOfLines).toBe(1);
   });
 
-  it('TaskEdit: save button is full-width, top bar and rows wrap, stepper controls present', async () => {
+  it('TaskEdit: save button is full-width in the bottom footer, top bar and rows wrap, stepper controls present', async () => {
     const db = createNodeDb();
     const clock = createFakeClock(1000);
     const services = await setupParentSessionServices(db, clock);
@@ -83,10 +83,25 @@ describe('Group A - Responsive Layout Tests', () => {
       { db, clock, wall: fakeWall, services }
     );
 
+    // F4: the primary action lives in the bottom footer, full-width.
+    const footer = screen.getByTestId('taskedit-footer');
+    expect(footer).toBeTruthy();
+
     const saveButton = screen.getByLabelText(uk.taskCrud.save);
     expect(saveButton).toBeTruthy();
     const saveStyle = getFlattenedStyle(saveButton);
-    expect(saveStyle.flexBasis).toBe('100%');
+    expect(saveStyle.alignSelf).toBe('stretch');
+
+    let node: any = saveButton;
+    let insideTopBar = false;
+    let insideFooter = false;
+    while (node) {
+      if (node.props?.testID === 'taskedit-topbar') insideTopBar = true;
+      if (node.props?.testID === 'taskedit-footer') insideFooter = true;
+      node = node.parent;
+    }
+    expect(insideFooter).toBe(true);
+    expect(insideTopBar).toBe(false);
 
     const topBar = screen.getByTestId('taskedit-topbar');
     const topBarStyle = getFlattenedStyle(topBar);
