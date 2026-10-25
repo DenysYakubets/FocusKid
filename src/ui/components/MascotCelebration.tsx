@@ -228,7 +228,7 @@ const styles = StyleSheet.create({
   spark: {
     width: 64,
     height: 64,
-    backgroundColor: 'rgba(255,255,255,0.92)',
+    backgroundColor: 'transparent',
     borderWidth: 2,
     borderRadius: radius.full,
     borderCurve: 'continuous',

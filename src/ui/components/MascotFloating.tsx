@@ -183,7 +183,7 @@ const styles = StyleSheet.create({
     pointerEvents: 'box-none',
   },
   target: {
-    backgroundColor: colors.cardBg,
+    backgroundColor: 'transparent',
     borderWidth: 2,
     borderRadius: radius.full,
     borderCurve: 'continuous',
