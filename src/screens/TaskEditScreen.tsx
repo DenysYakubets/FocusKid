@@ -22,7 +22,8 @@ type Props = NativeStackScreenProps<RootStackParamList, 'TaskEdit'>;
 const WEEKDAYS = uk.taskCrud.weekdays.map((label, bit) => ({ label, bit }));
 
 export function TaskEditScreen({ route, navigation }: Props) {
-  const { tasksRepo, sessionsRepo, wall, db } = useServices();
+  const services = useServices();
+  const { tasksRepo, sessionsRepo, wall, db } = services;
   const { gutter } = useScreenGutter();
   const taskId = route.params?.taskId;
   const isEditing = taskId !== undefined;
@@ -107,7 +108,7 @@ export function TaskEditScreen({ route, navigation }: Props) {
       await tasksRepo.create({ ...result.value, targetPerDay }, nowIso);
     }
 
-    await tasksStore.refreshToday();
+    await tasksStore.refreshToday(services);
     navigation.goBack();
   };
 
@@ -115,7 +116,7 @@ export function TaskEditScreen({ route, navigation }: Props) {
     if (!taskId) return;
     parentSessionStore.touch();
     await tasksRepo.archive(taskId, wall.nowIso());
-    await tasksStore.refreshToday();
+    await tasksStore.refreshToday(services);
     navigation.goBack();
   };
 
@@ -123,7 +124,7 @@ export function TaskEditScreen({ route, navigation }: Props) {
     if (!taskId) return;
     parentSessionStore.touch();
     await tasksRepo.deleteIfUnused(taskId);
-    await tasksStore.refreshToday();
+    await tasksStore.refreshToday(services);
     navigation.goBack();
   };
 
@@ -353,6 +354,9 @@ export function TaskEditScreen({ route, navigation }: Props) {
                   onPress={handleDelete}
                 />
               )}
+              <AppText variant="caption" style={styles.fieldLabel}>
+                {hasSessions ? uk.taskCrud.archiveHint : uk.taskCrud.deleteHint}
+              </AppText>
             </View>
           ) : null}
         </ScrollView>

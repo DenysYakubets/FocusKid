@@ -1,0 +1,9 @@
+
+> focuskid@0.1.0 test
+> jest --runInBand src/screens/__tests__/TaskEditScreen.test.tsx
+
+Test Suites: 1 passed, 1 total
+Tests:       5 passed, 5 total
+Snapshots:   0 total
+Time:        3.693 s, estimated 6 s
+Ran all test suites matching src/screens/__tests__/TaskEditScreen.test.tsx.

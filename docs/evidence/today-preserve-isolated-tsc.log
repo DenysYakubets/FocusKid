@@ -1,0 +1,1 @@
+test/config/appConfig.inv01.test.ts(2,42): error TS7016: Could not find a declaration file for module '../../plugins/withNoInternet'. '/home/hermes/work/FocusKid/node_modules/.today-validation/plugins/withNoInternet.js' implicitly has an 'any' type.

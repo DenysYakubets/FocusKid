@@ -20,7 +20,8 @@ import { mapTimerError } from '../ui/timerErrors';
 type Props = NativeStackScreenProps<RootStackParamList, 'PinGate'>;
 
 export function PinGateScreen({ route, navigation }: Props) {
-  const { clock, authService } = useServices();
+  const services = useServices();
+  const { clock, authService } = services;
   const orientation = useOrientation();
   const isLandscape = orientation === 'landscape';
 
@@ -87,7 +88,7 @@ export function PinGateScreen({ route, navigation }: Props) {
             setError(mapTimerError(useTimerStore.getState().lastError));
             return;
           }
-          await tasksStore.refreshToday();
+          await tasksStore.refreshToday(services);
           navigation.goBack();
         } else if (route.params.intent === 'abandon') {
           const token = res.token;
@@ -119,7 +120,7 @@ export function PinGateScreen({ route, navigation }: Props) {
           setShowAbandonDialog(false);
           return;
         }
-        await tasksStore.refreshToday();
+        await tasksStore.refreshToday(services);
       }
       navigation.goBack();
     } catch {

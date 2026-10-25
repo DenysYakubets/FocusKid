@@ -696,3 +696,13 @@ The project, and each stage at its own scope, is **done** only when all of the f
 - `VISION.md` is unchanged: `git diff --exit-code main -- VISION.md` exits 0.
 - Every ⚠ assumption (AS-08) has been called out in the PR description for product-owner acknowledgement.
 - **Publishing is outward-facing.** Steps 9–10 create public artifacts, so the executing agent needs the repository owner's explicit go-ahead for the specific tag before running them. If a tag already exists, bump it (for example `v0.1.1`) and never overwrite a published release.
+
+
+## Today visibility and destructive-action clarification (2026-10-25)
+
+- [x] Capture context services in TaskEdit and PinGate and pass them to every screen refreshToday call.
+- [x] Regress context-only Save against seeded + newly created Friday tasks, without remounting Today.
+- [x] Keep mutually exclusive archive/delete actions and explain each using localized scalable captions.
+- Schema, invariant definitions, timer transitions and authorization rules unchanged.
+- Validation and RED/GREEN evidence: `docs/evidence/today-preserve-*.log`.
+- Native screenshot verification at 320/366/413dp remains unavailable: no adb/device in this environment. Caption uses unrestricted wrapping within the existing scrollable form and semantic AppText tokens.

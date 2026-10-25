@@ -1,0 +1,48 @@
+
+> focuskid@0.1.0 test
+> jest
+
+FAIL src/services/auth/__tests__/fastPinVerify.test.ts (10.527 s)
+  ● F1 - instant PIN verification (cheap KDF, no artificial delay) › default KDF cost is cheap and a single verify completes in well under 200ms
+
+    expect(received).toBeLessThan(expected)
+
+    Expected: < 50
+    Received:   130
+
+      38 |
+      39 |     expect(ok).toBe(true);
+    > 40 |     expect(elapsed).toBeLessThan(50);
+         |                     ^
+      41 |   });
+      42 |
+      43 |   it('setupPin persists the fast iteration count and attempt() succeeds fast', async () => {
+
+      at Object.toBeLessThan (src/services/auth/__tests__/fastPinVerify.test.ts:40:21)
+
+
+Summary of all failing tests
+FAIL src/services/auth/__tests__/fastPinVerify.test.ts (10.527 s)
+  ● F1 - instant PIN verification (cheap KDF, no artificial delay) › default KDF cost is cheap and a single verify completes in well under 200ms
+
+    expect(received).toBeLessThan(expected)
+
+    Expected: < 50
+    Received:   130
+
+      38 |
+      39 |     expect(ok).toBe(true);
+    > 40 |     expect(elapsed).toBeLessThan(50);
+         |                     ^
+      41 |   });
+      42 |
+      43 |   it('setupPin persists the fast iteration count and attempt() succeeds fast', async () => {
+
+      at Object.toBeLessThan (src/services/auth/__tests__/fastPinVerify.test.ts:40:21)
+
+
+Test Suites: 1 failed, 75 passed, 76 total
+Tests:       1 failed, 296 passed, 297 total
+Snapshots:   0 total
+Time:        33.747 s, estimated 40 s
+Ran all test suites.

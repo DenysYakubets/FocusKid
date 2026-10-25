@@ -1,0 +1,58 @@
+
+> focuskid@0.1.0 test
+> jest --runInBand src/screens/__tests__/TaskEditScreen.test.tsx
+
+FAIL src/screens/__tests__/TaskEditScreen.test.tsx (5.157 s)
+  ● TaskEditScreen (Task CRUD & validation) › preserves seeded and repository-created Friday tasks when saving without bootstrap services
+
+    expect(received).toEqual(expected) // deep equality
+
+    - Expected  - 1
+    + Received  + 0
+
+      Array [
+        1,
+        2,
+        3,
+        4,
+    -   5,
+      ]
+
+      60 |     const expected = await services.tasksRepo.listToday(fakeWall.todayLocalDate(), 4);
+      61 |     expect(useTasksStore.getState().services).toBeNull();
+    > 62 |     expect(useTasksStore.getState().todayTasks.map(t => t.id)).toEqual(expected.map(t => t.id));
+         |                                                                ^
+      63 |     expect(expected.map(t => t.title)).toContain('Ще одне завдання');
+      64 |     screen.unmount();
+      65 |   });
+
+      at Object.toEqual (src/screens/__tests__/TaskEditScreen.test.tsx:62:64)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+  ● TaskEditScreen (Task CRUD & validation) › enforces archive only when task has sessions, and delete when unused (AS-18)
+
+    expect(received).toHaveProperty(path)
+
+    Expected path: "archiveHint"
+    Received path: []
+
+    Received value: {"addTask": "Додати завдання", "archive": "Архівувати", "cancel": "Скасувати", "createTask": "Нове завдання", "daySelected": "вибрано", "dayUnselected": "не вибрано", "delete": "Видалити", "doneToday": "Виконано на сьогодні", "editTask": "Редагувати завдання", "emojiClear": "Без емодзі", "emojiFieldLabel": "Емодзі для завдання", "emojiLabel": "Емодзі", "emojiNone": "Нічого не знайдено", "emojiPlaceholder": "Не вибрано", "emojiSearch": "Пошук емодзі", "emojiTitle": "Оберіть емодзі", "errors": {"daysEmpty": "Оберіть хоча б один день тижня", "targetRange": "Тривалість має бути від 1 до 120 хвилин", "titleEmpty": "Введіть назву завдання", "titleTooLong": "Назва не може бути довшою за 60 символів"}, "listTitle": "Завдання", "moveDown": "Вниз", "moveUp": "Вгору", "save": "Зберегти", "stepLess1": "-1 хвилина", "stepLess5": "-5 хвилин", "stepMore1": "+1 хвилина", "stepMore5": "+5 хвилин", "targetMinutesLabel": "Тривалість (хвилин)", "timesPerDayLabel": "Скільки разів на день", "timesPerDayMinus": "Зменшити кількість разів на день", "timesPerDayPlus": "Збільшити кількість разів на день", "timesPerDayStep": "Кількість разів на день", "timesPerDayUnit": "раз на день", "titleLabel": "Назва", "weekdays": ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Нд"], "weekdaysLabel": "Дні виконання"}
+
+      230 |     expect(screen1.queryByText(uk.taskCrud.delete)).toBeNull();
+      231 |
+    > 232 |     expect(uk.taskCrud).toHaveProperty('archiveHint');
+          |                         ^
+      233 |     expect(await screen1.findByText((uk.taskCrud as any).archiveHint)).toBeTruthy();
+      234 |     expect(screen1.getAllByLabelText(uk.taskCrud.archive)).toHaveLength(1);
+      235 |
+
+      at Object.toHaveProperty (src/screens/__tests__/TaskEditScreen.test.tsx:232:25)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+Test Suites: 1 failed, 1 total
+Tests:       2 failed, 3 passed, 5 total
+Snapshots:   0 total
+Time:        5.583 s, estimated 18 s
+Ran all test suites matching src/screens/__tests__/TaskEditScreen.test.tsx.

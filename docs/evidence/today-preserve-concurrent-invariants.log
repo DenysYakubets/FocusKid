@@ -1,0 +1,8 @@
+__tests__/mascotDrag.test.tsx(2,31): error TS2307: Cannot find module '../src/ui/hooks/useMascotDrag' or its corresponding type declarations.
+__tests__/mascotDrag.test.tsx(12,44): error TS2353: Object literal may only specify known properties, and 'position' does not exist in type 'MascotStoreState | Partial<MascotStoreState> | ((state: MascotStoreState) => MascotStoreState | Partial<...>)'.
+__tests__/mascotDrag.test.tsx(19,36): error TS2339: Property 'position' does not exist on type 'MascotStoreState'.
+__tests__/mascotDrag.test.tsx(21,36): error TS2339: Property 'position' does not exist on type 'MascotStoreState'.
+__tests__/mascotDrag.test.tsx(23,36): error TS2339: Property 'position' does not exist on type 'MascotStoreState'.
+__tests__/mascotDrag.test.tsx(27,29): error TS2353: Object literal may only specify known properties, and 'position' does not exist in type 'MascotStoreState | Partial<MascotStoreState> | ((state: MascotStoreState) => MascotStoreState | Partial<...>)'.
+__tests__/mascotDrag.test.tsx(35,36): error TS2339: Property 'position' does not exist on type 'MascotStoreState'.
+FAIL TSC-2

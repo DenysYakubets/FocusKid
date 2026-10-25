@@ -1,0 +1,32 @@
+{
+  "project_id": "focuskid",
+  "query": "Investigate PIN timing gate failure",
+  "error_signature": "fastPinVerify elapsed expected less than 50 received 130",
+  "sections": {
+    "patterns": [],
+    "knowledge": [],
+    "graphify": [
+      {
+        "knowledge_type": "code",
+        "content": "fastPinVerify.test.ts (src/services/auth/__tests__/fastPinVerify.test.ts)\nGraphify community: authService.ts",
+        "source_ref": "src/services/auth/__tests__/fastPinVerify.test.ts#L1",
+        "score": 0.26,
+        "provenance": {
+          "project_id": "focuskid",
+          "index_commit": "8c6a2e8715445e014efe3e4bbb1baae2f4c85c30",
+          "current_commit": "69648f78cf138c8688c5734a5ee4a7680b46babd",
+          "stale_index": true,
+          "working_tree_dirty": true,
+          "changed_path_match": true,
+          "related_refs": {
+            "callers": [],
+            "callees": [],
+            "tests": []
+          }
+        }
+      }
+    ]
+  },
+  "degraded_sources": [],
+  "context_chars": 586
+}

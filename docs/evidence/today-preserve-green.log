@@ -1,0 +1,10 @@
+
+> focuskid@0.1.0 test
+> jest --runInBand
+
+
+Test Suites: 76 passed, 76 total
+Tests:       298 passed, 298 total
+Snapshots:   0 total
+Time:        47.515 s, estimated 255 s
+Ran all test suites.

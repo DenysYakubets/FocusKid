@@ -8,6 +8,7 @@ import { renderWithApp, setupTestServices } from '../../../test/helpers/renderWi
 import { TaskEditScreen } from '../TaskEditScreen';
 import { TodayScreen } from '../TodayScreen';
 import { parentSessionStore } from '../../state/parentSessionStore';
+import { tasksStore, useTasksStore } from '../../state/tasksStore';
 import { uk } from '../../i18n/uk';
 
 describe('TaskEditScreen (Task CRUD & validation)', () => {
@@ -31,6 +32,37 @@ describe('TaskEditScreen (Task CRUD & validation)', () => {
     parentSessionStore.setService(services.authService);
     return services;
   };
+
+  it('preserves seeded and repository-created Friday tasks when saving without bootstrap services', async () => {
+    const services = await createAuthServices(createNodeDb(), createFakeClock(1000));
+    const seeded = await services.tasksRepo.listToday(fakeWall.todayLocalDate(), 4);
+    expect(seeded.length).toBeGreaterThan(0);
+    const screen = await renderWithApp(
+      <TaskEditScreen navigation={{ goBack: jest.fn(), replace: jest.fn() } as any}
+        route={{ params: {} } as any} />,
+      { services, db: services.db, wall: fakeWall }
+    );
+    // The helper normally installs global services; reproduce context-only device state.
+    useTasksStore.setState({ services: null, todayTasks: seeded });
+    const created = await services.tasksRepo.create(
+      { title: 'Нове щоденне завдання', targetMinutes: 15, daysMask: 127 }, fakeWall.nowIso()
+    );
+    await tasksStore.refreshToday(services);
+    expect(useTasksStore.getState().todayTasks.map(t => t.id)).toEqual([
+      ...seeded.map(t => t.id), created.id,
+    ]);
+    await act(async () => {
+      fireEvent.changeText(screen.getByTestId('task-title-input'), 'Ще одне завдання');
+    });
+    await act(async () => {
+      fireEvent.press(screen.getByLabelText(uk.taskCrud.save));
+    });
+    const expected = await services.tasksRepo.listToday(fakeWall.todayLocalDate(), 4);
+    expect(useTasksStore.getState().services).toBeNull();
+    expect(useTasksStore.getState().todayTasks.map(t => t.id)).toEqual(expected.map(t => t.id));
+    expect(expected.map(t => t.title)).toContain('Ще одне завдання');
+    screen.unmount();
+  });
 
   it('shows validation errors for empty title, title > 60 chars, target outside 1-120, and no weekdays', async () => {
     const db = createNodeDb();
@@ -197,6 +229,10 @@ describe('TaskEditScreen (Task CRUD & validation)', () => {
     expect(await screen1.findByText(uk.taskCrud.archive)).toBeTruthy();
     expect(screen1.queryByText(uk.taskCrud.delete)).toBeNull();
 
+    expect(uk.taskCrud).toHaveProperty('archiveHint');
+    expect(await screen1.findByText(uk.taskCrud.archiveHint)).toBeTruthy();
+    expect(screen1.getAllByLabelText(uk.taskCrud.archive)).toHaveLength(1);
+
     // Archive task 1
     await act(async () => {
       fireEvent.press(screen1.getByLabelText(uk.taskCrud.archive));
@@ -217,6 +253,10 @@ describe('TaskEditScreen (Task CRUD & validation)', () => {
 
     expect(await screen2.findByText(uk.taskCrud.delete)).toBeTruthy();
     expect(screen2.queryByText(uk.taskCrud.archive)).toBeNull();
+
+    expect(uk.taskCrud).toHaveProperty('deleteHint');
+    expect(await screen2.findByText(uk.taskCrud.deleteHint)).toBeTruthy();
+    expect(screen2.getAllByLabelText(uk.taskCrud.delete)).toHaveLength(1);
 
     // Delete task 2
     await act(async () => {

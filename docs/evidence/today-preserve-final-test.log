@@ -1,0 +1,214 @@
+
+> focuskid@0.1.0 test
+> jest --runInBand
+
+FAIL src/ui/__tests__/mascotDrag.test.tsx
+  ● mascot drag persistence › clamps release and termination and restores on another screen at 320dp
+
+    TypeError: Cannot read properties of undefined (reading 'onStartShouldSetPanResponder')
+
+      36 |       jest.spyOn(RN, 'useWindowDimensions').mockReturnValue({ width, height: 800, scale: 1, fontScale: 1 });
+      37 |       const first = await renderMascot();
+    > 38 |       expect(config!.onStartShouldSetPanResponder!({} as any, {} as any)).toBe(false);
+         |                      ^
+      39 |       expect(config!.onMoveShouldSetPanResponder!({} as any, { dx: 0, dy: 0 } as any)).toBe(false);
+      40 |       expect(config!.onMoveShouldSetPanResponder!({} as any, { dx: 30, dy: 0 } as any)).toBe(true);
+      41 |       const gesture = { dx: -10000, dy: 10000 } as RN.PanResponderGestureState;
+
+      at Object.onStartShouldSetPanResponder (src/ui/__tests__/mascotDrag.test.tsx:38:22)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+  ● mascot drag persistence › clamps release and termination and restores on another screen at 366dp
+
+    TypeError: Cannot read properties of undefined (reading 'onStartShouldSetPanResponder')
+
+      36 |       jest.spyOn(RN, 'useWindowDimensions').mockReturnValue({ width, height: 800, scale: 1, fontScale: 1 });
+      37 |       const first = await renderMascot();
+    > 38 |       expect(config!.onStartShouldSetPanResponder!({} as any, {} as any)).toBe(false);
+         |                      ^
+      39 |       expect(config!.onMoveShouldSetPanResponder!({} as any, { dx: 0, dy: 0 } as any)).toBe(false);
+      40 |       expect(config!.onMoveShouldSetPanResponder!({} as any, { dx: 30, dy: 0 } as any)).toBe(true);
+      41 |       const gesture = { dx: -10000, dy: 10000 } as RN.PanResponderGestureState;
+
+      at Object.onStartShouldSetPanResponder (src/ui/__tests__/mascotDrag.test.tsx:38:22)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+  ● mascot drag persistence › clamps release and termination and restores on another screen at 413dp
+
+    TypeError: Cannot read properties of undefined (reading 'onStartShouldSetPanResponder')
+
+      36 |       jest.spyOn(RN, 'useWindowDimensions').mockReturnValue({ width, height: 800, scale: 1, fontScale: 1 });
+      37 |       const first = await renderMascot();
+    > 38 |       expect(config!.onStartShouldSetPanResponder!({} as any, {} as any)).toBe(false);
+         |                      ^
+      39 |       expect(config!.onMoveShouldSetPanResponder!({} as any, { dx: 0, dy: 0 } as any)).toBe(false);
+      40 |       expect(config!.onMoveShouldSetPanResponder!({} as any, { dx: 30, dy: 0 } as any)).toBe(true);
+      41 |       const gesture = { dx: -10000, dy: 10000 } as RN.PanResponderGestureState;
+
+      at Object.onStartShouldSetPanResponder (src/ui/__tests__/mascotDrag.test.tsx:38:22)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+FAIL __tests__/mascotDrag.test.tsx
+  ● Console
+
+    console.error
+      You seem to have overlapping act() calls, this is not supported. Be sure to await previous act() calls before making a new one.
+
+      at popActScope (node_modules/react/cjs/react.development.js:630:17)
+      at node_modules/react/cjs/react.development.js:920:17
+
+    console.error
+      You seem to have overlapping act() calls, this is not supported. Be sure to await previous act() calls before making a new one.
+
+      at popActScope (node_modules/react/cjs/react.development.js:630:17)
+      at node_modules/react/cjs/react.development.js:920:17
+
+  ● drag callbacks throttle store updates and always save the final position
+
+    expect(received).toEqual(expected) // deep equality
+
+    Expected: {"x": 260, "y": 650}
+    Received: null
+
+      17 |   await act(() => handlers.onPanResponderGrant?.({} as any, gesture(0, 0)));
+      18 |   await act(() => handlers.onPanResponderMove?.({} as any, gesture(-20, -30)));
+    > 19 |   expect(useMascotStore.getState().position).toEqual({ x: 260, y: 650 });
+         |                                              ^
+      20 |   await act(() => handlers.onPanResponderMove?.({} as any, gesture(-40, -50)));
+      21 |   expect(useMascotStore.getState().position).toEqual({ x: 260, y: 650 });
+      22 |   await act(() => handlers.onPanResponderRelease?.({} as any, gesture(-50, -60)));
+
+      at Object.toEqual (__tests__/mascotDrag.test.tsx:19:46)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+  ● restores the global position on another screen and clamps a drag to safe bounds
+
+    expect(received).toEqual(expected) // deep equality
+
+    - Expected  - 2
+    + Received  + 2
+
+      Object {
+    -   "x": 10,
+    -   "y": 24,
+    +   "x": 100,
+    +   "y": 200,
+      }
+
+      33 |   await act(() => next.result.current.panHandlers.onPanResponderGrant?.({} as any, gesture(0, 0)));
+      34 |   await act(() => next.result.current.panHandlers.onPanResponderRelease?.({} as any, gesture(-1000, -1000)));
+    > 35 |   expect(useMascotStore.getState().position).toEqual({ x: 10, y: 24 });
+         |                                              ^
+      36 | });
+      37 |
+
+      at Object.toEqual (__tests__/mascotDrag.test.tsx:35:46)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+
+Summary of all failing tests
+FAIL src/ui/__tests__/mascotDrag.test.tsx
+  ● mascot drag persistence › clamps release and termination and restores on another screen at 320dp
+
+    TypeError: Cannot read properties of undefined (reading 'onStartShouldSetPanResponder')
+
+      36 |       jest.spyOn(RN, 'useWindowDimensions').mockReturnValue({ width, height: 800, scale: 1, fontScale: 1 });
+      37 |       const first = await renderMascot();
+    > 38 |       expect(config!.onStartShouldSetPanResponder!({} as any, {} as any)).toBe(false);
+         |                      ^
+      39 |       expect(config!.onMoveShouldSetPanResponder!({} as any, { dx: 0, dy: 0 } as any)).toBe(false);
+      40 |       expect(config!.onMoveShouldSetPanResponder!({} as any, { dx: 30, dy: 0 } as any)).toBe(true);
+      41 |       const gesture = { dx: -10000, dy: 10000 } as RN.PanResponderGestureState;
+
+      at Object.onStartShouldSetPanResponder (src/ui/__tests__/mascotDrag.test.tsx:38:22)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+  ● mascot drag persistence › clamps release and termination and restores on another screen at 366dp
+
+    TypeError: Cannot read properties of undefined (reading 'onStartShouldSetPanResponder')
+
+      36 |       jest.spyOn(RN, 'useWindowDimensions').mockReturnValue({ width, height: 800, scale: 1, fontScale: 1 });
+      37 |       const first = await renderMascot();
+    > 38 |       expect(config!.onStartShouldSetPanResponder!({} as any, {} as any)).toBe(false);
+         |                      ^
+      39 |       expect(config!.onMoveShouldSetPanResponder!({} as any, { dx: 0, dy: 0 } as any)).toBe(false);
+      40 |       expect(config!.onMoveShouldSetPanResponder!({} as any, { dx: 30, dy: 0 } as any)).toBe(true);
+      41 |       const gesture = { dx: -10000, dy: 10000 } as RN.PanResponderGestureState;
+
+      at Object.onStartShouldSetPanResponder (src/ui/__tests__/mascotDrag.test.tsx:38:22)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+  ● mascot drag persistence › clamps release and termination and restores on another screen at 413dp
+
+    TypeError: Cannot read properties of undefined (reading 'onStartShouldSetPanResponder')
+
+      36 |       jest.spyOn(RN, 'useWindowDimensions').mockReturnValue({ width, height: 800, scale: 1, fontScale: 1 });
+      37 |       const first = await renderMascot();
+    > 38 |       expect(config!.onStartShouldSetPanResponder!({} as any, {} as any)).toBe(false);
+         |                      ^
+      39 |       expect(config!.onMoveShouldSetPanResponder!({} as any, { dx: 0, dy: 0 } as any)).toBe(false);
+      40 |       expect(config!.onMoveShouldSetPanResponder!({} as any, { dx: 30, dy: 0 } as any)).toBe(true);
+      41 |       const gesture = { dx: -10000, dy: 10000 } as RN.PanResponderGestureState;
+
+      at Object.onStartShouldSetPanResponder (src/ui/__tests__/mascotDrag.test.tsx:38:22)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+FAIL __tests__/mascotDrag.test.tsx
+  ● drag callbacks throttle store updates and always save the final position
+
+    expect(received).toEqual(expected) // deep equality
+
+    Expected: {"x": 260, "y": 650}
+    Received: null
+
+      17 |   await act(() => handlers.onPanResponderGrant?.({} as any, gesture(0, 0)));
+      18 |   await act(() => handlers.onPanResponderMove?.({} as any, gesture(-20, -30)));
+    > 19 |   expect(useMascotStore.getState().position).toEqual({ x: 260, y: 650 });
+         |                                              ^
+      20 |   await act(() => handlers.onPanResponderMove?.({} as any, gesture(-40, -50)));
+      21 |   expect(useMascotStore.getState().position).toEqual({ x: 260, y: 650 });
+      22 |   await act(() => handlers.onPanResponderRelease?.({} as any, gesture(-50, -60)));
+
+      at Object.toEqual (__tests__/mascotDrag.test.tsx:19:46)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+  ● restores the global position on another screen and clamps a drag to safe bounds
+
+    expect(received).toEqual(expected) // deep equality
+
+    - Expected  - 2
+    + Received  + 2
+
+      Object {
+    -   "x": 10,
+    -   "y": 24,
+    +   "x": 100,
+    +   "y": 200,
+      }
+
+      33 |   await act(() => next.result.current.panHandlers.onPanResponderGrant?.({} as any, gesture(0, 0)));
+      34 |   await act(() => next.result.current.panHandlers.onPanResponderRelease?.({} as any, gesture(-1000, -1000)));
+    > 35 |   expect(useMascotStore.getState().position).toEqual({ x: 10, y: 24 });
+         |                                              ^
+      36 | });
+      37 |
+
+      at Object.toEqual (__tests__/mascotDrag.test.tsx:35:46)
+      at asyncGeneratorStep (node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+
+Test Suites: 2 failed, 76 passed, 78 total
+Tests:       5 failed, 298 passed, 303 total
+Snapshots:   0 total
+Time:        61.788 s
+Ran all test suites.

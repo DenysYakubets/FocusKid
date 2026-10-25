@@ -1,0 +1,23 @@
+__tests__/mascotDrag.test.tsx(17,28): error TS2551: Property 'onPanResponderGrant' does not exist on type 'GestureResponderHandlerMethods'. Did you mean 'onResponderGrant'?
+__tests__/mascotDrag.test.tsx(18,28): error TS2551: Property 'onPanResponderMove' does not exist on type 'GestureResponderHandlerMethods'. Did you mean 'onResponderMove'?
+__tests__/mascotDrag.test.tsx(20,28): error TS2551: Property 'onPanResponderMove' does not exist on type 'GestureResponderHandlerMethods'. Did you mean 'onResponderMove'?
+__tests__/mascotDrag.test.tsx(22,28): error TS2551: Property 'onPanResponderRelease' does not exist on type 'GestureResponderHandlerMethods'. Did you mean 'onResponderRelease'?
+__tests__/mascotDrag.test.tsx(33,51): error TS2551: Property 'onPanResponderGrant' does not exist on type 'GestureResponderHandlerMethods'. Did you mean 'onResponderGrant'?
+__tests__/mascotDrag.test.tsx(34,51): error TS2551: Property 'onPanResponderRelease' does not exist on type 'GestureResponderHandlerMethods'. Did you mean 'onResponderRelease'?
+src/state/mascotStore.ts(21,3): error TS2300: Duplicate identifier 'position'.
+src/state/mascotStore.ts(22,3): error TS2300: Duplicate identifier 'setPosition'.
+src/state/mascotStore.ts(27,3): error TS2300: Duplicate identifier 'position'.
+src/state/mascotStore.ts(28,3): error TS2300: Duplicate identifier 'setPosition'.
+src/state/mascotStore.ts(28,3): error TS2717: Subsequent property declarations must have the same type.  Property 'setPosition' must be of type '(position: MascotPosition) => void', but here has type '(x: number, y: number) => void'.
+src/state/mascotStore.ts(47,3): error TS2322: Type '(x: any, y: any) => void' is not assignable to type '(position: MascotPosition) => void'.
+  Target signature provides too few arguments. Expected 2 or more, but got 1.
+src/state/mascotStore.ts(50,3): error TS1117: An object literal cannot have multiple properties with the same name.
+src/state/mascotStore.ts(51,3): error TS1117: An object literal cannot have multiple properties with the same name.
+src/state/mascotStore.ts(51,3): error TS2322: Type '(x: any, y: any) => void' is not assignable to type '(position: MascotPosition) => void'.
+  Target signature provides too few arguments. Expected 2 or more, but got 1.
+src/state/mascotStore.ts(51,17): error TS7006: Parameter 'x' implicitly has an 'any' type.
+src/state/mascotStore.ts(51,20): error TS7006: Parameter 'y' implicitly has an 'any' type.
+src/ui/components/MascotFloating.tsx(120,28): error TS2554: Expected 1 arguments, but got 2.
+src/ui/components/MascotFloating.tsx(128,26): error TS2554: Expected 1 arguments, but got 2.
+src/ui/components/MascotFloating.tsx(162,25): error TS2304: Cannot find name 'View'.
+FAIL TSC-2

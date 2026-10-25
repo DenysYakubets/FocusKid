@@ -108,7 +108,9 @@ export const uk = {
     save: 'Зберегти',
     cancel: 'Скасувати',
     archive: 'Архівувати',
+    archiveHint: 'Прибрати завдання зі списку, але зберегти історію виконання (статистика).',
     delete: 'Видалити',
+    deleteHint: 'Назавжди видалити завдання, якщо воно ще не мало жодної сесії.',
     moveUp: 'Вгору',
     moveDown: 'Вниз',
     // F5: emoji picker dialog (no system keyboard for picking)

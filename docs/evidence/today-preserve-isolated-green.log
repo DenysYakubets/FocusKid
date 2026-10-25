@@ -1,0 +1,5 @@
+
+> focuskid@0.1.0 test
+> jest --runInBand
+
+No tests found, exiting with code 0
