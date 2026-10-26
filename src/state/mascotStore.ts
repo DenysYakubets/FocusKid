@@ -11,7 +11,16 @@ interface StoredMascot {
   selectedAt: string;
 }
 
+export interface MascotPosition {
+  x: number;
+  y: number;
+}
+
 export interface MascotStoreState {
+  /** Screen (window) coordinates of the last drag — shared by every screen for this session. */
+  position: MascotPosition | null;
+  /** Persist a clamped drag position so the companion restores on any screen mount. */
+  setPosition: (x: number, y: number) => void;
   /** Currently selected companion; defaults until `hydrate()` reads the store. */
   mascot: MascotName;
   hydrated: boolean;
@@ -32,6 +41,8 @@ function parseStored(raw: string | null): MascotName {
 }
 
 export const useMascotStore = create<MascotStoreState>((set, get) => ({
+  position: null,
+  setPosition: (x, y) => set({ position: { x, y } }),
   mascot: DEFAULT_MASCOT,
   hydrated: false,
 
