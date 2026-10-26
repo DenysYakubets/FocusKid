@@ -45,8 +45,40 @@ else
   exit 1
 fi
 
-# TSC-12: INV-07 SQLite only, no alternative storage (static half)
-if grep -qF '"expo-sqlite"' package.json && ! grep -qF -e '@react-native-async-storage/' -e 'react-native-mmkv' -e '"realm"' -e 'watermelondb' -e 'expo-secure-store' -e 'expo-file-system' package.json && ! grep -rnF -e "AsyncStorage" -e "localStorage" src; then
+# TSC-12: INV-07 SQLite business data; diagnostic file allowlist (static half)
+if grep -qF '"expo-sqlite"' package.json && ! grep -qF -e '@react-native-async-storage/' -e 'react-native-mmkv' -e '"realm"' -e 'watermelondb' -e 'expo-secure-store' package.json && ! grep -rnF -e "AsyncStorage" -e "localStorage" src && node <<'NODE'
+const fs = require('node:fs');
+const path = require('node:path');
+const logger = 'src/services/logging/fileLogger.ts';
+function sources(dir) {
+  return fs.readdirSync(dir, { withFileTypes: true }).flatMap(entry => {
+    const name = path.join(dir, entry.name);
+    // Jest mocks are not runtime consumers of the storage dependency.
+    if (entry.name === '__tests__' || /\.(test|spec)\.[cm]?[jt]sx?$/.test(name)) return [];
+    return entry.isDirectory() ? sources(name) : [name];
+  });
+}
+const consumers = [...sources('src'), 'App.tsx']
+  .filter(name => fs.readFileSync(name, 'utf8').includes('expo-file-system'));
+const installed = Object.keys({
+  ...require('./package.json').dependencies,
+  ...require('./package.json').devDependencies,
+}).includes('expo-file-system');
+if (consumers.some(name => name !== logger) || (installed && !consumers.includes(logger))) {
+  process.exit(1);
+}
+if (consumers.includes(logger)) {
+  const source = fs.readFileSync(logger, 'utf8');
+  // Accept only the reviewed named imports and literal document/log constructors.
+  // Any remaining File/Paths/Directory use requires explicit review of this gate.
+  const imports = /import\s*\{\s*File\s*,\s*Paths\s*\}\s*from\s*['"]expo-file-system['"];?/g;
+  const opens = /new\s+File\(\s*Paths\.document\s*,\s*'focuskid\.log'\s*\)/g;
+  if ((source.match(imports) ?? []).length !== 1 || !(source.match(opens) ?? []).length) process.exit(1);
+  const remainder = source.replace(imports, '').replace(opens, '');
+  if (/\b(File|Paths|Directory)\b|expo-file-system/.test(remainder)) process.exit(1);
+}
+NODE
+then
   echo "PASS TSC-12"
 else
   echo "FAIL TSC-12"
