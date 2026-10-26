@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
-import { NavigationContainer } from '@react-navigation/native';
+import { NavigationContainer, useNavigationContainerRef } from '@react-navigation/native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { openExpoDb } from './src/services/db/expoDb';
@@ -22,7 +22,15 @@ import { TapTarget } from './src/ui/components/TapTarget';
 import { uk } from './src/i18n/uk';
 import { colors, spacing } from './src/ui/theme';
 
+import { logInfo, logError } from './src/services/logging/fileLogger';
+import { RootStackParamList } from './src/navigation/routes';
+
 export function AppBootstrap() {
+  const navigationRef = useNavigationContainerRef<RootStackParamList>();
+  const logRoute = () => {
+    const route = navigationRef.getCurrentRoute();
+    if (route) void logInfo(`Navigation: ${route.name}`);
+  };
   const [services, setServices] = useState<AppServices | null>(null);
   const [initError, setInitError] = useState<unknown>(null);
   const [initAttempt, setInitAttempt] = useState(0);
@@ -54,6 +62,7 @@ export function AppBootstrap() {
         }
       } catch (err) {
         console.error('Failed to initialize app', err);
+        void logError(`App initialization failed: ${String(err)}`);
         if (mounted) {
           setInitError(err);
         }
@@ -105,7 +114,7 @@ export function AppBootstrap() {
       <AppLifecycle />
       <SafeAreaProvider>
         <AppFrame>
-          <NavigationContainer>
+          <NavigationContainer ref={navigationRef} onReady={logRoute} onStateChange={logRoute}>
             <ErrorBoundary>
               <RootNavigator />
             </ErrorBoundary>

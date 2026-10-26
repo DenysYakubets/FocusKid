@@ -1,3 +1,4 @@
+import { logInfo, logError } from '../services/logging/fileLogger';
 import { create } from 'zustand';
 import { TodayTaskView } from '../domain/tasks/types';
 import { AppServices } from './appServices';
@@ -18,12 +19,22 @@ export const useTasksStore = create<TasksStoreState>((set, get) => ({
   },
 
   refreshToday: async (servicesOverride?: AppServices) => {
-    const s = servicesOverride ?? get().services;
-    if (!s) return;
-    const today = s.wall.todayLocalDate();
-    const weekdayIdx = s.wall.weekdayIndex(today);
-    const tasks = await s.tasksRepo.listToday(today, weekdayIdx);
-    set({ todayTasks: tasks });
+    void logInfo('refreshToday start');
+    try {
+      const s = servicesOverride ?? get().services;
+      if (!s) {
+        void logInfo('refreshToday skipped: services unavailable');
+        return;
+      }
+      const today = s.wall.todayLocalDate();
+      const weekdayIdx = s.wall.weekdayIndex(today);
+      const tasks = await s.tasksRepo.listToday(today, weekdayIdx);
+      set({ todayTasks: tasks });
+      void logInfo(`refreshToday success: ${tasks.length} tasks`);
+    } catch (error) {
+      void logError(`refreshToday failure: ${String(error)}`);
+      throw error;
+    }
   },
 }));
 

@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { FlatList, StyleSheet, View } from 'react-native';
+import { FlatList, Share, StyleSheet, View } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/routes';
+import { readLogContent } from '../services/logging/fileLogger';
 import { useServices } from '../state/appServices';
 import { parentSessionStore } from '../state/parentSessionStore';
 import { SessionRow } from '../services/repos/sessionsRepo';
@@ -70,6 +71,16 @@ export function ParentHomeScreen({ navigation }: Props) {
     });
     return unsub;
   }, [navigation, sessionsRepo, tasksRepo]);
+
+  const handleShareLogs = async () => {
+    parentSessionStore.touch();
+    try {
+      const logContent = await readLogContent();
+      await Share.share({ message: logContent || 'Журнал поки порожній.' });
+    } catch {
+      // Dismissing or failing to open the share sheet leaves the screen usable.
+    }
+  };
 
   const handleExit = () => {
     parentSessionStore.exit();
@@ -158,6 +169,12 @@ export function ParentHomeScreen({ navigation }: Props) {
   // §4.6: deterministic stacked column replaces the wrapping chip row.
   const navNode = (
     <View style={styles.navColumn}>
+      <AppButton
+        label="Поділитися журналом"
+        variant="secondary"
+        size="lg"
+        onPress={handleShareLogs}
+      />
       <AppButton
         label={uk.parentHome.tasks}
         variant="secondary"

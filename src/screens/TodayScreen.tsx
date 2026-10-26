@@ -1,5 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import { FlatList, StyleSheet, View } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/routes';
 import { useTasksStore } from '../state/tasksStore';
@@ -30,15 +31,11 @@ export function TodayScreen({ navigation }: Props) {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [startPending, setStartPending] = useState(false);
 
-  useEffect(() => {
-    void refreshToday(services);
-    const unsub = navigation?.addListener?.('focus', () => {
-      void refreshToday(services);
+  useFocusEffect(useCallback(() => {
+    void refreshToday(services).catch(() => {
+      // refreshToday records the failure; retain the previous list on screen.
     });
-    return () => {
-      unsub?.();
-    };
-  }, [navigation, refreshToday, services]);
+  }, [refreshToday, services]));
 
   const activeTask =
     timerSnapshot.state.kind === 'Running' || timerSnapshot.state.kind === 'Paused';

@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { ScrollView, StyleSheet, TextInput, View } from 'react-native';
+import { Alert, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/routes';
+import { logInfo, logError } from '../services/logging/fileLogger';
 import { useServices } from '../state/appServices';
 import { tasksStore } from '../state/tasksStore';
 import { parentSessionStore } from '../state/parentSessionStore';
@@ -55,7 +56,10 @@ export function TaskEditScreen({ route, navigation }: Props) {
           [taskId]
         );
         setHasSessions((countRow?.count ?? 0) > 0);
-      })();
+      })().catch((error: unknown) => {
+        void logError(`Task load failed: ${String(error)}`);
+        Alert.alert(uk.pin.operationFailed);
+      });
     }
   }, [isEditing, taskId, tasksRepo, db]);
 
@@ -85,47 +89,66 @@ export function TaskEditScreen({ route, navigation }: Props) {
     });
 
     if (!result.ok) {
+      void logError(`Task validation failed: ${result.errors.join(', ')}`);
       setErrors(result.errors);
       return;
     }
 
     setErrors([]);
-    const nowIso = wall.nowIso();
+    try {
+      const nowIso = wall.nowIso();
 
-    if (isEditing && taskId) {
-      await tasksRepo.update(
-        taskId,
-        {
-          title: result.value.title,
-          emoji: result.value.emoji,
-          targetMinutes: result.value.targetMinutes,
-          daysMask: result.value.daysMask,
-          targetPerDay,
-        },
-        nowIso
-      );
-    } else {
-      await tasksRepo.create({ ...result.value, targetPerDay }, nowIso);
+      if (isEditing && taskId) {
+        await tasksRepo.update(
+          taskId,
+          {
+            title: result.value.title,
+            emoji: result.value.emoji,
+            targetMinutes: result.value.targetMinutes,
+            daysMask: result.value.daysMask,
+            targetPerDay,
+          },
+          nowIso
+        );
+      } else {
+        await tasksRepo.create({ ...result.value, targetPerDay }, nowIso);
+      }
+
+      void logInfo(isEditing ? 'Task update success' : 'Task create success');
+      await tasksStore.refreshToday(services);
+      navigation.goBack();
+    } catch (error) {
+      void logError(`Task save failed: ${String(error)}`);
+      Alert.alert(uk.pin.operationFailed);
     }
-
-    await tasksStore.refreshToday(services);
-    navigation.goBack();
   };
 
   const handleArchive = async () => {
     if (!taskId) return;
     parentSessionStore.touch();
-    await tasksRepo.archive(taskId, wall.nowIso());
-    await tasksStore.refreshToday(services);
-    navigation.goBack();
+    try {
+      await tasksRepo.archive(taskId, wall.nowIso());
+      void logInfo('Task archive success');
+      await tasksStore.refreshToday(services);
+      navigation.goBack();
+    } catch (error) {
+      void logError(`Task archive failed: ${String(error)}`);
+      Alert.alert(uk.pin.operationFailed);
+    }
   };
 
   const handleDelete = async () => {
     if (!taskId) return;
     parentSessionStore.touch();
-    await tasksRepo.deleteIfUnused(taskId);
-    await tasksStore.refreshToday(services);
-    navigation.goBack();
+    try {
+      await tasksRepo.deleteIfUnused(taskId);
+      void logInfo('Task delete success');
+      await tasksStore.refreshToday(services);
+      navigation.goBack();
+    } catch (error) {
+      void logError(`Task delete failed: ${String(error)}`);
+      Alert.alert(uk.pin.operationFailed);
+    }
   };
 
   const getErrorMessage = (err: TaskValidationError): string => {
