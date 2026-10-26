@@ -39,7 +39,8 @@
       ],
       "./plugins/withNoInternet",
       "./plugins/withBundledDebugJs",
-      "expo-audio"
+      "expo-audio",
+      "expo-sharing"
     ]
   }
 }

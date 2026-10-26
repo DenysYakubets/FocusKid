@@ -64,6 +64,27 @@ describe('TaskEditScreen (Task CRUD & validation)', () => {
     screen.unmount();
   });
 
+  it.each([false, true])('retries a missed create and restores eligible tasks (persistent miss=%s)', async persistent => {
+    const services = await createAuthServices(createNodeDb(), createFakeClock(1000));
+    const screen = await renderWithApp(
+      <TaskEditScreen navigation={{ goBack: jest.fn(), replace: jest.fn() } as any} route={{ params: {} } as any} />,
+      { services, db: services.db, wall: fakeWall }
+    );
+    const read = jest.spyOn(services.tasksRepo, 'listToday').mockResolvedValueOnce([]);
+    if (persistent) read.mockResolvedValueOnce([]);
+    await act(async () => {
+      fireEvent.changeText(screen.getByTestId('task-title-input'), 'Recovered task');
+    });
+    await act(async () => { fireEvent.press(screen.getByLabelText(uk.taskCrud.save)); });
+    const saved = (await services.tasksRepo.listAll()).find(task => task.title === 'Recovered task')!;
+    expect(read).toHaveBeenCalledTimes(2);
+    expect(useTasksStore.getState().todayTasks.find(task => task.id === saved.id)).toMatchObject({
+      id: saved.id, status: 'idle', sessionId: null, completedToday: 0,
+    });
+    read.mockRestore();
+    screen.unmount();
+  });
+
   it('shows validation errors for empty title, title > 60 chars, target outside 1-120, and no weekdays', async () => {
     const db = createNodeDb();
     const clock = createFakeClock(1000);

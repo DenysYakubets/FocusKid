@@ -1,8 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { FlatList, Share, StyleSheet, View } from 'react-native';
+import { FlatList, Platform, Share, StyleSheet, View } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/routes';
-import { readLogContent } from '../services/logging/fileLogger';
+import * as Sharing from 'expo-sharing';
+import { formatError } from '../services/logging/formatError';
+import { logFileUri, logInfo, logError } from '../services/logging/fileLogger';
 import { useServices } from '../state/appServices';
 import { parentSessionStore } from '../state/parentSessionStore';
 import { SessionRow } from '../services/repos/sessionsRepo';
@@ -75,10 +77,26 @@ export function ParentHomeScreen({ navigation }: Props) {
   const handleShareLogs = async () => {
     parentSessionStore.touch();
     try {
-      const logContent = await readLogContent();
-      await Share.share({ message: logContent || 'Журнал поки порожній.' });
-    } catch {
-      // Dismissing or failing to open the share sheet leaves the screen usable.
+      await logInfo('share: preparing log file');
+      try {
+        if (await Sharing.isAvailableAsync()) {
+          await Sharing.shareAsync(logFileUri(), {
+            dialogTitle: 'Share FocusKid logs', mimeType: 'text/plain', UTI: 'public.plain-text',
+          });
+          return;
+        }
+        void logError('share: fallback reason=expo-sharing unavailable');
+      } catch (error) {
+        void logError(`share: fallback reason=${formatError(error)}`);
+      }
+      if (Platform.OS === 'ios') {
+        await Share.share({ url: logFileUri() }, { dialogTitle: 'Share logs' });
+      } else {
+        await Share.share({ title: 'FocusKid logs', message: 'FocusKid diagnostic logs', url: logFileUri() },
+          { dialogTitle: 'Share logs', subject: 'FocusKid logs' });
+      }
+    } catch (error) {
+      void logError(`share: failed ${formatError(error)}`);
     }
   };
 

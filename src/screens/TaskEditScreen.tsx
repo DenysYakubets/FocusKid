@@ -4,7 +4,9 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/routes';
 import { logInfo, logError } from '../services/logging/fileLogger';
 import { useServices } from '../state/appServices';
-import { tasksStore } from '../state/tasksStore';
+import { Task } from '../domain/tasks/types';
+import { formatError } from '../services/logging/formatError';
+import { tasksStore, useTasksStore } from '../state/tasksStore';
 import { parentSessionStore } from '../state/parentSessionStore';
 import { validateTask, TaskValidationError } from '../domain/tasks/validation';
 import { AppButton } from '../ui/components/AppButton';
@@ -57,7 +59,7 @@ export function TaskEditScreen({ route, navigation }: Props) {
         );
         setHasSessions((countRow?.count ?? 0) > 0);
       })().catch((error: unknown) => {
-        void logError(`Task load failed: ${String(error)}`);
+        void logError(`Task load failed: ${formatError(error)}`);
         Alert.alert(uk.pin.operationFailed);
       });
     }
@@ -98,8 +100,9 @@ export function TaskEditScreen({ route, navigation }: Props) {
     try {
       const nowIso = wall.nowIso();
 
+      let saved: Task;
       if (isEditing && taskId) {
-        await tasksRepo.update(
+        saved = await tasksRepo.update(
           taskId,
           {
             title: result.value.title,
@@ -111,14 +114,32 @@ export function TaskEditScreen({ route, navigation }: Props) {
           nowIso
         );
       } else {
-        await tasksRepo.create({ ...result.value, targetPerDay }, nowIso);
+        saved = await tasksRepo.create({ ...result.value, targetPerDay }, nowIso);
       }
 
-      void logInfo(isEditing ? 'Task update success' : 'Task create success');
+      const action = isEditing ? 'update' : 'create';
+      void logInfo(`Task ${action} success: id=${saved.id}, title=${saved.title}, days_mask=${saved.daysMask}, archived=${Number(saved.archived)}, target_per_day=${saved.targetPerDay}, sort_order=${saved.sortOrder}`);
+      const localDate = wall.todayLocalDate();
+      const weekdayIdx = wall.weekdayIndex(localDate);
+      void logInfo(`Task ${action}: local_date=${localDate}, weekday=${weekdayIdx}, services=${useTasksStore.getState().services === services ? 'context=store' : 'context override'}`);
       await tasksStore.refreshToday(services);
+      if (!isEditing && !useTasksStore.getState().todayTasks.some(task => task.id === saved.id)) {
+        const diagnostic = useTasksStore.getState().refreshDiagnostics;
+        void logError(`refreshToday: created task id=${saved.id} missing from result (raw=${diagnostic?.raw ?? 'unknown'}, afterArchived=${diagnostic?.afterArchived ?? 'unknown'}, afterMask=${diagnostic?.afterMask ?? 'unknown'})`);
+        await tasksStore.refreshToday(services);
+        if (!saved.archived && (saved.daysMask & (1 << wall.weekdayIndex(wall.todayLocalDate()))) !== 0) {
+          useTasksStore.setState(state => {
+            if (state.todayTasks.some(task => task.id === saved.id)) return state;
+            void logInfo(`todayTasks: manually restored created task id=${saved.id} after refresh miss`);
+            return { todayTasks: [...state.todayTasks, { ...saved, status: 'idle' as const, sessionId: null, completedToday: 0 }]
+              .sort((a, b) => a.sortOrder - b.sortOrder || a.id - b.id) };
+          });
+        }
+      }
+      void logInfo(`Task ${action}: resulting today count=${useTasksStore.getState().todayTasks.length}`);
       navigation.goBack();
     } catch (error) {
-      void logError(`Task save failed: ${String(error)}`);
+      void logError(`Task save failed: ${formatError(error)}`);
       Alert.alert(uk.pin.operationFailed);
     }
   };
@@ -130,9 +151,10 @@ export function TaskEditScreen({ route, navigation }: Props) {
       await tasksRepo.archive(taskId, wall.nowIso());
       void logInfo('Task archive success');
       await tasksStore.refreshToday(services);
+      void logInfo(`Task archive: resulting today count=${useTasksStore.getState().todayTasks.length}`);
       navigation.goBack();
     } catch (error) {
-      void logError(`Task archive failed: ${String(error)}`);
+      void logError(`Task archive failed: ${formatError(error)}`);
       Alert.alert(uk.pin.operationFailed);
     }
   };
@@ -144,9 +166,10 @@ export function TaskEditScreen({ route, navigation }: Props) {
       await tasksRepo.deleteIfUnused(taskId);
       void logInfo('Task delete success');
       await tasksStore.refreshToday(services);
+      void logInfo(`Task delete: resulting today count=${useTasksStore.getState().todayTasks.length}`);
       navigation.goBack();
     } catch (error) {
-      void logError(`Task delete failed: ${String(error)}`);
+      void logError(`Task delete failed: ${formatError(error)}`);
       Alert.alert(uk.pin.operationFailed);
     }
   };

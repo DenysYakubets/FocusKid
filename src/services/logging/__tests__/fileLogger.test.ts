@@ -1,9 +1,10 @@
-import { logInfo, logError, readLogContent } from '../fileLogger';
+import { logInfo, logError, readLogContent, logFileUri } from '../fileLogger';
 
 jest.mock('expo-file-system', () => {
   const state = { exists: false, text: '' };
   class File {
     constructor(_dir: string, _name: string) {}
+    uri = 'file:///documents/focuskid.log';
     get exists() {
       return state.exists;
     }
@@ -37,14 +38,16 @@ describe('fileLogger', () => {
     await logError('refresh failed');
 
     const lines = store.text.split('\n').filter(Boolean);
-    expect(lines).toHaveLength(2);
+    expect(lines).toHaveLength(3);
+    expect(lines[1]).toContain('fileLogger: first write after start (retention=6h)');
     expect(lines[0]).toMatch(
       /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z \[INFO\] task created$/
     );
-    expect(lines[1]).toMatch(
+    expect(lines[2]).toMatch(
       /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z \[ERROR\] refresh failed$/
     );
     expect(await readLogContent()).toBe(store.text);
+    expect(logFileUri()).toBe('file:///documents/focuskid.log');
   });
 
   it('drops only lines older than the 6h retention window on write', async () => {
@@ -66,6 +69,8 @@ describe('fileLogger', () => {
     // A line without a parseable timestamp cannot be aged, so it is dropped
     // instead of living in the file forever.
     expect(content).not.toContain('not a log line');
+    expect(content.split('\n').filter(Boolean)).toHaveLength(4);
+    expect(content).toMatch(/\[INFO\] fileLogger: retention cleanup removed 1 expired lines/);
   });
 
   it('never throws into the app and reports an empty log when the file is missing', async () => {

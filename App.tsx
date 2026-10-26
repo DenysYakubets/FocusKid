@@ -1,5 +1,7 @@
+import Constants from 'expo-constants';
+import { formatError } from './src/services/logging/formatError';
 import React, { useEffect, useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { Platform, StyleSheet, View } from 'react-native';
 import { NavigationContainer, useNavigationContainerRef } from '@react-navigation/native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
@@ -29,7 +31,7 @@ export function AppBootstrap() {
   const navigationRef = useNavigationContainerRef<RootStackParamList>();
   const logRoute = () => {
     const route = navigationRef.getCurrentRoute();
-    if (route) void logInfo(`Navigation: ${route.name}`);
+    if (route) void logInfo(`Navigation: ${route.name}${route.params === undefined ? '' : ` params=${JSON.stringify(route.params)}`}`);
   };
   const [services, setServices] = useState<AppServices | null>(null);
   const [initError, setInitError] = useState<unknown>(null);
@@ -39,6 +41,7 @@ export function AppBootstrap() {
     let mounted = true;
     async function init() {
       try {
+        await logInfo(`app start: version=${Constants.expoConfig?.version ?? Constants.nativeBuildVersion ?? 'unknown'}, os=${Platform.OS}, platformVersion=${Platform.Version}`);
         const db = await openExpoDb();
         await migrate(db);
         await seedIfEmpty(db, systemWallClock);
@@ -62,7 +65,7 @@ export function AppBootstrap() {
         }
       } catch (err) {
         console.error('Failed to initialize app', err);
-        void logError(`App initialization failed: ${String(err)}`);
+        void logError(`App initialization failed: ${formatError(err)}`);
         if (mounted) {
           setInitError(err);
         }
