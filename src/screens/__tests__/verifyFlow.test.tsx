@@ -89,7 +89,7 @@ describe('verifyFlow (INV-05 / INV-06)', () => {
     expect(sessionRow?.status).toBe('completed');
 
     // 5. Case B: Enter correct PIN (1234)
-    const { getByLabelText: getInGateCorrect } = await renderWithApp(
+    const { getByLabelText: getInGateCorrect, findByText: findInGateCorrect } = await renderWithApp(
       <PinGateScreen
         navigation={mockGateNav}
         route={{ params: { intent: 'verify', sessionId } } as any}
@@ -108,6 +108,15 @@ describe('verifyFlow (INV-05 / INV-06)', () => {
     });
     await act(async () => {
       fireEvent.press(getInGateCorrect('Цифра 4'));
+    });
+
+    // Correct PIN opens a confirmation dialog; verification waits for the parent.
+    expect(await findInGateCorrect(uk.timer.showConfirmTitle)).toBeTruthy();
+    sessionRow = await services.sessionsRepo.get(sessionId);
+    expect(sessionRow?.status).toBe('completed');
+    expect(mockGateNav.goBack).not.toHaveBeenCalled();
+    await act(async () => {
+      fireEvent.press(getInGateCorrect(uk.timer.showConfirm));
     });
 
     // Session is now verified
@@ -147,5 +156,31 @@ describe('verifyFlow (INV-05 / INV-06)', () => {
 
     const finalRow = await services.sessionsRepo.get(sessionId);
     expect(finalRow?.status).toBe('verified');
+  });
+
+  it('reset action abandons today progress while keeping the task restartable in today list', async () => {
+    const db = createNodeDb();
+    const clock = createFakeClock(1000);
+    const mockGateNav: any = { navigate: jest.fn(), goBack: jest.fn(), replace: jest.fn() };
+    const { services } = await renderWithApp(<></>, { db, clock, wall: fakeWall });
+    await services.authService.setupPin('1234');
+    await act(async () => { await timerStore.start(1); });
+    const sessionId = timerStore.getState().snapshot.sessionId!;
+    await act(async () => { clock.advance(900_000); await timerStore.tick(); });
+    const { getByLabelText, findByLabelText } = await renderWithApp(
+      <PinGateScreen navigation={mockGateNav} route={{ params: { intent: 'verify', sessionId } } as any} />,
+      { db, clock, wall: fakeWall, services }
+    );
+    await findByLabelText('Цифра 1');
+    for (const d of ['1', '2', '3', '4']) {
+      await act(async () => { fireEvent.press(getByLabelText(`Цифра ${d}`)); });
+    }
+    await act(async () => { fireEvent.press(getByLabelText(uk.timer.showReset)); });
+    expect((await services.sessionsRepo.get(sessionId))?.status).toBe('abandoned');
+    expect(mockGateNav.goBack).toHaveBeenCalled();
+    const task = (await services.tasksRepo.listToday(fakeWall.todayLocalDate(), fakeWall.weekdayIndex())).find((t) => t.id === 1);
+    expect(task).toBeTruthy();
+    expect(task?.completedToday).toBe(0);
+    expect(task?.status).toBe('idle');
   });
 });

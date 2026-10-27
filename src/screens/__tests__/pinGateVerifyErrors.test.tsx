@@ -53,7 +53,7 @@ describe('pinGateVerifyErrors', () => {
       await timerStore.tick();
     });
 
-    const { getByLabelText, unmount } = await renderWithApp(
+    const { getByLabelText, findByText, unmount } = await renderWithApp(
       <PinGateScreen
         navigation={mockGateNav}
         route={{ params: { intent: 'verify', sessionId } } as any}
@@ -67,6 +67,12 @@ describe('pinGateVerifyErrors', () => {
       });
     }
 
+    expect(await findByText(uk.timer.showConfirmTitle)).toBeTruthy();
+    expect((await services.sessionsRepo.get(sessionId))?.status).toBe('completed');
+    expect(mockGateNav.goBack).not.toHaveBeenCalled();
+    await act(async () => {
+      fireEvent.press(getByLabelText(uk.timer.showConfirm));
+    });
     const sessionRow = await services.sessionsRepo.get(sessionId);
     expect(sessionRow?.status).toBe('verified');
     expect(mockGateNav.goBack).toHaveBeenCalled();
@@ -143,6 +149,8 @@ describe('pinGateVerifyErrors', () => {
       });
     }
 
+    expect(await findByText(uk.timer.showConfirmTitle)).toBeTruthy();
+    await act(async () => { fireEvent.press(getByLabelText(uk.timer.showConfirm)); });
     expect(await findByText(mapTimerError('NOT_COMPLETED'))).toBeTruthy();
     expect(mockGateNav.goBack).not.toHaveBeenCalled();
     unmount();

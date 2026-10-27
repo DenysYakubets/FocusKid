@@ -34,6 +34,8 @@ export function PinGateScreen({ route, navigation }: Props) {
   const [lockoutSec, setLockoutSec] = useState(0);
   const [showAbandonDialog, setShowAbandonDialog] = useState(false);
   const [abandonToken, setAbandonToken] = useState<ParentToken | null>(null);
+  const [showVerifyDialog, setShowVerifyDialog] = useState(false);
+  const [verifyToken, setVerifyToken] = useState<ParentToken | null>(null);
 
   // Monitor lockout countdown via monotonic clock
   useEffect(() => {
@@ -82,14 +84,8 @@ export function PinGateScreen({ route, navigation }: Props) {
           parentSessionStore.touch(clock.now());
           navigation.replace('ParentHome');
         } else if (route.params.intent === 'verify') {
-          const token = res.token;
-          const ok = await timerStore.verify(route.params.sessionId, token);
-          if (!ok) {
-            setError(mapTimerError(useTimerStore.getState().lastError));
-            return;
-          }
-          await tasksStore.refreshToday(services);
-          navigation.goBack();
+          setVerifyToken(res.token ?? null);
+          setShowVerifyDialog(true);
         } else if (route.params.intent === 'abandon') {
           const token = res.token;
           setAbandonToken(token ?? null);
@@ -108,6 +104,27 @@ export function PinGateScreen({ route, navigation }: Props) {
       }
       setError(errorMsg);
       return;
+    }
+  };
+
+  const handleVerifyAction = async (action: 'verify' | 'abandon') => {
+    try {
+      if (!verifyToken || route.params.intent !== 'verify') return;
+      const ok = action === 'verify'
+        ? await timerStore.verify(route.params.sessionId, verifyToken)
+        : await timerStore.abandon(route.params.sessionId, verifyToken);
+      if (!ok) {
+        setError(action === 'verify'
+          ? mapTimerError(useTimerStore.getState().lastError)
+          : uk.pin.abandonFailed);
+        setShowVerifyDialog(false);
+        return;
+      }
+      await tasksStore.refreshToday(services);
+      navigation.goBack();
+    } catch {
+      setError(action === 'verify' ? uk.pin.verifyFailed : uk.pin.abandonFailed);
+      setShowVerifyDialog(false);
     }
   };
 
@@ -162,6 +179,35 @@ export function PinGateScreen({ route, navigation }: Props) {
               variant="secondary"
               size="lg"
               onPress={handleCancelAbandon}
+            />
+          </View>
+        </View>
+      </View>
+    );
+  }
+
+  if (showVerifyDialog) {
+    return (
+      <View style={styles.dialogContainer}>
+        <View style={styles.dialogCard}>
+          <AppText variant="title" accessibilityRole="header" style={styles.dialogTitle}>
+            {uk.timer.showConfirmTitle}
+          </AppText>
+          <AppText variant="body" style={styles.dialogMessage}>
+            {uk.timer.showConfirmMessage}
+          </AppText>
+          <View style={styles.dialogButtons}>
+            <AppButton
+              label={uk.timer.showConfirm}
+              variant="primary"
+              size="lg"
+              onPress={() => void handleVerifyAction('verify')}
+            />
+            <AppButton
+              label={uk.timer.showReset}
+              variant="danger"
+              size="lg"
+              onPress={() => void handleVerifyAction('abandon')}
             />
           </View>
         </View>
