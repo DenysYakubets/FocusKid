@@ -1,3 +1,33 @@
 /** @jest-environment node */
-import React from 'react';import {act,fireEvent} from '@testing-library/react-native';import {createNodeDb} from '../../../test/helpers/nodeDb';import {createFakeClock} from '../../../test/helpers/fakeClock';import {renderWithApp} from '../../../test/helpers/renderWithApp';import {systemWallClock,WallClock} from '../../services/clock/wallClock';import {CalendarScreen} from '../CalendarScreen';const wall:WallClock={...systemWallClock,todayLocalDate:()=> '2026-10-24'};
-it('renders analytics controls and updates category/range totals',async()=>{const db=createNodeDb(),clock=createFakeClock(1000);const {services}=await renderWithApp(<></>,{db,clock,wall});const task=await db.run(`INSERT INTO tasks (title,target_minutes,days_mask,category,created_at,updated_at) VALUES ('Math',15,127,'homework','x','x')`);const s=await db.run(`INSERT INTO sessions (task_id,local_date,status,target_ms,elapsed_run_ms,started_at,updated_at) VALUES (?,'2026-10-20','running',900000,0,'x','x')`,[task.lastInsertRowId]);await db.run(`UPDATE sessions SET status='completed',elapsed_run_ms=720000 WHERE id=?`,[s.lastInsertRowId]);await db.run(`UPDATE sessions SET status='verified' WHERE id=?`,[s.lastInsertRowId]);const screen=await renderWithApp(<CalendarScreen navigation={{addListener:()=>()=>{},navigate:jest.fn()} as any} route={{} as any}/>,{db,clock,wall,services});expect(await screen.findByTestId('calendar-range-presets')).toBeTruthy();expect(screen.getByTestId('calendar-category-filter')).toBeTruthy();expect(await screen.findByTestId('calendar-total-homework')).toBeTruthy();await act(async()=>{fireEvent.press(screen.getByTestId('calendar-range-this-week'));fireEvent.press(screen.getByTestId('calendar-category-homework'));});expect(screen.getByTestId('calendar-total-homework').props.children).toBeDefined();expect(screen.getByTestId('calendar-range-summary').props.children).toContain('12');});
+import React from 'react';
+import { fireEvent } from '@testing-library/react-native';
+import { createNodeDb } from '../../../test/helpers/nodeDb';
+import { createFakeClock } from '../../../test/helpers/fakeClock';
+import { renderWithApp } from '../../../test/helpers/renderWithApp';
+import { systemWallClock, WallClock } from '../../services/clock/wallClock';
+import { CalendarScreen } from '../CalendarScreen';
+
+const wall: WallClock = { ...systemWallClock, todayLocalDate: () => '2026-10-24' };
+
+it('opens analytics filters and cancel keeps the applied period unchanged', async () => {
+  const db = createNodeDb();
+  const clock = createFakeClock(1000);
+  const { services } = await renderWithApp(<></>, { db, clock, wall });
+  const screen = await renderWithApp(
+    <CalendarScreen navigation={{ addListener: () => () => {}, navigate: jest.fn() } as any} route={{} as any} />,
+    { db, clock, wall, services },
+  );
+  expect(await screen.findByTestId('calendar-summary')).toBeTruthy();
+  expect(screen.queryByTestId('calendar-category-filter')).toBeNull();
+  expect(screen.queryByTestId('calendar-category-totals')).toBeNull();
+  expect(screen.getByTestId('calendar-analytics-filter-btn')).toBeTruthy();
+  expect(screen.getByTestId('calendar-analytics-summary').props.children).toContain('Разом:');
+  expect(screen.queryByTestId('calendar-analytics-filter-dialog')).toBeNull();
+
+  await fireEvent.press(screen.getByTestId('calendar-analytics-filter-btn'));
+  expect(await screen.findByTestId('calendar-analytics-filter-dialog')).toBeTruthy();
+  await fireEvent.press(screen.getByTestId('calendar-analytics-range-thisWeek'));
+  await fireEvent.press(screen.getByTestId('calendar-analytics-cancel'));
+  expect(screen.queryByTestId('calendar-analytics-filter-dialog')).toBeNull();
+  expect(screen.getByText('Останні 2 тижні')).toBeTruthy();
+});

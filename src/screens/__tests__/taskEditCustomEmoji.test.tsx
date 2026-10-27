@@ -29,17 +29,17 @@ describe('Custom Unicode emoji input (beyond the curated picker)', () => {
     return { db, clock, services };
   }
 
-  it('renders a labelled TextInput for custom emoji paste', async () => {
+  it('shows custom emoji input only inside the picker dialog', async () => {
     const { db, clock, services } = await setup();
     const screen = await renderWithApp(
       <TaskEditScreen navigation={{ goBack: jest.fn(), replace: jest.fn() } as any} route={{ params: {} } as any} />,
       { db, clock, wall: fakeWall, services }
     );
 
-    // The dedicated custom input exists and is a TextInput
-    const input = screen.getByTestId('task-custom-emoji-input');
-    expect(input).toBeTruthy();
-    expect(input.props.accessibilityLabel).toBe(uk.taskCrud.customEmojiLabel);
+    expect(screen.queryByTestId('task-emoji-input')).toBeNull();
+    expect(screen.queryByTestId('task-custom-emoji-input')).toBeNull();
+    await act(async () => fireEvent.press(screen.getByTestId('task-emoji-field')));
+    expect(screen.getByPlaceholderText(uk.taskCrud.customEmojiPlaceholder)).toBeTruthy();
   });
 
   it('accepts a pasted Unicode emoji and shows it as the selected value', async () => {
@@ -49,10 +49,12 @@ describe('Custom Unicode emoji input (beyond the curated picker)', () => {
       { db, clock, wall: fakeWall, services }
     );
 
-    const input = screen.getByTestId('task-custom-emoji-input');
+    await act(async () => fireEvent.press(screen.getByTestId('task-emoji-field')));
+    const input = screen.getByTestId('emoji-custom-input');
     await act(async () => {
       fireEvent.changeText(input, '🦄');
     });
+    await act(async () => fireEvent.press(screen.getByTestId('emoji-picker-save')));
 
     // The emoji field now reflects the custom value
     expect(screen.getByTestId('task-emoji-field').props.accessibilityLabel).toContain('🦄');
@@ -72,12 +74,15 @@ describe('Custom Unicode emoji input (beyond the curated picker)', () => {
     await act(async () => {
       fireEvent.press(screen.getByLabelText('🏊'));
     });
+    await act(async () => fireEvent.press(screen.getByTestId('emoji-picker-save')));
     expect(screen.getByTestId('task-emoji-field').props.accessibilityLabel).toContain('🏊');
 
     // Paste a custom emoji -> overrides the picker selection
     await act(async () => {
-      fireEvent.changeText(screen.getByTestId('task-custom-emoji-input'), '🦄');
+      fireEvent.press(screen.getByTestId('task-emoji-field'));
     });
+    await act(async () => fireEvent.changeText(screen.getByTestId('emoji-custom-input'), '🦄'));
+    await act(async () => fireEvent.press(screen.getByTestId('emoji-picker-save')));
     expect(screen.getByTestId('task-emoji-field').props.accessibilityLabel).toContain('🦄');
     expect(screen.getByTestId('task-emoji-field').props.accessibilityLabel).not.toContain('🏊');
   });
@@ -94,8 +99,10 @@ describe('Custom Unicode emoji input (beyond the curated picker)', () => {
       fireEvent.changeText(screen.getByTestId('task-title-input'), 'Custom emoji task');
     });
     await act(async () => {
-      fireEvent.changeText(screen.getByTestId('task-custom-emoji-input'), '🦄');
+      fireEvent.press(screen.getByTestId('task-emoji-field'));
     });
+    await act(async () => fireEvent.changeText(screen.getByTestId('emoji-custom-input'), '🦄'));
+    await act(async () => fireEvent.press(screen.getByTestId('emoji-picker-save')));
     await act(async () => {
       fireEvent.press(screen.getByLabelText(uk.taskCrud.save));
     });

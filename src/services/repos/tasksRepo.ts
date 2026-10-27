@@ -12,7 +12,6 @@ interface TaskRow {
   created_at: string;
   updated_at: string;
   target_per_day: number;
-  category: string;
 }
 
 interface TodayTaskRow extends TaskRow {
@@ -33,7 +32,6 @@ function mapTask(row: TaskRow): Task {
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     targetPerDay: row.target_per_day ?? 1,
-    category: row.category ?? 'other',
   };
 }
 
@@ -67,7 +65,7 @@ export function createTasksRepo(db: Db): TasksRepo {
       // card once per run.
       const rows = await db.all<TodayTaskRow>(
         `SELECT t.id, t.title, t.emoji, t.target_minutes, t.days_mask, t.sort_order, t.archived, t.created_at, t.updated_at,
-                t.target_per_day, t.category,
+                t.target_per_day,
                 s.id AS session_id, s.status,
                 (SELECT COUNT(*) FROM sessions sc
                   WHERE sc.task_id = t.id AND sc.local_date = ?
@@ -107,8 +105,8 @@ export function createTasksRepo(db: Db): TasksRepo {
       }
 
       const res = await db.run(
-        `INSERT INTO tasks (title, emoji, target_minutes, days_mask, sort_order, archived, target_per_day, category, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, 0, ?, ?, ?, ?);`,
+        `INSERT INTO tasks (title, emoji, target_minutes, days_mask, sort_order, archived, target_per_day, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, 0, ?, ?, ?);`,
         [
           task.title,
           task.emoji ?? null,
@@ -116,7 +114,6 @@ export function createTasksRepo(db: Db): TasksRepo {
           task.daysMask,
           sortOrder,
           task.targetPerDay ?? 1,
-          task.category ?? 'other',
           nowIso,
           nowIso,
         ]
@@ -141,13 +138,12 @@ export function createTasksRepo(db: Db): TasksRepo {
       const daysMask = patch.daysMask ?? existing.daysMask;
       const sortOrder = patch.sortOrder ?? existing.sortOrder;
       const targetPerDay = patch.targetPerDay ?? existing.targetPerDay;
-      const category = patch.category ?? existing.category;
 
       await db.run(
         `UPDATE tasks
-         SET title = ?, emoji = ?, target_minutes = ?, days_mask = ?, sort_order = ?, target_per_day = ?, category = ?, updated_at = ?
+         SET title = ?, emoji = ?, target_minutes = ?, days_mask = ?, sort_order = ?, target_per_day = ?, updated_at = ?
          WHERE id = ?;`,
-        [title, emoji, targetMinutes, daysMask, sortOrder, targetPerDay, category, nowIso, id]
+        [title, emoji, targetMinutes, daysMask, sortOrder, targetPerDay, nowIso, id]
       );
 
       const updated = await this.get(id);

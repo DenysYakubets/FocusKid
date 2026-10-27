@@ -43,9 +43,11 @@ describe('F5 - emoji picker dialog (no system keyboard) + persistence', () => {
       fireEvent.changeText(screen.getByTestId('task-title-input'), 'Плавання');
     });
 
-    // 1. Custom Unicode entry is available alongside the preset picker.
-    expect(screen.getByTestId('task-emoji-input')).toBeTruthy();
+    // Only the picker button is available on the main form.
+    expect(screen.queryByTestId('task-emoji-input')).toBeNull();
+    expect(screen.queryByTestId('task-custom-emoji-input')).toBeNull();
     expect(screen.getByTestId('task-emoji-field')).toBeTruthy();
+    expect(screen.getAllByTestId('task-emoji-field')).toHaveLength(1);
 
     // 2. Opening the picker shows the dialog, a search field and the curated grid
     await act(async () => {
@@ -53,6 +55,8 @@ describe('F5 - emoji picker dialog (no system keyboard) + persistence', () => {
     });
 
     expect(screen.getByText(uk.taskCrud.emojiTitle)).toBeTruthy();
+    expect(screen.getByTestId('emoji-search')).toBeTruthy();
+    expect(screen.getByPlaceholderText(uk.taskCrud.customEmojiPlaceholder)).toBeTruthy();
     const gridEmojis = EMOJI_OPTIONS.map((o) => o.char);
     for (const char of gridEmojis.slice(0, 5)) {
       expect(screen.getByLabelText(char)).toBeTruthy();
@@ -68,14 +72,14 @@ describe('F5 - emoji picker dialog (no system keyboard) + persistence', () => {
     const nonSport = EMOJI_OPTIONS.find((o) => !o.keys.includes('спорт'))!;
     expect(screen.queryByLabelText(nonSport.char)).toBeNull();
 
-    // 4. Tapping an emoji selects it and closes the dialog (no system keyboard)
+    // 4. Choose an emoji and apply it with Save.
     const chosen = visible[0]!.char;
     await act(async () => {
       fireEvent.changeText(screen.getByTestId('emoji-search'), '');
     });
-    await act(async () => {
-      fireEvent.press(screen.getByLabelText(chosen));
-    });
+    await act(async () => fireEvent.press(screen.getByLabelText(chosen)));
+    expect(screen.getByText(uk.taskCrud.emojiTitle)).toBeTruthy();
+    await act(async () => fireEvent.press(screen.getByTestId('emoji-picker-save')));
     expect(screen.queryByText(uk.taskCrud.emojiTitle)).toBeNull();
     expect(screen.getByTestId('task-emoji-field').props.accessibilityLabel).toContain(chosen);
 
@@ -90,7 +94,7 @@ describe('F5 - emoji picker dialog (no system keyboard) + persistence', () => {
     expect(task?.emoji).toBe(chosen);
   });
 
-  it('accepts custom Unicode emoji and truncates pasted input to the storage limit', async () => {
+  it('accepts custom Unicode emoji in the dialog and truncates pasted input to the storage limit', async () => {
     const { db, clock, services } = await setup();
     const mockNav: any = { goBack: jest.fn(), replace: jest.fn() };
     const screen = await renderWithApp(
@@ -99,7 +103,10 @@ describe('F5 - emoji picker dialog (no system keyboard) + persistence', () => {
     );
 
     await act(async () => fireEvent.changeText(screen.getByTestId('task-title-input'), 'Сім’я'));
-    await act(async () => fireEvent.changeText(screen.getByTestId('task-emoji-input'), '👨‍👩‍👧‍👦🌈🌈🌈'));
+    expect(screen.queryByTestId('task-emoji-input')).toBeNull();
+    await act(async () => fireEvent.press(screen.getByTestId('task-emoji-field')));
+    await act(async () => fireEvent.changeText(screen.getByTestId('emoji-custom-input'), '👨‍👩‍👧‍👦🌈🌈🌈'));
+    await act(async () => fireEvent.press(screen.getByTestId('emoji-picker-save')));
     await act(async () => fireEvent.press(screen.getByLabelText(uk.taskCrud.save)));
 
     expect(mockNav.goBack).toHaveBeenCalled();
@@ -107,6 +114,19 @@ describe('F5 - emoji picker dialog (no system keyboard) + persistence', () => {
     expect(task?.emoji).toBe('👨‍👩‍👧‍👦🌈');
     expect(await db.get('SELECT length(emoji) AS length FROM tasks WHERE id = ?', [task!.id]))
       .toMatchObject({ length: 8 });
+  });
+
+  it('discards a custom emoji when the picker is cancelled', async () => {
+    const { db, clock, services } = await setup();
+    const screen = await renderWithApp(
+      <TaskEditScreen navigation={{ goBack: jest.fn(), replace: jest.fn() } as any} route={{ params: {} } as any} />,
+      { db, clock, wall: fakeWall, services }
+    );
+    await act(async () => fireEvent.press(screen.getByTestId('task-emoji-field')));
+    await act(async () => fireEvent.changeText(screen.getByTestId('emoji-custom-input'), '🦄'));
+    await act(async () => fireEvent.press(within(screen.getByTestId('emoji-picker')).getByLabelText(uk.taskCrud.cancel)));
+    expect(screen.queryByText(uk.taskCrud.emojiTitle)).toBeNull();
+    expect(screen.getByTestId('task-emoji-field').props.accessibilityLabel).toContain(uk.taskCrud.emojiPlaceholder);
   });
 
   it('keeps the already-saved emoji when opening the picker on an existing task', async () => {

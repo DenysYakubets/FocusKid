@@ -20,6 +20,8 @@ test('timer gear is visible while Running or Paused and absent in Idle or Comple
   await act(async () => { fireEvent.press(screen.getByLabelText(uk.timer.pause)); });
   expect(screen.getByTestId('timer-gear')).toBeTruthy();
   await act(async () => { clock.advance(900000); await timerStore.tick(); });
+  expect(timerStore.getSnapshot().state.kind).toBe('Paused');
+  await act(async () => { await timerStore.resume(); });
   await act(async () => { clock.advance(900000); await timerStore.tick(); });
   expect(screen.queryByTestId('timer-gear')).toBeNull();
 });

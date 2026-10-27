@@ -13,7 +13,7 @@ export function pausedElapsed(s: TimerState, now: number): number {
   if (s.kind === 'Idle') {
     return 0;
   }
-  const currentPaused = s.kind === 'Paused' ? Math.max(0, now - s.pausedSince) : 0;
+  const currentPaused = s.kind === 'Paused' && !s.indefinitePause ? Math.max(0, now - s.pausedSince) : 0;
   return s.pausedTotalMs + currentPaused;
 }
 

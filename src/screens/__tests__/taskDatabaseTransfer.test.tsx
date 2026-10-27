@@ -41,7 +41,7 @@ it('exports all task fields as a versioned JSON file and shares it', async () =>
   jest.mocked(Sharing.isAvailableAsync).mockResolvedValue(true);
   jest.mocked(Sharing.shareAsync).mockResolvedValue(undefined);
   const { screen, services } = await mount();
-  const task = await services.tasksRepo.create({ title: 'Математика', emoji: '🧮', targetMinutes: 20, daysMask: 31, category: 'homework', targetPerDay: 2 }, '2026-10-27T10:00:00.000Z');
+  const task = await services.tasksRepo.create({ title: 'Математика', emoji: '🧮', targetMinutes: 20, daysMask: 31, targetPerDay: 2 }, '2026-10-27T10:00:00.000Z');
   await act(async () => { fireEvent.press(screen.getByLabelText('Експортувати базу завдань')); });
   const uri = 'file:///documents/focuskid-tasks.json';
   expect(Sharing.shareAsync).toHaveBeenCalledWith(uri, expect.objectContaining({ mimeType: 'application/json' }));
@@ -56,7 +56,7 @@ it('imports valid tasks with upsert while preserving unrelated tasks', async () 
   const initialCount = (await services.tasksRepo.listAll()).length;
   const unrelated = await services.tasksRepo.create({ title: 'Залишити', targetMinutes: 10, daysMask: 127 }, '2026-10-27T10:00:00.000Z');
   const existing = await services.tasksRepo.create({ title: 'Старе', targetMinutes: 10, daysMask: 127 }, '2026-10-27T10:00:00.000Z');
-  const incoming = { ...existing, title: 'Оновлене', targetMinutes: 25, category: 'reading' };
+  const incoming = { ...existing, title: 'Оновлене', targetMinutes: 25 };
   mockFiles['file:///cache/tasks.json'] = JSON.stringify({ format: 'focuskid-tasks', version: 1, exportedAt: '2026-10-27T10:00:00.000Z', tasks: [incoming, { ...incoming, id: 500, title: 'Нове' }] });
   jest.mocked(DocumentPicker.getDocumentAsync).mockResolvedValue({ canceled: false, assets: [{ uri: 'file:///cache/tasks.json', name: 'tasks.json', mimeType: 'application/json', size: 100, lastModified: 0 }] });
   await act(async () => { fireEvent.press(screen.getByLabelText('Імпортувати базу завдань')); });

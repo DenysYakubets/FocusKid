@@ -8,8 +8,6 @@ import {
   TaskStat,
 } from '../../domain/stats/aggregate';
 import { firstOfMonth, lastOfMonth } from '../../domain/stats/calendar';
-import { byCategory, CategoryRangeTotals, CategorySessionInput, resolveCategory, TaskCategory } from '../../domain/stats/categoryTotals';
-export type RangePreset = 'this-week' | 'last-2-weeks' | 'custom';
 
 export interface StatsServiceOptions {
   db: Db;
@@ -44,10 +42,13 @@ export interface MonthSummary {
   days: DayStat[];
 }
 
+export interface AnalyticsSession {
+  taskTitle: string;
+  localDate: string;
+  minutes: number;
+}
+
 export interface StatsService {
-  categorySessions(opts: { startDate: string; endDate: string; category?: TaskCategory | 'all'; statuses?: readonly string[] }): Promise<CategorySessionInput[]>;
-  categoryTotals(opts: { startDate: string; endDate: string; category?: TaskCategory | 'all'; statuses?: readonly string[] }): Promise<CategoryRangeTotals>;
-  resolveRange(preset: RangePreset, custom?: { start: string; end: string }): { start: string; end: string };
   weekSummary(forDate?: string): Promise<WeekSummary>;
   perTask(startDate: string, endDate: string): Promise<TaskStat[]>;
   weekTaskStats(forDate?: string): Promise<TaskStat[]>;
@@ -60,6 +61,7 @@ export interface StatsService {
   daySessions(localDate: string): Promise<DaySessionStat[]>;
   /** F6: everything the calendar header + grid needs for one month. */
   monthSummary(forDate?: string): Promise<MonthSummary>;
+  analyticsSessions(startDate: string, endDate: string): Promise<AnalyticsSession[]>;
 }
 
 interface DbTaskStatRow {
@@ -89,21 +91,9 @@ export function createStatsService(options: StatsServiceOptions): StatsService {
     return { start, end: lastOfMonth(targetDate) };
   }
 
-  function resolveRange(preset: RangePreset, custom?: { start: string; end: string }) {
-    if (preset === 'custom') { if (!custom || !/^\d{4}-\d{2}-\d{2}$/.test(custom.start) || !/^\d{4}-\d{2}-\d{2}$/.test(custom.end) || wall.addDays(custom.start, 0) !== custom.start || wall.addDays(custom.end, 0) !== custom.end || custom.end < custom.start) throw new Error('Invalid custom date range'); return { start: custom.start, end: custom.end }; }
-    const { monday, sunday } = getWeekRange(); return { start: preset === 'last-2-weeks' ? wall.addDays(monday, -7) : monday, end: sunday };
-  }
   return {
     getWeekRange,
     monthRange: getMonthRange,
-    resolveRange,
-    async categorySessions(opts): Promise<CategorySessionInput[]> {
-      const single = opts.category && opts.category !== 'all' ? resolveCategory(opts.category) : undefined;
-      const rows = await db.all<{ task_id: number; title: string; category: unknown; status: string; elapsed_run_ms: number }>(`SELECT s.id, s.task_id, t.title, t.category, s.status, s.elapsed_run_ms FROM sessions s JOIN tasks t ON s.task_id = t.id WHERE s.local_date BETWEEN ? AND ? AND s.status IN ('completed','verified')${single ? ' AND t.category = ?' : ''} ORDER BY s.id ASC`, single ? [opts.startDate, opts.endDate, single] : [opts.startDate, opts.endDate]);
-      return rows.map(row => ({ taskId: row.task_id, title: row.title, category: resolveCategory(row.category), status: row.status, elapsedRunMs: Number(row.elapsed_run_ms) }));
-    },
-    async categoryTotals(opts): Promise<CategoryRangeTotals> { const rows = await this.categorySessions(opts); return byCategory(rows,{start:opts.startDate,end:opts.endDate,filter:opts.category,statuses:opts.statuses}); },
-
     async weekSummary(forDate?: string): Promise<WeekSummary> {
       const { monday, sunday, weekDates } = getWeekRange(forDate);
       const rows = await sessionsRepo.rangeStats(monday, sunday);
@@ -211,6 +201,21 @@ export function createStatsService(options: StatsServiceOptions): StatsService {
       const verifiedMinutes = days.reduce((acc, d) => acc + d.verifiedMinutes, 0);
       const pendingMinutes = days.reduce((acc, d) => acc + d.pendingMinutes, 0);
       return { start, end, verifiedMinutes, pendingMinutes, days };
+    },
+
+    async analyticsSessions(startDate: string, endDate: string): Promise<AnalyticsSession[]> {
+      const rows = await db.all<{ title: string; local_date: string; elapsed_run_ms: number }>(
+        `SELECT t.title, s.local_date, s.elapsed_run_ms
+         FROM sessions s JOIN tasks t ON s.task_id = t.id
+         WHERE s.status = 'verified' AND s.local_date BETWEEN ? AND ?
+         ORDER BY s.local_date ASC, s.id ASC;`,
+        [startDate, endDate]
+      );
+      return rows.map((row) => ({
+        taskTitle: row.title,
+        localDate: row.local_date,
+        minutes: Math.floor(Number(row.elapsed_run_ms) / 60000),
+      }));
     },
   };
 }

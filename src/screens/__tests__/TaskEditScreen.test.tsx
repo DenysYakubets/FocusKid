@@ -176,6 +176,9 @@ describe('TaskEditScreen (Task CRUD & validation)', () => {
       fireEvent.press(screen.getByLabelText('🏊'));
     });
     await act(async () => {
+      fireEvent.press(screen.getByTestId('emoji-picker-save'));
+    });
+    await act(async () => {
       fireEvent.press(screen.getByLabelText(uk.taskCrud.save));
     });
 

@@ -7,7 +7,7 @@ export function useTicker(): void {
   const tick = useTimerStore((s) => s.tick);
 
   useEffect(() => {
-    if (kind !== 'Running' && kind !== 'Paused') {
+    if (kind !== 'Running') {
       return;
     }
 

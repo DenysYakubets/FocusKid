@@ -5,7 +5,6 @@ import { RootStackParamList } from '../navigation/routes';
 import { logInfo, logError } from '../services/logging/fileLogger';
 import { useServices } from '../state/appServices';
 import { Task } from '../domain/tasks/types';
-import { TASK_CATEGORIES, TaskCategory, resolveCategory } from '../domain/stats/categoryTotals';
 import { formatError } from '../services/logging/formatError';
 import { tasksStore, useTasksStore } from '../state/tasksStore';
 import { parentSessionStore } from '../state/parentSessionStore';
@@ -45,7 +44,6 @@ export function TaskEditScreen({ route, navigation }: Props) {
   const [title, setTitle] = useState('');
   const [emoji, setEmoji] = useState('');
   const [targetMinutes, setTargetMinutes] = useState(15);
-  const [category, setCategory] = useState<TaskCategory>('other');
   const [daysMask, setDaysMask] = useState(127); // all 7 days by default
   // C4: times per day (1..10, default 1)
   const [targetPerDay, setTargetPerDay] = useState(1);
@@ -61,7 +59,6 @@ export function TaskEditScreen({ route, navigation }: Props) {
           setTitle(task.title);
           setEmoji(task.emoji ?? '');
           setTargetMinutes(task.targetMinutes);
-          setCategory(resolveCategory(task.category));
           setDaysMask(task.daysMask);
           setTargetPerDay(task.targetPerDay ?? 1);
         }
@@ -121,14 +118,13 @@ export function TaskEditScreen({ route, navigation }: Props) {
             title: result.value.title,
             emoji: result.value.emoji,
             targetMinutes: result.value.targetMinutes,
-            category,
             daysMask: result.value.daysMask,
             targetPerDay,
           },
           nowIso
         );
       } else {
-        saved = await tasksRepo.create({ ...result.value, category, targetPerDay }, nowIso);
+        saved = await tasksRepo.create({ ...result.value, targetPerDay }, nowIso);
       }
 
       const action = isEditing ? 'update' : 'create';
@@ -244,7 +240,7 @@ export function TaskEditScreen({ route, navigation }: Props) {
             />
           </View>
 
-          {/* Custom Unicode input alongside the curated picker. */}
+          {/* Emoji is edited in one picker dialog. */}
           <View style={styles.field}>
             <AppText variant="body" style={styles.fieldLabel}>
               {uk.taskCrud.emojiLabel}
@@ -270,30 +266,6 @@ export function TaskEditScreen({ route, navigation }: Props) {
                 {`› ${uk.taskCrud.emojiTitle}`}
               </AppText>
             </TapTarget>
-            <TextInput
-              testID="task-emoji-input"
-              value={emoji}
-              onChangeText={(value) => {
-                parentSessionStore.touch();
-                setEmoji(fitEmojiToStorageLimit(value));
-              }}
-              placeholder={uk.taskCrud.emojiInputPlaceholder}
-              placeholderTextColor={colors.textSecondary}
-              style={styles.textInput}
-              accessibilityLabel={uk.taskCrud.emojiInputLabel}
-            />
-            <TextInput
-              testID="task-custom-emoji-input"
-              value={emoji}
-              onChangeText={(value) => {
-                parentSessionStore.touch();
-                setEmoji(fitEmojiToStorageLimit(value));
-              }}
-              placeholder={uk.taskCrud.emojiInputPlaceholder}
-              placeholderTextColor={colors.textSecondary}
-              style={styles.textInput}
-              accessibilityLabel={uk.taskCrud.customEmojiLabel}
-            />
           </View>
 
           {/* Target Minutes Stepper */}
@@ -351,8 +323,6 @@ export function TaskEditScreen({ route, navigation }: Props) {
               </TapTarget>
             </View>
           </View>
-
-          <View style={styles.field}><AppText variant="body" style={styles.fieldLabel}>{uk.taskCrud.categoryLabel}</AppText><View testID="taskedit-category" style={styles.weekdaysRow}>{TASK_CATEGORIES.map(value => { const selected=category===value; return <TapTarget key={value} accessibilityRole="button" accessibilityLabel={uk.calendar.analytics.categoryLabels[value]} accessibilityState={{selected}} onPress={()=>{parentSessionStore.touch();setCategory(value);}} style={[styles.dayButton,selected?styles.dayButtonSelected:styles.dayButtonUnselected]}><AppText variant="body" style={[styles.dayText,selected?styles.dayTextSelected:styles.dayTextUnselected]}>{uk.calendar.analytics.categoryLabels[value]}</AppText></TapTarget>; })}</View></View>
 
           {/* Weekday Toggles */}
           <View style={styles.field}>
@@ -462,7 +432,7 @@ export function TaskEditScreen({ route, navigation }: Props) {
             value={emoji}
             onSelect={(next) => {
               parentSessionStore.touch();
-              setEmoji(next ?? '');
+              setEmoji(next ? fitEmojiToStorageLimit(next) : '');
             }}
             onClose={() => setEmojiPickerOpen(false)}
           />
