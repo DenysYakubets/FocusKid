@@ -1,48 +1,29 @@
+import { readdirSync, readFileSync } from 'node:fs';
+import path from 'node:path';
 import appJson from '../../app.json';
-import { removeInternetPermission } from '../../plugins/withNoInternet';
 
 describe('INV-01: App Configuration and Manifest Transformation', () => {
-  it('asserts that app.json strictly blocks INTERNET and enforces offline defaults', () => {
-    const androidConfig = appJson.expo.android;
-    expect(androidConfig.blockedPermissions).toContain('android.permission.INTERNET');
-    expect(androidConfig.permissions).not.toContain('android.permission.INTERNET');
+  it('asserts INTERNET is granted solely for the update-check fetch (amended INV-01)', () => {
+    const android = appJson.expo.android;
+    expect(android.permissions).toContain('android.permission.INTERNET');
+    expect(android.blockedPermissions).not.toContain('android.permission.INTERNET');
+    expect(android.blockedPermissions).toContain('android.permission.ACCESS_NETWORK_STATE');
     expect(appJson.expo.orientation).toBe('default');
 
     const plugins = appJson.expo.plugins;
-    expect(plugins).toContain('./plugins/withNoInternet');
+    expect(plugins).toContain('./plugins/withBundledDebugJs');
+    expect(plugins).not.toContain('./plugins/withNoInternet');
   });
 
-  it('unit-tests the manifest transform on a fixture containing INTERNET permission', () => {
-    const fixtureManifest = {
-      manifest: {
-        $: {
-          'xmlns:android': 'http://schemas.android.com/apk/res/android',
-        },
-        'uses-permission': [
-          { $: { 'android:name': 'android.permission.INTERNET' } },
-          { $: { 'android:name': 'android.permission.VIBRATE' } },
-        ],
-      },
-    };
+  it('no config plugin strips INTERNET from any manifest', () => {
+    const pluginsDir = path.resolve(__dirname, '../..', 'plugins');
+    const strippingFiles = readdirSync(pluginsDir)
+      .filter((file) => file.endsWith('.js'))
+      .filter((file) => {
+        const content = readFileSync(path.join(pluginsDir, file), 'utf8');
+        return content.includes("'android.permission.INTERNET'") && content.includes('tools:node');
+      });
 
-    const transformed = removeInternetPermission(fixtureManifest as any);
-
-    // Asserts xmlns:tools namespace is set
-    expect(transformed.manifest.$['xmlns:tools']).toBe('http://schemas.android.com/tools');
-
-    // Asserts INTERNET permission now has tools:node="remove"
-    const permissions = transformed.manifest['uses-permission'];
-    const internetPerm = permissions.find(
-      (p: any) => p.$['android:name'] === 'android.permission.INTERNET'
-    );
-    expect(internetPerm).toBeDefined();
-    expect(internetPerm?.$['tools:node']).toBe('remove');
-
-    // Asserts VIBRATE is still present
-    const vibratePerm = permissions.find(
-      (p: any) => p.$['android:name'] === 'android.permission.VIBRATE'
-    );
-    expect(vibratePerm).toBeDefined();
-    expect(vibratePerm?.$['tools:node']).toBeUndefined();
+    expect(strippingFiles).toHaveLength(0);
   });
 });

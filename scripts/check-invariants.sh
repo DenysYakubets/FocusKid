@@ -9,17 +9,17 @@ else
   exit 1
 fi
 
-# TSC-3: INV-01 app.json permissions
-if node -e "const a=require('./app.json').expo.android;const b=a.blockedPermissions ?? [];const p=a.permissions ?? [];process.exit(b.includes('android.permission.INTERNET') && !p.includes('android.permission.INTERNET') ? 0 : 1)"; then
+# TSC-3: INV-01 (amended) app.json grants INTERNET for update check + knowledge text present
+if node -e "const a=require('./app.json').expo.android;const b=a.blockedPermissions ?? [];const p=a.permissions ?? [];process.exit(p.includes('android.permission.INTERNET') && !b.includes('android.permission.INTERNET') ? 0 : 1)" && grep -qF 'update-manifest.json' VISION.md; then
   echo "PASS TSC-3"
 else
   echo "FAIL TSC-3"
   exit 1
 fi
 
-# TSC-4: INV-01 Merged AndroidManifest has no INTERNET (requires Gradle build)
+# TSC-4: INV-01 (amended) merged AndroidManifest CONTAINS INTERNET (update-check only, ADR-005)
 if test -d android/app/build/intermediates/merged_manifests/debug; then
-  if ! grep -rq "android.permission.INTERNET" android/app/build/intermediates/merged_manifests/debug; then
+  if grep -rq "android.permission.INTERNET" android/app/build/intermediates/merged_manifests/debug; then
     echo "PASS TSC-4"
   else
     echo "FAIL TSC-4"
@@ -143,8 +143,8 @@ else
   exit 1
 fi
 
-# TSC-18: INV-01 Config plugins registered and tested
-if grep -qF './plugins/withNoInternet' app.json && grep -qF './plugins/withBundledDebugJs' app.json && npm test -- --ci test/config; then
+# TSC-18: INV-01 (amended) INTERNET-stripping plugin removed; embedded-JS plugin registered and tested
+if ! grep -qF './plugins/withNoInternet' app.json && grep -qF './plugins/withBundledDebugJs' app.json && npm test -- --ci test/config; then
   echo "PASS TSC-18"
 else
   echo "FAIL TSC-18"
