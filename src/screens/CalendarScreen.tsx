@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Modal, ScrollView, StyleSheet, View } from 'react-native';
+import { Modal, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/routes';
 import { DaySessionStat, DayStat } from '../services/stats/statsService';
@@ -45,6 +45,16 @@ export function CalendarScreen({ navigation, onDayDetailChange }: Props) {
   const [grid, setGrid] = useState<MonthGrid | null>(null);
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
   const [daySessions, setDaySessions] = useState<DaySessionStat[]>([]);
+  const [analyticsRows, setAnalyticsRows] = useState<Awaited<ReturnType<typeof statsService.analyticsSessions>>>([]);
+  const [analyticsRange, setAnalyticsRange] = useState<'thisWeek' | 'last2Weeks' | 'custom'>('last2Weeks');
+  const [analyticsTasks, setAnalyticsTasks] = useState<string[]>([]);
+  const [filterOpen, setFilterOpen] = useState(false);
+  const [draftRange, setDraftRange] = useState(analyticsRange);
+  const [draftTasks, setDraftTasks] = useState<string[]>(analyticsTasks);
+  const [customStart, setCustomStart] = useState(wall.todayLocalDate());
+  const [customEnd, setCustomEnd] = useState(wall.todayLocalDate());
+  const [draftStart, setDraftStart] = useState(customStart);
+  const [draftEnd, setDraftEnd] = useState(customEnd);
 
   const reload = useCallback(async () => {
     try {
@@ -77,6 +87,10 @@ export function CalendarScreen({ navigation, onDayDetailChange }: Props) {
     void reload();
   }, [reload]);
 
+  useEffect(() => {
+    void statsService.analyticsSessions('0000-01-01', '9999-12-31').then(setAnalyticsRows).catch(() => {});
+  }, [statsService]);
+
   // Round-1 MED: tell the child shell whether the day sheet (and its
   // right-aligned «Перевірити») is on screen so it can hide the companion.
   useEffect(() => {
@@ -106,6 +120,25 @@ export function CalendarScreen({ navigation, onDayDetailChange }: Props) {
 
   const { year: anchorYear, month: anchorMonth } = parseDate(anchor);
   const monthLabel = `${uk.calendar.months[anchorMonth - 1]} ${anchorYear}`;
+
+  const today = wall.todayLocalDate();
+  const week = statsService.getWeekRange(today);
+  const analyticsStart = analyticsRange === 'thisWeek' ? week.monday : analyticsRange === 'last2Weeks' ? wall.addDays(today, -13) : customStart;
+  const analyticsEnd = analyticsRange === 'thisWeek' ? today : analyticsRange === 'last2Weeks' ? today : customEnd;
+  const visibleAnalyticsRows = analyticsRows.filter((row) =>
+    row.localDate >= analyticsStart && row.localDate <= analyticsEnd &&
+    (analyticsTasks.length === 0 || analyticsTasks.includes(row.taskTitle))
+  );
+  const analyticsMinutes = visibleAnalyticsRows.reduce((sum, row) => sum + row.minutes, 0);
+  const taskTitles = Array.from(new Set(analyticsRows.map((row) => row.taskTitle))).sort((a, b) => a.localeCompare(b, 'uk'));
+  const dateLabels = analyticsRange === 'thisWeek'
+    ? week.weekDates.filter((date) => date <= today)
+    : Array.from({ length: Math.min(14, Math.max(1, Math.floor((new Date(`${analyticsEnd}T00:00:00`).getTime() - new Date(`${analyticsStart}T00:00:00`).getTime()) / 86400000) + 1)) }, (_, index) => wall.addDays(analyticsStart, index));
+  const chartDates = dateLabels.slice(-7);
+  const chartMinutes = chartDates.map((date) => visibleAnalyticsRows.filter((row) => row.localDate === date).reduce((sum, row) => sum + row.minutes, 0));
+  const chartMax = Math.max(1, ...chartMinutes);
+  const rangeText = uk.calendar.analytics.rangePresets[analyticsRange];
+  const filterSummary = analyticsTasks.length ? `${rangeText} · ${uk.calendar.analytics.selected}: ${analyticsTasks.join(', ')}` : rangeText;
 
   const statFor = (localDate: string): DayStat | undefined =>
     days.find((d) => d.localDate === localDate);
@@ -242,6 +275,60 @@ export function CalendarScreen({ navigation, onDayDetailChange }: Props) {
         {uk.calendar.dayHint}
       </AppText>
 
+      <View testID="calendar-analytics" style={styles.analytics}>
+        <AppText variant="heading" style={styles.analyticsTitle}>{uk.calendar.analytics.title}</AppText>
+        <View style={styles.analyticsFilterLine}>
+          <AppText variant="body" numberOfLines={1} style={styles.analyticsLabel}>{filterSummary}</AppText>
+          <TapTarget testID="calendar-analytics-filter-btn" accessibilityRole="button" accessibilityLabel={uk.calendar.analytics.openFilters} onPress={() => { setDraftRange(analyticsRange); setDraftTasks(analyticsTasks); setDraftStart(customStart); setDraftEnd(customEnd); setFilterOpen(true); }} style={styles.filterButton}>
+            <AppText variant="heading" style={styles.filterIcon}>⏷</AppText>
+          </TapTarget>
+        </View>
+        <AppText testID="calendar-analytics-summary" variant="caption" style={styles.rangeSummary}>
+          {`${uk.calendar.analytics.grandTotal}: ${analyticsMinutes} ${uk.calendar.minutesUnit} · ${analyticsStart} — ${analyticsEnd} · ${visibleAnalyticsRows.length} ${uk.calendar.analytics.sessionsUnit}`}
+        </AppText>
+        <View testID="calendar-analytics-chart" style={styles.chart}>
+          {chartDates.map((date, index) => (
+            <View key={date} style={styles.chartColumn}>
+              <View style={[styles.chartBar, { height: Math.max(3, ((chartMinutes[index] ?? 0) / chartMax) * 68) }]} />
+              <AppText variant="caption" style={styles.chartLabel}>{date.slice(8)}</AppText>
+            </View>
+          ))}
+        </View>
+      </View>
+
+      <Modal transparent visible={filterOpen} animationType="fade" onRequestClose={() => setFilterOpen(false)}>
+        {filterOpen ? <View testID="calendar-analytics-filter-dialog" style={styles.detailBackdrop}>
+          <View style={styles.filterDialog}>
+            <AppText variant="title" accessibilityRole="header">{uk.calendar.analytics.filterTitle}</AppText>
+            <ScrollView style={styles.filterScroll} contentContainerStyle={styles.filterContent}>
+              {(['thisWeek', 'last2Weeks', 'custom'] as const).map((range) => (
+                <TapTarget key={range} testID={`calendar-analytics-range-${range}`} accessibilityRole="button" accessibilityLabel={uk.calendar.analytics.rangePresets[range]} onPress={() => setDraftRange(range)} style={styles.optionRow}>
+                  <AppText variant="body" style={draftRange === range ? styles.optionSelected : undefined}>{draftRange === range ? '◉' : '○'}  {uk.calendar.analytics.rangePresets[range]}</AppText>
+                </TapTarget>
+              ))}
+              {draftRange === 'custom' ? <View style={styles.customRange}>
+                <AppText variant="caption">{uk.calendar.customStart}</AppText>
+                <TextInput accessibilityLabel={uk.calendar.customStart} value={draftStart} onChangeText={setDraftStart} style={styles.dateInput} />
+                <AppText variant="caption">{uk.calendar.customEnd}</AppText>
+                <TextInput accessibilityLabel={uk.calendar.customEnd} value={draftEnd} onChangeText={setDraftEnd} style={styles.dateInput} />
+              </View> : null}
+              <AppText variant="heading" style={styles.analyticsTitle}>{uk.calendar.analytics.tasks}</AppText>
+              {taskTitles.map((title) => {
+                const checked = draftTasks.includes(title);
+                return <TapTarget key={title} testID={`calendar-analytics-task-${taskTitles.indexOf(title)}`} accessibilityRole="button" accessibilityLabel={title} accessibilityState={{ checked }} onPress={() => setDraftTasks((current) => checked ? current.filter((task) => task !== title) : [...current, title])} style={styles.optionRow}>
+                  <AppText variant="body">{checked ? '☑' : '□'}  {title}</AppText>
+                </TapTarget>;
+              })}
+              {taskTitles.length === 0 ? <AppText variant="caption">{uk.calendar.analytics.emptyTasks}</AppText> : null}
+            </ScrollView>
+            <View style={styles.filterActions}>
+              <AppButton testID="calendar-analytics-cancel" label={uk.calendar.analytics.cancel} variant="ghost" size="sm" fullWidth={false} onPress={() => setFilterOpen(false)} />
+              <AppButton testID="calendar-analytics-ok" label={uk.calendar.analytics.ok} variant="primary" size="sm" fullWidth={false} onPress={() => { setAnalyticsRange(draftRange); setAnalyticsTasks(draftTasks); setCustomStart(draftStart); setCustomEnd(draftEnd); setFilterOpen(false); }} />
+            </View>
+          </View>
+        </View> : null}
+      </Modal>
+
       <Modal transparent visible={selectedDay !== null} animationType="fade" onRequestClose={() => { setSelectedDay(null); setDaySessions([]); }}>
         {selectedDay !== null ? (
           <View testID="calendar-day-detail-dialog" style={styles.detailBackdrop}>
@@ -372,7 +459,11 @@ const styles = StyleSheet.create({
     fontVariant: ['tabular-nums'],
     textAlign: 'center',
   },
-  analytics: { gap: spacing.xs, backgroundColor: colors.surface, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.border, padding: spacing.sm }, analyticsTitle: { color: colors.text }, analyticsLabel: { color: colors.textSecondary }, chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs }, chip: { minHeight: MIN_TOUCH_DP, paddingHorizontal: spacing.sm, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.background }, chipSelected: { backgroundColor: colors.primary, borderColor: colors.primary }, chipText: { color: colors.text }, chipTextSelected: { color: colors.textOnAccent }, customRange: { gap: spacing.xs }, customDateRow: { gap: spacing.xs }, dateChips: { flexDirection: 'row', gap: spacing.xs }, dateChip: { flex: 1, minWidth: 0, minHeight: MIN_TOUCH_DP, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, alignItems: 'center', justifyContent: 'center' }, totalCards: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs }, totalCard: { flexGrow: 1, flexBasis: '47%', minHeight: MIN_TOUCH_DP, padding: spacing.xs, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, gap: 2 }, cardEmpty: { opacity: 0.45 }, rangeSummary: { color: colors.text, fontVariant: ['tabular-nums'] },
+  analytics: { gap: spacing.xs, backgroundColor: colors.surface, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.border, padding: spacing.sm }, analyticsTitle: { color: colors.text }, analyticsLabel: { color: colors.textSecondary, flex: 1 }, rangeSummary: { color: colors.text, fontVariant: ['tabular-nums'] },
+  analyticsFilterLine: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs }, filterButton: { width: MIN_TOUCH_DP, height: MIN_TOUCH_DP, borderRadius: radius.md, alignItems: 'center', justifyContent: 'center' }, filterIcon: { color: colors.primary, transform: [{ rotate: '180deg' }] },
+  chart: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-around', height: 82, gap: spacing.xs }, chartColumn: { flex: 1, alignItems: 'center', justifyContent: 'flex-end', gap: 2 }, chartBar: { width: '65%', minHeight: 3, backgroundColor: colors.primary, borderTopLeftRadius: 4, borderTopRightRadius: 4 }, chartLabel: { color: colors.textSecondary },
+  customRange: { gap: spacing.xs }, dateInput: { minHeight: MIN_TOUCH_DP, borderWidth: 1, borderColor: colors.border, borderRadius: radius.md, paddingHorizontal: spacing.sm, color: colors.text, backgroundColor: colors.background },
+  filterDialog: { width: '100%', maxWidth: 480, maxHeight: '85%', backgroundColor: colors.cardBg, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.border, padding: spacing.md, gap: spacing.sm }, filterScroll: { flexGrow: 0, maxHeight: 440 }, filterContent: { gap: spacing.xs }, optionRow: { flexDirection: 'row', justifyContent: 'flex-start', minHeight: MIN_TOUCH_DP, paddingHorizontal: spacing.xs }, optionSelected: { color: colors.primary, fontWeight: '700' }, filterActions: { flexDirection: 'row', justifyContent: 'flex-end', gap: spacing.xs },
   gridScroll: {
     flexGrow: 0,
   },

@@ -42,6 +42,12 @@ export interface MonthSummary {
   days: DayStat[];
 }
 
+export interface AnalyticsSession {
+  taskTitle: string;
+  localDate: string;
+  minutes: number;
+}
+
 export interface StatsService {
   weekSummary(forDate?: string): Promise<WeekSummary>;
   perTask(startDate: string, endDate: string): Promise<TaskStat[]>;
@@ -55,6 +61,7 @@ export interface StatsService {
   daySessions(localDate: string): Promise<DaySessionStat[]>;
   /** F6: everything the calendar header + grid needs for one month. */
   monthSummary(forDate?: string): Promise<MonthSummary>;
+  analyticsSessions(startDate: string, endDate: string): Promise<AnalyticsSession[]>;
 }
 
 interface DbTaskStatRow {
@@ -194,6 +201,21 @@ export function createStatsService(options: StatsServiceOptions): StatsService {
       const verifiedMinutes = days.reduce((acc, d) => acc + d.verifiedMinutes, 0);
       const pendingMinutes = days.reduce((acc, d) => acc + d.pendingMinutes, 0);
       return { start, end, verifiedMinutes, pendingMinutes, days };
+    },
+
+    async analyticsSessions(startDate: string, endDate: string): Promise<AnalyticsSession[]> {
+      const rows = await db.all<{ title: string; local_date: string; elapsed_run_ms: number }>(
+        `SELECT t.title, s.local_date, s.elapsed_run_ms
+         FROM sessions s JOIN tasks t ON s.task_id = t.id
+         WHERE s.status = 'verified' AND s.local_date BETWEEN ? AND ?
+         ORDER BY s.local_date ASC, s.id ASC;`,
+        [startDate, endDate]
+      );
+      return rows.map((row) => ({
+        taskTitle: row.title,
+        localDate: row.local_date,
+        minutes: Math.floor(Number(row.elapsed_run_ms) / 60000),
+      }));
     },
   };
 }
