@@ -95,6 +95,11 @@ export const uk = {
     abandonDialogMessage: 'Ви дійсно хочете скасувати цю сесію?',
     confirmAbandon: 'Так, скасувати',
     cancelAbandon: 'Ні',
+    exportDb: 'Експортувати базу завдань',
+    importDb: 'Імпортувати базу завдань',
+    importDbError: 'Файл бази завдань пошкоджений або має непідтримуваний формат.',
+    importDbSuccess: (count: number) => `Імпортовано завдань: ${count}`,
+    exportDbError: 'Не вдалося експортувати базу завдань.',
   },
   taskCrud: {
     listTitle: 'Завдання',

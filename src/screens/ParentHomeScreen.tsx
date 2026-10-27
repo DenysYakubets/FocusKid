@@ -3,6 +3,8 @@ import { FlatList, Platform, Share, StyleSheet, View } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/routes';
 import * as Sharing from 'expo-sharing';
+import * as DocumentPicker from 'expo-document-picker';
+import { File, Paths } from 'expo-file-system';
 import { formatError } from '../services/logging/formatError';
 import { logFileUri, logInfo, logError } from '../services/logging/fileLogger';
 import { useServices } from '../state/appServices';
@@ -27,7 +29,7 @@ interface AwaitingItem {
 }
 
 export function ParentHomeScreen({ navigation }: Props) {
-  const { sessionsRepo, tasksRepo, authService } = useServices();
+  const { sessionsRepo, tasksRepo, authService, db, wall } = useServices();
   const orientation = useOrientation();
   const isLandscape = orientation === 'landscape';
 
@@ -38,6 +40,7 @@ export function ParentHomeScreen({ navigation }: Props) {
   const [pinStep, setPinStep] = useState<1 | 2>(1);
   const [pinError, setPinError] = useState<string | null>(null);
   const [lockoutSec, setLockoutSec] = useState(0);
+  const [transferNotice, setTransferNotice] = useState<{ tone: 'error' | 'info'; message: string } | null>(null);
 
   // Monitor lockout countdown via monotonic clock
   useEffect(() => {
@@ -97,6 +100,61 @@ export function ParentHomeScreen({ navigation }: Props) {
       }
     } catch (error) {
       void logError(`share: failed ${formatError(error)}`);
+    }
+  };
+
+  const handleExportTasks = async () => {
+    parentSessionStore.touch();
+    setTransferNotice(null);
+    try {
+      const payload = { format: 'focuskid-tasks', version: 1, exportedAt: wall.nowIso(), tasks: await tasksRepo.listAll() };
+      const file = new File(Paths.document, 'focuskid-tasks.json');
+      await file.write(JSON.stringify(payload, null, 2));
+      try {
+        if (await Sharing.isAvailableAsync()) {
+          await Sharing.shareAsync(file.uri, { dialogTitle: uk.parentHome.exportDb, mimeType: 'application/json' });
+          return;
+        }
+      } catch {
+        // Use the platform share sheet when expo-sharing is unavailable or fails.
+      }
+      if (Platform.OS === 'ios') {
+        await Share.share({ url: file.uri }, { dialogTitle: uk.parentHome.exportDb });
+      } else {
+        await Share.share({ title: uk.parentHome.exportDb, message: uk.parentHome.exportDb, url: file.uri }, { dialogTitle: uk.parentHome.exportDb });
+      }
+    } catch {
+      setTransferNotice({ tone: 'error', message: uk.parentHome.exportDbError });
+    }
+  };
+
+  const handleImportTasks = async () => {
+    parentSessionStore.touch();
+    setTransferNotice(null);
+    try {
+      const result = await DocumentPicker.getDocumentAsync({ type: 'application/json', copyToCacheDirectory: true });
+      if (result.canceled || !result.assets?.[0]) return;
+      const parsed: unknown = JSON.parse(await new File(result.assets[0].uri).text());
+      if (!isTasksExport(parsed)) {
+        setTransferNotice({ tone: 'error', message: uk.parentHome.importDbError });
+        return;
+      }
+      await db.transaction(async tx => {
+        for (const task of parsed.tasks) {
+          await tx.run(
+            `INSERT INTO tasks (id, title, emoji, target_minutes, days_mask, sort_order, archived, target_per_day, category, created_at, updated_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+             ON CONFLICT(id) DO UPDATE SET title=excluded.title, emoji=excluded.emoji, target_minutes=excluded.target_minutes,
+               days_mask=excluded.days_mask, sort_order=excluded.sort_order, archived=excluded.archived,
+               target_per_day=excluded.target_per_day, category=excluded.category, created_at=excluded.created_at, updated_at=excluded.updated_at;`,
+            [task.id, task.title, task.emoji, task.targetMinutes, task.daysMask, task.sortOrder, task.archived ? 1 : 0,
+              task.targetPerDay, task.category, task.createdAt, task.updatedAt],
+          );
+        }
+      });
+      setTransferNotice({ tone: 'info', message: uk.parentHome.importDbSuccess(parsed.tasks.length) });
+    } catch {
+      setTransferNotice({ tone: 'error', message: uk.parentHome.importDbError });
     }
   };
 
@@ -187,6 +245,9 @@ export function ParentHomeScreen({ navigation }: Props) {
   // §4.6: deterministic stacked column replaces the wrapping chip row.
   const navNode = (
     <View style={styles.navColumn}>
+      <AppButton label={uk.parentHome.exportDb} variant="secondary" size="lg" onPress={handleExportTasks} />
+      <AppButton label={uk.parentHome.importDb} variant="secondary" size="lg" onPress={handleImportTasks} />
+      {transferNotice && <NoticeBox tone={transferNotice.tone} message={transferNotice.message} />}
       <AppButton
         label="Поділитися журналом"
         variant="secondary"
@@ -325,6 +386,44 @@ export function ParentHomeScreen({ navigation }: Props) {
       </View>
     </ParentGuard>
   );
+}
+
+interface ImportedTask {
+  id: number;
+  title: string;
+  emoji: string | null;
+  targetMinutes: number;
+  daysMask: number;
+  sortOrder: number;
+  targetPerDay: number;
+  category: 'homework' | 'reading' | 'sport' | 'other';
+  archived: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+function isTasksExport(value: unknown): value is { tasks: ImportedTask[] } {
+  if (!value || typeof value !== 'object') return false;
+  const payload = value as Record<string, unknown>;
+  if (payload.format !== 'focuskid-tasks' || payload.version !== 1 || !Array.isArray(payload.tasks)) return false;
+  return payload.tasks.every((entry: unknown) => {
+    if (!entry || typeof entry !== 'object') return false;
+    const task = entry as Record<string, unknown>;
+    return Number.isSafeInteger(task.id) && (task.id as number) > 0
+      && typeof task.title === 'string' && task.title.trim().length >= 1 && task.title.length <= 60
+      && (task.emoji === null || (typeof task.emoji === 'string' && task.emoji.length <= 8))
+      && Number.isInteger(task.targetMinutes) && (task.targetMinutes as number) >= 1 && (task.targetMinutes as number) <= 120
+      && Number.isInteger(task.daysMask) && (task.daysMask as number) >= 1 && (task.daysMask as number) <= 127
+      && Number.isInteger(task.sortOrder)
+      && Number.isInteger(task.targetPerDay) && (task.targetPerDay as number) >= 1 && (task.targetPerDay as number) <= 10
+      && ['homework', 'reading', 'sport', 'other'].includes(task.category as string)
+      && typeof task.archived === 'boolean'
+      && isIsoDate(task.createdAt) && isIsoDate(task.updatedAt);
+  });
+}
+
+function isIsoDate(value: unknown): value is string {
+  return typeof value === 'string' && Number.isFinite(Date.parse(value)) && value.length > 0;
 }
 
 const styles = StyleSheet.create({
