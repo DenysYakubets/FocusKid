@@ -6,6 +6,7 @@ interface Base {
   runAccumMs: number;
   pausedTotalMs: number;
   pauseCount: number;
+  indefinitePause?: boolean;
 }
 
 export type TimerState =

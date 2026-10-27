@@ -133,7 +133,7 @@ describe('UI redesign layout pins (UI_REDESIGN_SPEC §4-§5)', () => {
       await timerStore.start(1);
     });
 
-    for (const label of [uk.timer.pause, uk.timer.addTime]) {
+    for (const label of [uk.timer.pause, uk.timer.gear]) {
       const style = flat(getByLabelText(label));
       expect(style.flex).toBe(1);
       // 2 x minWidth 140 + 16 gap = 296 > 288 content at 320dp was the defect

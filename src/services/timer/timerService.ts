@@ -1,4 +1,5 @@
 import { ADD_TIME_STEP_MS, PAUSE_BUDGET_MS } from '../../domain/timer/constants';
+import { MIN_TARGET_MS, MAX_TARGET_MS } from '../../domain/timer/constants';
 import { pausedElapsed, remaining, runElapsed } from '../../domain/timer/elapsed';
 import { transition } from '../../domain/timer/fsm';
 import { TimerState } from '../../domain/timer/types';
@@ -32,6 +33,7 @@ export function restore(row: SessionRow, now: number): TimerState {
         runSince: now,
         pausedTotalMs: row.pausedTotalMs,
         pauseCount: row.pauseCount,
+        indefinitePause: row.indefinitePause,
       };
     case 'paused':
       return {
@@ -42,6 +44,7 @@ export function restore(row: SessionRow, now: number): TimerState {
         pausedSince: now,
         pausedTotalMs: row.pausedTotalMs,
         pauseCount: row.pauseCount,
+        indefinitePause: row.indefinitePause,
       };
     case 'completed':
       return {
@@ -71,6 +74,9 @@ export interface TimerService {
   pause(): Promise<TimerServiceResult>;
   resume(): Promise<TimerServiceResult>;
   addTime(ms?: number): Promise<TimerServiceResult>;
+  parentEditDuration(targetMs: number, token?: ParentToken): Promise<TimerServiceResult>;
+  parentPauseIndefinitely(token?: ParentToken): Promise<TimerServiceResult>;
+  parentCompleteEarly(token?: ParentToken): Promise<TimerServiceResult>;
   tick(): Promise<TimerServiceResult>;
   requestComplete(): Promise<TimerServiceResult>;
   /** F3: child-initiated stop — no parent token required. */
@@ -309,6 +315,7 @@ export function createTimerService(deps: {
         await txSessionsRepo.setStatus(currentSessionId, 'running', {
           elapsedRunMs: targetState.runAccumMs,
           pausedTotalMs: targetState.pausedTotalMs,
+          indefinitePause: false,
           updatedAt: nowIso,
         });
         await txSessionsRepo.appendEvent({
@@ -366,6 +373,42 @@ export function createTimerService(deps: {
     });
 
     state = res.state;
+    return { ok: true, state };
+  }
+
+  async function doParentEditDuration(targetMs: number, token?: ParentToken): Promise<TimerServiceResult> {
+    if (!consumeToken(token)) return { ok: false, error: 'PARENT_AUTH_REQUIRED' };
+    if (!sessionId || (state.kind !== 'Running' && state.kind !== 'Paused')) return { ok: false, error: 'INVALID_TRANSITION' };
+    if (!Number.isInteger(targetMs) || targetMs < MIN_TARGET_MS || targetMs > MAX_TARGET_MS) return { ok: false, error: 'INVALID_TARGET' };
+    const now = clock.now();
+    const elapsed = runElapsed(state, now);
+    const next = { ...state, targetMs, runAccumMs: elapsed, ...(state.kind === 'Running' ? { runSince: now } : {}) } as TimerState;
+    await sessionsRepo.setStatus(sessionId, state.kind === 'Running' ? 'running' : 'paused', { targetMs, elapsedRunMs: elapsed, updatedAt: wall.nowIso() });
+    state = next;
+    return { ok: true, state };
+  }
+
+  async function doParentPauseIndefinitely(token?: ParentToken): Promise<TimerServiceResult> {
+    if (!consumeToken(token)) return { ok: false, error: 'PARENT_AUTH_REQUIRED' };
+    if (!sessionId || (state.kind !== 'Running' && state.kind !== 'Paused')) return { ok: false, error: 'INVALID_TRANSITION' };
+    const now = clock.now();
+    const elapsed = runElapsed(state, now);
+    state = { kind: 'Paused', targetMs: state.targetMs, addedMs: state.addedMs, runAccumMs: elapsed, pausedSince: now, pausedTotalMs: state.pausedTotalMs, pauseCount: state.pauseCount + (state.kind === 'Running' ? 1 : 0), indefinitePause: true };
+    await sessionsRepo.setStatus(sessionId, 'paused', { elapsedRunMs: state.runAccumMs, indefinitePause: true, updatedAt: wall.nowIso() });
+    return { ok: true, state };
+  }
+
+  async function doParentCompleteEarly(token?: ParentToken): Promise<TimerServiceResult> {
+    if (!consumeToken(token)) return { ok: false, error: 'PARENT_AUTH_REQUIRED' };
+    if (!sessionId || (state.kind !== 'Running' && state.kind !== 'Paused')) return { ok: false, error: 'INVALID_TRANSITION' };
+    const current = state;
+    const nowIso = wall.nowIso();
+    state = { kind: 'Completed', targetMs: current.targetMs, addedMs: current.addedMs, runAccumMs: current.targetMs, pausedTotalMs: current.pausedTotalMs, pauseCount: current.pauseCount };
+    await db.transaction(async tx => {
+      const repo = createSessionsRepo(tx);
+      await repo.setStatus(sessionId!, 'completed', { elapsedRunMs: current.targetMs, completedAt: nowIso, updatedAt: nowIso });
+      await repo.appendEvent({ sessionId: sessionId!, event: 'COMPLETE', fromState: current.kind.toLowerCase(), toState: 'completed', runMs: current.targetMs, createdAt: nowIso });
+    });
     return { ok: true, state };
   }
 
@@ -633,6 +676,9 @@ export function createTimerService(deps: {
     pause: () => enqueue(() => doPause()),
     resume: () => enqueue(() => doResume()),
     addTime: (ms?: number) => enqueue(() => doAddTime(ms)),
+    parentEditDuration: (ms, token) => enqueue(() => doParentEditDuration(ms, token)),
+    parentPauseIndefinitely: token => enqueue(() => doParentPauseIndefinitely(token)),
+    parentCompleteEarly: token => enqueue(() => doParentCompleteEarly(token)),
     tick: () => enqueue(() => doTick()),
     requestComplete: () => enqueue(() => doRequestComplete()),
     stop: () => enqueue(() => doStop()),

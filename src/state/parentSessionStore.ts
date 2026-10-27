@@ -5,7 +5,8 @@ export type ParentIntent =
   | 'enterParent'
   | 'verify'
   | 'abandon'
-  | { intent: 'enterParent' | 'verify' | 'abandon'; [key: string]: unknown };
+  | 'timerControls'
+  | { intent: 'enterParent' | 'verify' | 'abandon' | 'timerControls'; [key: string]: unknown };
 
 export interface ParentSessionStoreState {
   isSessionActive: boolean;

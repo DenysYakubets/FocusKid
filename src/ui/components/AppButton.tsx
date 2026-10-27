@@ -36,6 +36,7 @@ export interface AppButtonProps {
    * review finding 2. Falls back to `label`.
    */
   a11yLabel?: string;
+  testID?: string;
 }
 
 const variantStyles: Record<AppButtonVariant, ViewStyle> = {
@@ -90,6 +91,7 @@ export function AppButton({
   fullWidth,
   style,
   a11yLabel,
+  testID,
 }: AppButtonProps) {
   const isDisabled = disabled || loading;
   const resolvedFullWidth = fullWidth ?? size !== 'sm';
@@ -98,6 +100,7 @@ export function AppButton({
     <TapTarget
       accessibilityRole="button"
       accessibilityLabel={a11yLabel ?? label}
+      testID={testID}
       disabled={isDisabled}
       onPress={onPress}
       style={(state) => [

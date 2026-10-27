@@ -7,7 +7,6 @@ import {
 } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
-import { MAX_ADDED_MS } from '../domain/timer/constants';
 import { pauseBudgetLeft, remaining, runElapsed } from '../domain/timer/elapsed';
 import { TimerState } from '../domain/timer/types';
 import { Task } from '../domain/tasks/types';
@@ -44,7 +43,6 @@ export function TimerScreen({ route, navigation }: Props) {
   const lastError = useTimerStore((s) => s.lastError);
   const pause = useTimerStore((s) => s.pause);
   const resume = useTimerStore((s) => s.resume);
-  const addTime = useTimerStore((s) => s.addTime);
   const stop = useTimerStore((s) => s.stop);
 
   const [task, setTask] = useState<Task | null>(null);
@@ -234,11 +232,6 @@ export function TimerScreen({ route, navigation }: Props) {
 
   const budgetLeftMs = pauseBudgetLeft(displayState, now);
   const isPauseDisabled = budgetLeftMs <= 0;
-  const isAddTimeDisabled = !(
-    isLive &&
-    (displayState.kind === 'Running' || displayState.kind === 'Paused') &&
-    displayState.addedMs < MAX_ADDED_MS
-  );
 
   const isCompleted = displayState.kind === 'Completed';
   const isVerified = displayState.kind === 'Verified';
@@ -314,18 +307,18 @@ export function TimerScreen({ route, navigation }: Props) {
     }
   };
 
-  const handleAddTime = async () => {
-    if (isLive) {
-      await addTime();
-    }
-  };
-
   const handleShowParent = () => {
     if (displaySessionId !== null) {
       navigation.navigate('PinGate', {
         intent: 'verify',
         sessionId: displaySessionId,
       });
+    }
+  };
+
+  const handleGear = () => {
+    if (displaySessionId !== null && (displayState.kind === 'Running' || displayState.kind === 'Paused')) {
+      navigation.navigate('PinGate', { intent: 'timerControls', sessionId: displaySessionId });
     }
   };
 
@@ -458,16 +451,7 @@ export function TimerScreen({ route, navigation }: Props) {
             />
           ) : null}
 
-          <AppButton
-            label={uk.timer.addTime}
-            variant="secondary"
-            size="lg"
-            disabled={isAddTimeDisabled}
-            onPress={() => {
-              void handleAddTime();
-            }}
-            style={buttonStyle}
-          />
+          <AppButton label="⚙" a11yLabel={uk.timer.gear} testID="timer-gear" variant="secondary" size="lg" onPress={handleGear} style={buttonStyle} />
         </>
       ) : null}
     </View>

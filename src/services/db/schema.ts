@@ -149,6 +149,8 @@ ALTER TABLE tasks ADD COLUMN category TEXT NOT NULL DEFAULT 'other'
   CHECK (category IN ('homework','reading','sport','other'));
 `;
 
+const V8_SQL = `ALTER TABLE sessions ADD COLUMN indefinite_pause INTEGER NOT NULL DEFAULT 0 CHECK (indefinite_pause IN (0,1));`;
+
 export const MIGRATIONS: readonly string[] = [
   V1_SQL,
   V2_SQL,
@@ -157,4 +159,5 @@ export const MIGRATIONS: readonly string[] = [
   V5_SQL,
   V6_SQL,
   V7_SQL,
+  V8_SQL,
 ];

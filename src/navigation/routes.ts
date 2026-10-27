@@ -5,7 +5,8 @@ export type RootStackParamList = {
   PinGate:
     | { intent: 'enterParent' }
     | { intent: 'verify'; sessionId: number }
-    | { intent: 'abandon'; sessionId: number };
+    | { intent: 'abandon'; sessionId: number }
+    | { intent: 'timerControls'; sessionId: number };
   ParentHome: undefined;
   TaskListEdit: undefined;
   TaskEdit: { taskId?: number };

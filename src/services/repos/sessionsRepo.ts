@@ -12,6 +12,7 @@ export interface SessionRow {
   elapsedRunMs: number;
   pausedTotalMs: number;
   pauseCount: number;
+  indefinitePause: boolean;
   startedAt: string;
   completedAt: string | null;
   verifiedAt: string | null;
@@ -28,6 +29,7 @@ interface DbSessionRow {
   elapsed_run_ms: number;
   paused_total_ms: number;
   pause_count: number;
+  indefinite_pause: number;
   started_at: string;
   completed_at: string | null;
   verified_at: string | null;
@@ -61,6 +63,7 @@ function mapSession(row: DbSessionRow): SessionRow {
     elapsedRunMs: row.elapsed_run_ms,
     pausedTotalMs: row.paused_total_ms,
     pauseCount: row.pause_count,
+    indefinitePause: row.indefinite_pause === 1,
     startedAt: row.started_at,
     completedAt: row.completed_at,
     verifiedAt: row.verified_at,
@@ -87,9 +90,11 @@ export interface SessionsRepo {
     status: SessionStatus,
     extra: {
       addedMs?: number;
+      targetMs?: number;
       elapsedRunMs?: number;
       pausedTotalMs?: number;
       pauseCount?: number;
+      indefinitePause?: boolean;
       completedAt?: string | null;
       verifiedAt?: string | null;
       updatedAt: string;
@@ -148,12 +153,14 @@ export function createSessionsRepo(db: Db): SessionsRepo {
       }
 
       const addedMs = extra.addedMs !== undefined ? extra.addedMs : existing.addedMs;
+      const targetMs = extra.targetMs !== undefined ? extra.targetMs : existing.targetMs;
       const elapsedRunMs =
         extra.elapsedRunMs !== undefined ? extra.elapsedRunMs : existing.elapsedRunMs;
       const pausedTotalMs =
         extra.pausedTotalMs !== undefined ? extra.pausedTotalMs : existing.pausedTotalMs;
       const pauseCount =
         extra.pauseCount !== undefined ? extra.pauseCount : existing.pauseCount;
+      const indefinitePause = extra.indefinitePause !== undefined ? extra.indefinitePause : existing.indefinitePause;
       const completedAt =
         extra.completedAt !== undefined ? extra.completedAt : existing.completedAt;
       const verifiedAt =
@@ -161,14 +168,16 @@ export function createSessionsRepo(db: Db): SessionsRepo {
 
       await db.run(
         `UPDATE sessions
-         SET status = ?, added_ms = ?, elapsed_run_ms = ?, paused_total_ms = ?, pause_count = ?, completed_at = ?, verified_at = ?, updated_at = ?
+         SET status = ?, target_ms = ?, added_ms = ?, elapsed_run_ms = ?, paused_total_ms = ?, pause_count = ?, indefinite_pause = ?, completed_at = ?, verified_at = ?, updated_at = ?
          WHERE id = ?;`,
         [
           status,
+          targetMs,
           addedMs,
           elapsedRunMs,
           pausedTotalMs,
           pauseCount,
+          indefinitePause ? 1 : 0,
           completedAt,
           verifiedAt,
           extra.updatedAt,

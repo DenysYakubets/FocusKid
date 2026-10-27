@@ -38,6 +38,7 @@ export function transition(state: TimerState, event: TimerEvent): TransitionResu
 
     case 'Running': {
       if (event.type === 'TICK') {
+        if (state.indefinitePause) return { ok: true, state, effects: [] };
         if (remaining(state, event.now) === 0) {
           return {
             ok: true,
@@ -144,6 +145,7 @@ export function transition(state: TimerState, event: TimerEvent): TransitionResu
 
     case 'Paused': {
       if (event.type === 'TICK') {
+        if (state.indefinitePause) return { ok: true, state, effects: [] };
         if (pausedElapsed(state, event.now) < PAUSE_BUDGET_MS) {
           return { ok: true, state, effects: [] };
         }
@@ -178,8 +180,8 @@ export function transition(state: TimerState, event: TimerEvent): TransitionResu
       }
 
       if (event.type === 'RESUME') {
-        const pElapsed = Math.min(PAUSE_BUDGET_MS, pausedElapsed(state, event.now));
-        const runSince =
+        const pElapsed = state.indefinitePause ? state.pausedTotalMs : Math.min(PAUSE_BUDGET_MS, pausedElapsed(state, event.now));
+        const runSince = state.indefinitePause ? event.now :
           pausedElapsed(state, event.now) >= PAUSE_BUDGET_MS
             ? state.pausedSince + (PAUSE_BUDGET_MS - state.pausedTotalMs)
             : event.now;

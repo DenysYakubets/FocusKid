@@ -105,11 +105,11 @@ describe('TimerScreen', () => {
     expect(updatedPauseBtn.props.accessibilityState.disabled).toBe(true);
   });
 
-  it('Criterion 3: "+5 хв" increases remaining time by 300 s, disabled after 12 presses', async () => {
+  it('Criterion 3: gear control is available for a running session; +5 хв is removed', async () => {
     const db = createNodeDb();
     const clock = createFakeClock(1000);
 
-    const { getByLabelText } = await renderWithApp(
+    const { getByTestId, queryByLabelText } = await renderWithApp(
       <TimerScreen navigation={mockNavigation} route={{ params: { taskId: 1 } } as any} />,
       { db, clock, wall: systemWallClock }
     );
@@ -118,34 +118,7 @@ describe('TimerScreen', () => {
       await timerStore.start(1);
     });
 
-    const addTimeBtn = getByLabelText(uk.timer.addTime);
-
-    // Initial state: target 15 min (900_000 ms)
-    const initialRemaining = timerStore.getSnapshot().state;
-    const initialAdded = initialRemaining.kind === 'Running' ? initialRemaining.addedMs : 0;
-    expect(initialAdded).toBe(0);
-
-    // 1st press
-    await act(async () => {
-      fireEvent.press(addTimeBtn);
-    });
-
-    const after1State = timerStore.getSnapshot().state;
-    const after1Added = after1State.kind === 'Running' ? after1State.addedMs : 0;
-    expect(after1Added).toBe(300_000); // 300 s
-
-    // Press 11 more times (total 12 presses)
-    for (let i = 2; i <= 12; i++) {
-      await act(async () => {
-        fireEvent.press(addTimeBtn);
-      });
-    }
-
-    const stateAfter12 = timerStore.getSnapshot().state;
-    expect(stateAfter12.kind === 'Running' && stateAfter12.addedMs).toBe(3_600_000);
-
-    // After 12 presses, the button is disabled
-    const disabledBtn = getByLabelText(uk.timer.addTime);
-    expect(disabledBtn.props.accessibilityState.disabled).toBe(true);
+    expect(getByTestId('timer-gear')).toBeTruthy();
+    expect(queryByLabelText(uk.timer.addTime)).toBeNull();
   });
 });
