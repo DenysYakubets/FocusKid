@@ -67,6 +67,12 @@ gh release create "$TAG" "$APK_TARGET" \
   --notes-file "$NOTES_FILE" \
   --prerelease
 
+echo "=== Step 9b: Publishing stable update-channel assets ==="
+if ! bash scripts/publish-release.sh "$TAG" "FocusKid ${TAG} (Offline Debug Build)"; then
+  echo "Error: stable update-channel publishing failed for $TAG." >&2
+  exit 1
+fi
+
 rm -f "$NOTES_FILE"
 
 ASSET_URL=$(gh release view "$TAG" --json assets --jq '.assets[] | select(.name=="focuskid-'"${TAG}"'-debug.apk") | .url')

@@ -29,8 +29,21 @@ else
   echo "SKIP TSC-4 (requires Gradle build)"
 fi
 
-# TSC-5: INV-01 No networking/analytics dependencies or calls
-if ! grep -qF -e '"firebase"' -e '@react-native-firebase/' -e '@sentry/' -e 'sentry-expo' -e '"axios"' -e '"expo-updates"' -e '"expo-notifications"' -e '"expo-network"' -e '@react-native-community/netinfo' -e 'google-mobile-ads' -e 'react-native-iap' -e 'expo-in-app-purchases' -e '@segment/' -e 'mixpanel' -e '@amplitude/' package.json && ! grep -rnE -e "\bfetch\(" -e "XMLHttpRequest" -e "new WebSocket\(" src App.tsx; then
+# TSC-5: INV-01 networking/analytics ban with owner-approved update-check allowlist
+if ! grep -qF -e '"firebase"' -e '@react-native-firebase/' -e '@sentry/' -e 'sentry-expo' -e '"axios"' -e '"expo-updates"' -e '"expo-notifications"' -e '"expo-network"' -e '@react-native-community/netinfo' -e 'google-mobile-ads' -e 'react-native-iap' -e 'expo-in-app-purchases' -e '@segment/' -e 'mixpanel' -e '@amplitude/' package.json && ! grep -rnE -e "XMLHttpRequest" -e "new WebSocket\(" src App.tsx && node <<'NODE'
+const fs = require('node:fs');
+const { execFileSync } = require('node:child_process');
+let matches;
+try {
+  matches = execFileSync('grep', ['-rlE', '\\bfetch\\(', 'src', 'App.tsx'], { encoding: 'utf8' }).trim().split('\n').filter(Boolean);
+} catch (error) {
+  if (error.status !== 1) throw error;
+  matches = [];
+}
+const allowed = new Set(['src/services/update/checkForUpdate.ts', 'src/ui/components/UpdateChecker.tsx']);
+if (matches.some(name => !allowed.has(name))) process.exit(1);
+NODE
+then
   echo "PASS TSC-5"
 else
   echo "FAIL TSC-5"

@@ -1,0 +1,7 @@
+{
+  "versionName": "0.1.12",
+  "versionCode": 5,
+  "sha256": "8df2f21a74abbcb61c2b974a30e7e719c4e20376ed8ca231e5ca953ae814baf5",
+  "url": "https://github.com/DenysYakubets/FocusKid/releases/latest/download/FocusKid-latest.apk",
+  "notes": "Parent timer dialog now only change-duration + close; pause/finish stay child-side."
+}
