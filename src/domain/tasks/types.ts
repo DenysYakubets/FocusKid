@@ -10,7 +10,6 @@ export interface Task {
   updatedAt: string;
   /** C4: times per day (1..10, default 1). */
   targetPerDay: number;
-  category: string;
 }
 
 export interface NewTask {
@@ -21,7 +20,6 @@ export interface NewTask {
   sortOrder?: number;
   /** C4: times per day (1..10, default 1). */
   targetPerDay?: number;
-  category?: string;
 }
 
 export type TodayTaskStatus = 'idle' | 'running' | 'paused' | 'completed' | 'verified';

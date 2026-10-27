@@ -142,13 +142,13 @@ export function ParentHomeScreen({ navigation }: Props) {
       await db.transaction(async tx => {
         for (const task of parsed.tasks) {
           await tx.run(
-            `INSERT INTO tasks (id, title, emoji, target_minutes, days_mask, sort_order, archived, target_per_day, category, created_at, updated_at)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            `INSERT INTO tasks (id, title, emoji, target_minutes, days_mask, sort_order, archived, target_per_day, created_at, updated_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
              ON CONFLICT(id) DO UPDATE SET title=excluded.title, emoji=excluded.emoji, target_minutes=excluded.target_minutes,
                days_mask=excluded.days_mask, sort_order=excluded.sort_order, archived=excluded.archived,
-               target_per_day=excluded.target_per_day, category=excluded.category, created_at=excluded.created_at, updated_at=excluded.updated_at;`,
+               target_per_day=excluded.target_per_day, created_at=excluded.created_at, updated_at=excluded.updated_at;`,
             [task.id, task.title, task.emoji, task.targetMinutes, task.daysMask, task.sortOrder, task.archived ? 1 : 0,
-              task.targetPerDay, task.category, task.createdAt, task.updatedAt],
+              task.targetPerDay, task.createdAt, task.updatedAt],
           );
         }
       });
@@ -396,7 +396,6 @@ interface ImportedTask {
   daysMask: number;
   sortOrder: number;
   targetPerDay: number;
-  category: 'homework' | 'reading' | 'sport' | 'other';
   archived: boolean;
   createdAt: string;
   updatedAt: string;
@@ -416,7 +415,6 @@ function isTasksExport(value: unknown): value is { tasks: ImportedTask[] } {
       && Number.isInteger(task.daysMask) && (task.daysMask as number) >= 1 && (task.daysMask as number) <= 127
       && Number.isInteger(task.sortOrder)
       && Number.isInteger(task.targetPerDay) && (task.targetPerDay as number) >= 1 && (task.targetPerDay as number) <= 10
-      && ['homework', 'reading', 'sport', 'other'].includes(task.category as string)
       && typeof task.archived === 'boolean'
       && isIsoDate(task.createdAt) && isIsoDate(task.updatedAt);
   });
