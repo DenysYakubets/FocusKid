@@ -8,6 +8,7 @@ import { createSessionsRepo } from '../../repos/sessionsRepo';
 import { createTasksRepo } from '../../repos/tasksRepo';
 import { createStatsService } from '../../stats/statsService';
 import { createTimerService } from '../timerService';
+import { remaining } from '../../../domain/timer/elapsed';
 
 const wall: WallClock = { ...systemWallClock, todayLocalDate: () => '2026-10-23', nowIso: () => '2026-10-23T10:00:00.000Z' };
 
@@ -39,6 +40,33 @@ describe('PIN authorized timer controls', () => {
     expect(service.getSnapshot().state.kind).toBe('Paused');
     expect((await service.resume()).ok).toBe(true);
     expect(service.getSnapshot().state.kind).toBe('Running');
+  });
+
+  it('child pause freezes remaining time across ticks and only manual resume restarts it', async () => {
+    const { db, clock, service, sessionsRepo } = await setup();
+    await service.start(1);
+    clock.advance(30_000);
+    expect((await service.pause()).ok).toBe(true);
+    const id = service.getSnapshot().sessionId!;
+    const paused = service.getSnapshot().state;
+    if (paused.kind !== 'Paused') throw new Error('expected Paused');
+    const remainingAtPause = remaining(paused, clock.now());
+
+    clock.advance(10 * 60_000);
+    await service.tick();
+    const afterTick = service.getSnapshot().state;
+    expect(afterTick.kind).toBe('Paused');
+    expect(remaining(afterTick, clock.now())).toBe(remainingAtPause);
+    expect((await sessionsRepo.get(id))?.indefinitePause).toBe(true);
+    const events = await db.all<{ event: string }>(
+      'SELECT event FROM session_events WHERE session_id = ? ORDER BY id ASC;', [id]
+    );
+    expect(events.map(event => event.event)).not.toContain('AUTO_RESUMED');
+
+    expect((await service.resume()).ok).toBe(true);
+    clock.advance(5_000);
+    const resumed = service.getSnapshot().state;
+    expect(remaining(resumed, clock.now())).toBe(remainingAtPause - 5_000);
   });
 
   it('edits the assigned target in persisted session data', async () => {

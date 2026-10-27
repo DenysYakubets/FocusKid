@@ -7,7 +7,7 @@ import {
 } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
-import { pauseBudgetLeft, remaining, runElapsed } from '../domain/timer/elapsed';
+import { remaining, runElapsed } from '../domain/timer/elapsed';
 import { TimerState } from '../domain/timer/types';
 import { Task } from '../domain/tasks/types';
 import { RootStackParamList } from '../navigation/routes';
@@ -230,9 +230,6 @@ export function TimerScreen({ route, navigation }: Props) {
     }
   }, [remSec, displayState.kind]);
 
-  const budgetLeftMs = pauseBudgetLeft(displayState, now);
-  const isPauseDisabled = budgetLeftMs <= 0;
-
   const isCompleted = displayState.kind === 'Completed';
   const isVerified = displayState.kind === 'Verified';
   const isPaused = displayState.kind === 'Paused';
@@ -355,24 +352,9 @@ export function TimerScreen({ route, navigation }: Props) {
 
   const pauseHintNode = isPaused ? (
     <View style={styles.pauseHint}>
-      {budgetLeftMs > 0 ? (
-        <>
-          <AppText variant="caption" style={styles.pauseHintText}>
-            {`${uk.timer.pauseLeft} ${Math.floor(budgetLeftMs / 60000)}:${String(
-              Math.floor((budgetLeftMs % 60000) / 1000)
-            ).padStart(2, '0')}`}
-          </AppText>
-          {budgetLeftMs < 60000 ? (
-            <AppText variant="caption" style={styles.pauseHintText}>
-              {`Часу паузи ${uk.timer.minuteLeft} менше хвилини.`}
-            </AppText>
-          ) : null}
-        </>
-      ) : (
-        <AppText variant="caption" style={styles.pauseHintText}>
-          {uk.timer.pauseBudgetExhausted}
-        </AppText>
-      )}
+      <AppText variant="caption" style={styles.pauseHintText}>
+        {uk.status.paused}
+      </AppText>
     </View>
   ) : null;
 
@@ -433,7 +415,6 @@ export function TimerScreen({ route, navigation }: Props) {
               label={uk.timer.pause}
               variant="primary"
               size="lg"
-              disabled={isPauseDisabled}
               onPress={() => {
                 void handlePause();
               }}

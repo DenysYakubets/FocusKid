@@ -70,7 +70,7 @@ describe('TimerScreen', () => {
     expect(queryByText(forbiddenRegex)).toBeNull();
   });
 
-  it('INV-04 (Criterion 2): pausing, advancing 5 min and ticking leaves screen Running with Pause button disabled', async () => {
+  it('pausing and advancing time keeps the timer paused until manual resume', async () => {
     const db = createNodeDb();
     const clock = createFakeClock(1000);
 
@@ -90,19 +90,13 @@ describe('TimerScreen', () => {
     });
     expect(timerStore.getSnapshot().state.kind).toBe('Paused');
 
-    // Advance 5 minutes (300_000 ms = PAUSE_BUDGET_MS)
+    // Advance beyond the former pause budget.
     await act(async () => {
       clock.advance(300_000);
       await timerStore.tick();
     });
 
-    // Auto-resumed to Running
-    expect(timerStore.getSnapshot().state.kind).toBe('Running');
-
-    // Pause button must now be disabled
-    const updatedPauseBtn = getByLabelText(uk.timer.pause);
-    expect(updatedPauseBtn.props.accessibilityState).toEqual({ disabled: true });
-    expect(updatedPauseBtn.props.accessibilityState.disabled).toBe(true);
+    expect(timerStore.getSnapshot().state.kind).toBe('Paused');
   });
 
   it('Criterion 3: gear control is available for a running session; +5 хв is removed', async () => {

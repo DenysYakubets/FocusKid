@@ -249,9 +249,9 @@ export function createTimerService(deps: {
 
     const now = clock.now();
     const res = transition(state, { type: 'PAUSE', now });
-    if (!res.ok) {
-      return { ok: false, error: res.error };
-    }
+    if (!res.ok) return { ok: false, error: res.error };
+    // A child pause is a full pause: only an explicit RESUME may restart time.
+    const pausedState = res.state.kind === 'Paused' ? { ...res.state, indefinitePause: true } : res.state;
 
     const currentSessionId = sessionId;
     const nowIso = wall.nowIso();
@@ -259,9 +259,10 @@ export function createTimerService(deps: {
     await db.transaction(async (tx) => {
       const txSessionsRepo = createSessionsRepo(tx);
       await txSessionsRepo.setStatus(currentSessionId, 'paused', {
-        elapsedRunMs: res.state.kind === 'Paused' ? res.state.runAccumMs : 0,
-        pausedTotalMs: res.state.kind === 'Paused' ? res.state.pausedTotalMs : 0,
-        pauseCount: res.state.kind === 'Paused' ? res.state.pauseCount : 0,
+        elapsedRunMs: pausedState.kind === 'Paused' ? pausedState.runAccumMs : 0,
+        pausedTotalMs: pausedState.kind === 'Paused' ? pausedState.pausedTotalMs : 0,
+        pauseCount: pausedState.kind === 'Paused' ? pausedState.pauseCount : 0,
+        indefinitePause: true,
         updatedAt: nowIso,
       });
 
@@ -270,12 +271,12 @@ export function createTimerService(deps: {
         event: 'PAUSE',
         fromState: 'running',
         toState: 'paused',
-        runMs: res.state.kind === 'Paused' ? res.state.runAccumMs : 0,
+        runMs: pausedState.kind === 'Paused' ? pausedState.runAccumMs : 0,
         createdAt: nowIso,
       });
     });
 
-    state = res.state;
+    state = pausedState;
     return { ok: true, state };
   }
 

@@ -46,7 +46,7 @@ describe('Checkpoint Lifecycle & Process Kill Survival', () => {
     expect(runElapsed(snapshot.state, freshClock.now())).toBe(600_000);
   });
 
-  it('survives MID-PAUSE process kill/restart and preserves consumed pause budget (INV-04)', async () => {
+  it('survives MID-PAUSE process kill/restart without consuming pause time', async () => {
     const db = createNodeDb();
     await migrate(db);
     await seedIfEmpty(db, fakeWall);
@@ -74,8 +74,8 @@ describe('Checkpoint Lifecycle & Process Kill Survival', () => {
     const snapshot = await servicesB.timerService.hydrate();
 
     expect(snapshot.state.kind).toBe('Paused');
-    // Pause budget left must be 300_000 - 120_000 = 180_000, NOT the full 300_000
-    expect(pauseBudgetLeft(snapshot.state, freshClock.now())).toBe(180_000);
+    // Full pauses do not consume pause budget while the child is away.
+    expect(pauseBudgetLeft(snapshot.state, freshClock.now())).toBe(300_000);
   });
 
   it('persists run progress on resume() transition (defence in depth)', async () => {
