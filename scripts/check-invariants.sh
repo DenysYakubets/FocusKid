@@ -45,11 +45,12 @@ else
   exit 1
 fi
 
-# TSC-12: INV-07 SQLite business data; diagnostic file allowlist (static half)
+# TSC-12: INV-07 SQLite business data; reviewed file allowlist — diagnostic log + task JSON backup (owner-requested)
 if grep -qF '"expo-sqlite"' package.json && ! grep -qF -e '@react-native-async-storage/' -e 'react-native-mmkv' -e '"realm"' -e 'watermelondb' -e 'expo-secure-store' package.json && ! grep -rnF -e "AsyncStorage" -e "localStorage" src && node <<'NODE'
 const fs = require('node:fs');
 const path = require('node:path');
 const logger = 'src/services/logging/fileLogger.ts';
+const transfer = 'src/screens/ParentHomeScreen.tsx';
 function sources(dir) {
   return fs.readdirSync(dir, { withFileTypes: true }).flatMap(entry => {
     const name = path.join(dir, entry.name);
@@ -64,7 +65,8 @@ const installed = Object.keys({
   ...require('./package.json').dependencies,
   ...require('./package.json').devDependencies,
 }).includes('expo-file-system');
-if (consumers.some(name => name !== logger) || (installed && !consumers.includes(logger))) {
+if (consumers.length !== 2 || ![logger, transfer].every(name => consumers.includes(name)) ||
+    (installed && !consumers.includes(logger))) {
   process.exit(1);
 }
 if (consumers.includes(logger)) {
@@ -76,6 +78,17 @@ if (consumers.includes(logger)) {
   if ((source.match(imports) ?? []).length !== 1 || !(source.match(opens) ?? []).length) process.exit(1);
   const remainder = source.replace(imports, '').replace(opens, '');
   if (/\b(File|Paths|Directory)\b|expo-file-system/.test(remainder)) process.exit(1);
+}
+if (consumers.includes(transfer)) {
+  const source = fs.readFileSync(transfer, 'utf8');
+  const imports = /import\s*\{\s*File\s*,\s*Paths\s*\}\s*from\s*['"]expo-file-system['"];?/g;
+  const target = /new\s+File\(\s*Paths\.document\s*,\s*'focuskid-tasks\.json'\s*\)/g;
+  const pickedFile = /new\s+File\(\s*result\.assets\[0\]\.uri\s*\)/g;
+  if ((source.match(imports) ?? []).length !== 1 || !source.includes("new File(Paths.document, 'focuskid-tasks.json')") || !(source.match(target) ?? []).length ||
+      !(source.match(pickedFile) ?? []).length || !source.includes('file.write(') || !source.includes('file.uri')) process.exit(1);
+  const remainder = source.replace(imports, '').replace(target, '').replace(pickedFile, '')
+    .replace(/file\.write\(/g, '').replace(/file\.uri/g, '').replace(/new\s+File\(/g, '');
+  if (/expo-file-system|\bPaths\s*\.|\bDirectory\b/.test(remainder)) process.exit(1);
 }
 NODE
 then
