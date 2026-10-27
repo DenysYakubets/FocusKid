@@ -219,25 +219,29 @@ export function CalendarScreen({ navigation, onDayDetailChange }: Props) {
         </View>
       </View>
 
-      {/* Minutes earned: this week and this month (parent reads them directly). */}
-      <View testID="calendar-summary" style={styles.summary}>
-        <View style={styles.summaryBox}>
-          <AppText variant="caption" style={styles.summaryLabel}>
-            {uk.calendar.weekEarned}
-          </AppText>
-          <AppText variant="display" style={styles.summaryValue}>
-            {`${weekMinutes} ${uk.calendar.minutesUnit}`}
-          </AppText>
+      <ScrollView
+        style={styles.contentScroll}
+        contentContainerStyle={styles.contentScrollContent}
+      >
+        {/* Minutes earned: this week and this month (parent reads them directly). */}
+        <View testID="calendar-summary" style={styles.summary}>
+          <View style={styles.summaryBox}>
+            <AppText variant="caption" style={styles.summaryLabel}>
+              {uk.calendar.weekEarned}
+            </AppText>
+            <AppText variant="display" style={styles.summaryValue}>
+              {`${weekMinutes} ${uk.calendar.minutesUnit}`}
+            </AppText>
+          </View>
+          <View style={styles.summaryBox}>
+            <AppText variant="caption" style={styles.summaryLabel}>
+              {uk.calendar.monthEarned}
+            </AppText>
+            <AppText variant="display" style={styles.summaryValue}>
+              {`${monthMinutes} ${uk.calendar.minutesUnit}`}
+            </AppText>
+          </View>
         </View>
-        <View style={styles.summaryBox}>
-          <AppText variant="caption" style={styles.summaryLabel}>
-            {uk.calendar.monthEarned}
-          </AppText>
-          <AppText variant="display" style={styles.summaryValue}>
-            {`${monthMinutes} ${uk.calendar.minutesUnit}`}
-          </AppText>
-        </View>
-      </View>
 
       {/* The 7-column month grid scrolls horizontally so every day keeps a
           48dp touch target even at 320dp (INV-10). */}
@@ -295,6 +299,7 @@ export function CalendarScreen({ navigation, onDayDetailChange }: Props) {
           ))}
         </View>
       </View>
+      </ScrollView>
 
       <Modal transparent visible={filterOpen} animationType="fade" onRequestClose={() => setFilterOpen(false)}>
         {filterOpen ? <View testID="calendar-analytics-filter-dialog" style={styles.detailBackdrop}>
@@ -406,6 +411,13 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
     paddingTop: spacing.xl,
     gap: spacing.md,
+  },
+  contentScroll: {
+    flex: 1,
+  },
+  contentScrollContent: {
+    gap: spacing.md,
+    paddingBottom: spacing.md,
   },
   header: {
     gap: spacing.sm,
