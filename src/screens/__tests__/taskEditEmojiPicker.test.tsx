@@ -43,8 +43,9 @@ describe('F5 - emoji picker dialog (no system keyboard) + persistence', () => {
       fireEvent.changeText(screen.getByTestId('task-title-input'), 'Плавання');
     });
 
-    // 1. The free-text emoji keyboard input is gone; a picker trigger is present
-    expect(screen.queryByTestId('task-emoji-input')).toBeNull();
+    // 1. Custom Unicode entry is available alongside the preset picker.
+    expect(screen.getByTestId('task-emoji-input')).toBeTruthy();
+    expect(screen.getByTestId('task-emoji-field')).toBeTruthy();
 
     // 2. Opening the picker shows the dialog, a search field and the curated grid
     await act(async () => {
@@ -87,6 +88,25 @@ describe('F5 - emoji picker dialog (no system keyboard) + persistence', () => {
     const created = await services.tasksRepo.listAll();
     const task = created.find((t) => t.title === 'Плавання');
     expect(task?.emoji).toBe(chosen);
+  });
+
+  it('accepts custom Unicode emoji and truncates pasted input to the storage limit', async () => {
+    const { db, clock, services } = await setup();
+    const mockNav: any = { goBack: jest.fn(), replace: jest.fn() };
+    const screen = await renderWithApp(
+      <TaskEditScreen navigation={mockNav} route={{ params: {} } as any} />,
+      { db, clock, wall: fakeWall, services }
+    );
+
+    await act(async () => fireEvent.changeText(screen.getByTestId('task-title-input'), 'Сім’я'));
+    await act(async () => fireEvent.changeText(screen.getByTestId('task-emoji-input'), '👨‍👩‍👧‍👦🌈🌈🌈'));
+    await act(async () => fireEvent.press(screen.getByLabelText(uk.taskCrud.save)));
+
+    expect(mockNav.goBack).toHaveBeenCalled();
+    const task = (await services.tasksRepo.listAll()).find((item) => item.title === 'Сім’я');
+    expect(task?.emoji).toBe('👨‍👩‍👧‍👦🌈');
+    expect(await db.get('SELECT length(emoji) AS length FROM tasks WHERE id = ?', [task!.id]))
+      .toMatchObject({ length: 8 });
   });
 
   it('keeps the already-saved emoji when opening the picker on an existing task', async () => {

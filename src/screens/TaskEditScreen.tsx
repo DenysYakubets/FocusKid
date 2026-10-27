@@ -25,6 +25,16 @@ type Props = NativeStackScreenProps<RootStackParamList, 'TaskEdit'>;
 
 const WEEKDAYS = uk.taskCrud.weekdays.map((label, bit) => ({ label, bit }));
 
+// SQLite length() counts Unicode code points for this TEXT column.
+const TASK_EMOJI_MAX_CODE_POINTS = 8;
+
+function fitEmojiToStorageLimit(value: string): string {
+  const codePoints = [...value].slice(0, TASK_EMOJI_MAX_CODE_POINTS);
+  const limited = codePoints.join('');
+  // A boundary can land after a ZWJ; avoid persisting a dangling joiner.
+  return limited.endsWith('\u200d') ? codePoints.slice(0, -1).join('') : limited;
+}
+
 export function TaskEditScreen({ route, navigation }: Props) {
   const services = useServices();
   const { tasksRepo, sessionsRepo, wall, db } = services;
@@ -88,7 +98,7 @@ export function TaskEditScreen({ route, navigation }: Props) {
     parentSessionStore.touch();
     const result = validateTask({
       title,
-      emoji: emoji.trim() ? emoji.trim() : null,
+      emoji: emoji.trim() ? fitEmojiToStorageLimit(emoji.trim()) : null,
       targetMinutes,
       daysMask,
     });
@@ -234,7 +244,7 @@ export function TaskEditScreen({ route, navigation }: Props) {
             />
           </View>
 
-          {/* F5: emoji picker trigger (no free keyboard entry) */}
+          {/* Custom Unicode input alongside the curated picker. */}
           <View style={styles.field}>
             <AppText variant="body" style={styles.fieldLabel}>
               {uk.taskCrud.emojiLabel}
@@ -260,6 +270,30 @@ export function TaskEditScreen({ route, navigation }: Props) {
                 {`› ${uk.taskCrud.emojiTitle}`}
               </AppText>
             </TapTarget>
+            <TextInput
+              testID="task-emoji-input"
+              value={emoji}
+              onChangeText={(value) => {
+                parentSessionStore.touch();
+                setEmoji(fitEmojiToStorageLimit(value));
+              }}
+              placeholder={uk.taskCrud.emojiInputPlaceholder}
+              placeholderTextColor={colors.textSecondary}
+              style={styles.textInput}
+              accessibilityLabel={uk.taskCrud.emojiInputLabel}
+            />
+            <TextInput
+              testID="task-custom-emoji-input"
+              value={emoji}
+              onChangeText={(value) => {
+                parentSessionStore.touch();
+                setEmoji(fitEmojiToStorageLimit(value));
+              }}
+              placeholder={uk.taskCrud.emojiInputPlaceholder}
+              placeholderTextColor={colors.textSecondary}
+              style={styles.textInput}
+              accessibilityLabel={uk.taskCrud.customEmojiLabel}
+            />
           </View>
 
           {/* Target Minutes Stepper */}

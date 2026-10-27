@@ -127,6 +127,7 @@ export const uk = {
     emojiPlaceholder: 'Не вибрано',
     emojiFieldLabel: 'Емодзі для завдання',
     emojiInputLabel: 'Власне емодзі',
+    customEmojiLabel: 'Власне емодзі',
     emojiInputPlaceholder: 'Вставте або введіть емодзі',
     weekdays: ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Нд'],
     errors: {
