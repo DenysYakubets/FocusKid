@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { Modal, ScrollView, StyleSheet, View } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/routes';
 import { DaySessionStat, DayStat, RangePreset } from '../services/stats/statsService';
@@ -254,12 +254,10 @@ export function CalendarScreen({ navigation, onDayDetailChange }: Props) {
         {uk.calendar.dayHint}
       </AppText>
 
-      {selectedDay !== null ? (
-        <ScrollView
-          testID="calendar-day-detail"
-          style={styles.detailCard}
-          contentContainerStyle={styles.detailContent}
-        >
+      <Modal transparent visible={selectedDay !== null} animationType="fade" onRequestClose={() => { setSelectedDay(null); setDaySessions([]); }}>
+        {selectedDay !== null ? (
+          <View testID="calendar-day-detail-dialog" style={styles.detailBackdrop}>
+            <ScrollView testID="calendar-day-detail-scroll" style={styles.detailCard} contentContainerStyle={styles.detailContent}>
           <View style={styles.detailHeader}>
             <AppText variant="title" accessibilityRole="header" style={styles.detailTitle}>
               {`${Number(selectedDay.slice(8, 10))} ${uk.calendar.months[parseDate(selectedDay).month - 1]}`}
@@ -314,8 +312,10 @@ export function CalendarScreen({ navigation, onDayDetailChange }: Props) {
               </View>
             ))
           )}
-        </ScrollView>
-      ) : null}
+            </ScrollView>
+          </View>
+        ) : null}
+      </Modal>
     </View>
   );
 }
@@ -446,14 +446,16 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     textAlign: 'center',
   },
+  detailBackdrop: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, flex: 1, backgroundColor: 'rgba(17, 24, 39, 0.7)', justifyContent: 'center', alignItems: 'center', padding: spacing.lg },
   detailCard: {
-    maxHeight: 280,
+    flex: 1, width: '100%', maxWidth: 560, // Large dialog — no height cap (the old sheet was maxHeight: 280)
     backgroundColor: colors.cardBg,
     borderRadius: radius.lg,
     borderCurve: 'continuous',
     borderWidth: 1,
     borderColor: colors.border,
-    boxShadow: shadows.card,
+    boxShadow: shadows.overlay,
+    overflow: 'hidden',
   },
   detailContent: {
     padding: spacing.md,
