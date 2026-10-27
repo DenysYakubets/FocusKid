@@ -141,6 +141,7 @@ export const uk = {
     emojiInputLabel: 'Власне емодзі',
     customEmojiLabel: 'Власне емодзі',
     emojiInputPlaceholder: 'Вставте або введіть емодзі',
+    customEmojiPlaceholder: 'Додай своє емоджі',
     weekdays: ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Нд'],
     errors: {
       titleEmpty: 'Введіть назву завдання',

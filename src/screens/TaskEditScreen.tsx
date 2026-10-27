@@ -240,7 +240,7 @@ export function TaskEditScreen({ route, navigation }: Props) {
             />
           </View>
 
-          {/* Custom Unicode input alongside the curated picker. */}
+          {/* Emoji is edited in one picker dialog. */}
           <View style={styles.field}>
             <AppText variant="body" style={styles.fieldLabel}>
               {uk.taskCrud.emojiLabel}
@@ -266,30 +266,6 @@ export function TaskEditScreen({ route, navigation }: Props) {
                 {`› ${uk.taskCrud.emojiTitle}`}
               </AppText>
             </TapTarget>
-            <TextInput
-              testID="task-emoji-input"
-              value={emoji}
-              onChangeText={(value) => {
-                parentSessionStore.touch();
-                setEmoji(fitEmojiToStorageLimit(value));
-              }}
-              placeholder={uk.taskCrud.emojiInputPlaceholder}
-              placeholderTextColor={colors.textSecondary}
-              style={styles.textInput}
-              accessibilityLabel={uk.taskCrud.emojiInputLabel}
-            />
-            <TextInput
-              testID="task-custom-emoji-input"
-              value={emoji}
-              onChangeText={(value) => {
-                parentSessionStore.touch();
-                setEmoji(fitEmojiToStorageLimit(value));
-              }}
-              placeholder={uk.taskCrud.emojiInputPlaceholder}
-              placeholderTextColor={colors.textSecondary}
-              style={styles.textInput}
-              accessibilityLabel={uk.taskCrud.customEmojiLabel}
-            />
           </View>
 
           {/* Target Minutes Stepper */}
@@ -456,7 +432,7 @@ export function TaskEditScreen({ route, navigation }: Props) {
             value={emoji}
             onSelect={(next) => {
               parentSessionStore.touch();
-              setEmoji(next ?? '');
+              setEmoji(next ? fitEmojiToStorageLimit(next) : '');
             }}
             onClose={() => setEmojiPickerOpen(false)}
           />

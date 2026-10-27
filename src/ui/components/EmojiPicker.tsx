@@ -27,13 +27,11 @@ const COLUMNS = 4;
  */
 export function EmojiPicker({ value, onSelect, onClose, testID }: EmojiPickerProps) {
   const [query, setQuery] = useState('');
+  const [draft, setDraft] = useState(value);
   const visible = filterEmojis(query);
   const rows = chunkEmojis(visible, COLUMNS);
 
-  const handleSelect = (option: EmojiOption) => {
-    onSelect(option.char);
-    onClose();
-  };
+  const handleSelect = (option: EmojiOption) => setDraft(option.char);
 
   return (
     <View testID={testID ?? 'emoji-picker'} style={styles.overlay}>
@@ -62,7 +60,7 @@ export function EmojiPicker({ value, onSelect, onClose, testID }: EmojiPickerPro
           {rows.map((row, rowIndex) => (
             <View key={`row-${rowIndex}`} style={styles.gridRow}>
               {row.map((option) => {
-                const isSelected = option.char === value;
+                const isSelected = option.char === draft;
                 return (
                   <TapTarget
                     key={option.char}
@@ -85,14 +83,33 @@ export function EmojiPicker({ value, onSelect, onClose, testID }: EmojiPickerPro
           ) : null}
         </ScrollView>
 
+        <TextInput
+          testID="emoji-custom-input"
+          value={draft}
+          onChangeText={setDraft}
+          placeholder={uk.taskCrud.customEmojiPlaceholder}
+          placeholderTextColor={colors.textSecondary}
+          accessibilityLabel={uk.taskCrud.customEmojiPlaceholder}
+          style={styles.search}
+        />
+
         <View style={styles.actions}>
+          <AppButton
+            testID="emoji-picker-save"
+            label={uk.taskCrud.save}
+            variant="primary"
+            size="md"
+            onPress={() => {
+              onSelect(draft.trim() ? draft : null);
+              onClose();
+            }}
+          />
           <AppButton
             label={uk.taskCrud.emojiClear}
             variant="secondary"
             size="md"
             onPress={() => {
-              onSelect(null);
-              onClose();
+              setDraft('');
             }}
           />
           <AppButton label={uk.taskCrud.cancel} variant="ghost" size="md" onPress={onClose} />
