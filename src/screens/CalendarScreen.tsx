@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Modal, ScrollView, StyleSheet, TextInput, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/routes';
 import { DaySessionStat, DayStat } from '../services/stats/statsService';
@@ -37,6 +38,11 @@ type Props = NativeStackScreenProps<RootStackParamList, 'Today'> & {
 export function CalendarScreen({ navigation, onDayDetailChange }: Props) {
   const { statsService, wall } = useServices();
   const { gutter, isLandscape } = useScreenGutter();
+  const insets = useSafeAreaInsets();
+  const dialogBackdropStyle = [
+    styles.detailBackdrop,
+    { paddingTop: insets.top + spacing.lg, paddingBottom: insets.bottom + spacing.lg },
+  ];
 
   const [anchor, setAnchor] = useState<string>(() => buildAnchor(wall.todayLocalDate()));
   const [weekMinutes, setWeekMinutes] = useState(0);
@@ -302,7 +308,7 @@ export function CalendarScreen({ navigation, onDayDetailChange }: Props) {
       </ScrollView>
 
       <Modal transparent visible={filterOpen} animationType="fade" onRequestClose={() => setFilterOpen(false)}>
-        {filterOpen ? <View testID="calendar-analytics-filter-dialog" style={styles.detailBackdrop}>
+        {filterOpen ? <View testID="calendar-analytics-filter-dialog" style={dialogBackdropStyle}>
           <View style={styles.filterDialog}>
             <AppText variant="title" accessibilityRole="header">{uk.calendar.analytics.filterTitle}</AppText>
             <ScrollView style={styles.filterScroll} contentContainerStyle={styles.filterContent}>
@@ -336,7 +342,7 @@ export function CalendarScreen({ navigation, onDayDetailChange }: Props) {
 
       <Modal transparent visible={selectedDay !== null} animationType="fade" onRequestClose={() => { setSelectedDay(null); setDaySessions([]); }}>
         {selectedDay !== null ? (
-          <View testID="calendar-day-detail-dialog" style={styles.detailBackdrop}>
+          <View testID="calendar-day-detail-dialog" style={dialogBackdropStyle}>
             <ScrollView testID="calendar-day-detail-scroll" style={styles.detailCard} contentContainerStyle={styles.detailContent}>
           <View style={styles.detailHeader}>
             <AppText variant="title" accessibilityRole="header" style={styles.detailTitle}>
@@ -535,7 +541,7 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     textAlign: 'center',
   },
-  detailBackdrop: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, flex: 1, backgroundColor: 'rgba(17, 24, 39, 0.7)', justifyContent: 'center', alignItems: 'center', padding: spacing.lg },
+  detailBackdrop: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, flex: 1, backgroundColor: 'rgba(17, 24, 39, 0.7)', justifyContent: 'center', alignItems: 'center', paddingHorizontal: spacing.lg },
   detailCard: {
     flex: 1, width: '100%', maxWidth: 560, // Large dialog — no height cap (the old sheet was maxHeight: 280)
     backgroundColor: colors.cardBg,
