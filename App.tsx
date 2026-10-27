@@ -19,6 +19,7 @@ import { useMascotStore } from './src/state/mascotStore';
 import { RootNavigator } from './src/navigation/RootNavigator';
 import { ErrorBoundary } from './src/ui/components/ErrorBoundary';
 import { AppFrame } from './src/ui/components/AppFrame';
+import { UpdateChecker } from './src/ui/components/UpdateChecker';
 import { AppText } from './src/ui/components/AppText';
 import { TapTarget } from './src/ui/components/TapTarget';
 import { uk } from './src/i18n/uk';
@@ -122,6 +123,7 @@ export function AppBootstrap() {
               <RootNavigator />
             </ErrorBoundary>
           </NavigationContainer>
+          <UpdateChecker />
         </AppFrame>
         <StatusBar style="auto" />
       </SafeAreaProvider>

@@ -139,7 +139,15 @@ export function CalendarScreen({ navigation, onDayDetailChange }: Props) {
   const taskTitles = Array.from(new Set(analyticsRows.map((row) => row.taskTitle))).sort((a, b) => a.localeCompare(b, 'uk'));
   const dateLabels = analyticsRange === 'thisWeek'
     ? week.weekDates.filter((date) => date <= today)
-    : Array.from({ length: Math.min(14, Math.max(1, Math.floor((new Date(`${analyticsEnd}T00:00:00`).getTime() - new Date(`${analyticsStart}T00:00:00`).getTime()) / 86400000) + 1)) }, (_, index) => wall.addDays(analyticsStart, index));
+    : (() => {
+        const dates: string[] = [];
+        for (let offset = 0; offset < 14; offset += 1) {
+          const date = wall.addDays(analyticsStart, offset);
+          if (offset > 0 && date > analyticsEnd) break;
+          dates.push(date);
+        }
+        return dates;
+      })();
   const chartDates = dateLabels.slice(-7);
   const chartMinutes = chartDates.map((date) => visibleAnalyticsRows.filter((row) => row.localDate === date).reduce((sum, row) => sum + row.minutes, 0));
   const chartMax = Math.max(1, ...chartMinutes);

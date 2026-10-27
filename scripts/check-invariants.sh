@@ -9,17 +9,17 @@ else
   exit 1
 fi
 
-# TSC-3: INV-01 app.json permissions
-if node -e "const a=require('./app.json').expo.android;const b=a.blockedPermissions ?? [];const p=a.permissions ?? [];process.exit(b.includes('android.permission.INTERNET') && !p.includes('android.permission.INTERNET') ? 0 : 1)"; then
+# TSC-3: INV-01 (amended) app.json grants INTERNET for update check + knowledge text present
+if node -e "const a=require('./app.json').expo.android;const b=a.blockedPermissions ?? [];const p=a.permissions ?? [];process.exit(p.includes('android.permission.INTERNET') && !b.includes('android.permission.INTERNET') ? 0 : 1)" && grep -qF 'update-manifest.json' VISION.md; then
   echo "PASS TSC-3"
 else
   echo "FAIL TSC-3"
   exit 1
 fi
 
-# TSC-4: INV-01 Merged AndroidManifest has no INTERNET (requires Gradle build)
+# TSC-4: INV-01 (amended) merged AndroidManifest CONTAINS INTERNET (update-check only, ADR-005)
 if test -d android/app/build/intermediates/merged_manifests/debug; then
-  if ! grep -rq "android.permission.INTERNET" android/app/build/intermediates/merged_manifests/debug; then
+  if grep -rq "android.permission.INTERNET" android/app/build/intermediates/merged_manifests/debug; then
     echo "PASS TSC-4"
   else
     echo "FAIL TSC-4"
@@ -29,8 +29,21 @@ else
   echo "SKIP TSC-4 (requires Gradle build)"
 fi
 
-# TSC-5: INV-01 No networking/analytics dependencies or calls
-if ! grep -qF -e '"firebase"' -e '@react-native-firebase/' -e '@sentry/' -e 'sentry-expo' -e '"axios"' -e '"expo-updates"' -e '"expo-notifications"' -e '"expo-network"' -e '@react-native-community/netinfo' -e 'google-mobile-ads' -e 'react-native-iap' -e 'expo-in-app-purchases' -e '@segment/' -e 'mixpanel' -e '@amplitude/' package.json && ! grep -rnE -e "\bfetch\(" -e "XMLHttpRequest" -e "new WebSocket\(" src App.tsx; then
+# TSC-5: INV-01 networking/analytics ban with owner-approved update-check allowlist
+if ! grep -qF -e '"firebase"' -e '@react-native-firebase/' -e '@sentry/' -e 'sentry-expo' -e '"axios"' -e '"expo-updates"' -e '"expo-notifications"' -e '"expo-network"' -e '@react-native-community/netinfo' -e 'google-mobile-ads' -e 'react-native-iap' -e 'expo-in-app-purchases' -e '@segment/' -e 'mixpanel' -e '@amplitude/' package.json && ! grep -rnE -e "XMLHttpRequest" -e "new WebSocket\(" src App.tsx && node <<'NODE'
+const fs = require('node:fs');
+const { execFileSync } = require('node:child_process');
+let matches;
+try {
+  matches = execFileSync('grep', ['-rlE', '\\bfetch\\(', 'src', 'App.tsx'], { encoding: 'utf8' }).trim().split('\n').filter(Boolean);
+} catch (error) {
+  if (error.status !== 1) throw error;
+  matches = [];
+}
+const allowed = new Set(['src/services/update/checkForUpdate.ts', 'src/ui/components/UpdateChecker.tsx']);
+if (matches.some(name => !allowed.has(name))) process.exit(1);
+NODE
+then
   echo "PASS TSC-5"
 else
   echo "FAIL TSC-5"
@@ -130,8 +143,8 @@ else
   exit 1
 fi
 
-# TSC-18: INV-01 Config plugins registered and tested
-if grep -qF './plugins/withNoInternet' app.json && grep -qF './plugins/withBundledDebugJs' app.json && npm test -- --ci test/config; then
+# TSC-18: INV-01 (amended) INTERNET-stripping plugin removed; embedded-JS plugin registered and tested
+if ! grep -qF './plugins/withNoInternet' app.json && grep -qF './plugins/withBundledDebugJs' app.json && npm test -- --ci test/config; then
   echo "PASS TSC-18"
 else
   echo "FAIL TSC-18"

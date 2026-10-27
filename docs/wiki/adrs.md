@@ -54,6 +54,28 @@
   `src/screens/StatsScreen.tsx#L187-L191`, `src/ui/components/MascotFloating.tsx#L67`,
   `src/ui/__tests__/mascotFloating.test.tsx#L168-L175`, `docs/UX_FIXES_NOTES.md` §"mascot off Stats".
 
+### ADR-004: GitHub Releases Update Channel (owner approved; INV-01 departure)
+
+- **Decision**: Publish `FocusKid-latest.apk` and `manifest.json` as stable GitHub Release assets,
+  with an in-app update banner whose update action opens the browser for the external download.
+  This owner-approved feature departs from INV-01's zero-network policy. Keep the INTERNET
+  permission blocked and leave TSC-3 / `withNoInternet` unchanged.
+- **Rationale**: The release-asset CDN does not send `Access-Control-Allow-Origin`, so the app cannot
+  fetch its release `manifest.json` from React Native Web. The app instead reads the synced root
+  `update-manifest.json` at `raw.githubusercontent.com`, which sends
+  `Access-Control-Allow-Origin: *`. Installation stays in the browser download flow; the app does
+  not install packages itself.
+- **Status**: Implemented, with two open deployment questions: the in-app check is inert on device
+  while INTERNET remains blocked, until the owner explicitly unblocks it; and this repository is
+  currently private, so unauthenticated raw and release URLs return 404 until the owner makes it
+  public. The 'keep the INTERNET permission blocked and leave TSC-3 / withNoInternet unchanged' clause is superseded by ADR-005 (owner approved the INTERNET permission for the update check).
+
+### ADR-005: INTERNET Permission Granted for Update Check Only (owner approved; amends INV-01)
+
+- **Decision**: Grant `android.permission.INTERNET` in the APK: `app.json` `android.permissions` now includes it, `android.blockedPermissions` no longer blocks it, and the `./plugins/withNoInternet` config plugin is removed, so the in-app UpdateChecker can perform its single GET of `update-manifest.json`. INV-01 is **amended, not deleted**: the app must remain fully functional offline; INTERNET exists solely for the update-check fetch with silent failure; no other feature may require network. Gates TSC-3 / TSC-4 / TSC-18 now assert INTERNET is present and that no plugin strips it.
+- **Rationale**: The owner (Denys) approved both making this repository public and adding the permission; without it the update banner shipped in ADR-004 is inert on device. Scope stays minimal — one unauthenticated GET to `raw.githubusercontent.com` (CORS `*`), and any failure is swallowed so the offline experience is unchanged; no analytics/telemetry/ads dependencies are introduced (TSC-5 untouched).
+- **Status**: Implemented on `feat/update-channel` (PR #17). Evidence: `app.json` `android.permissions`, `scripts/check-invariants.sh` TSC-3/TSC-4/TSC-18, `test/config/appConfig.inv01.test.ts`, root `update-manifest.json`.
+
 ## Historical / superseded decisions
 
 _None yet. When an ADR is overturned, mark it superseded here and record the replacement ADR — do

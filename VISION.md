@@ -41,7 +41,7 @@
 
 ## 3. Hard Invariants (Технічні вето)
 
-- [INV-01] **Zero Network**: Заборонено додавати `android.permission.INTERNET` у production `AndroidManifest.xml` / `app.json`. Будь-яка спроба додати мережеву залежність (аналітика, телеметрія, зовнішні сервіси) блокується на етапі PR.
+- [INV-01] **Zero Network**: Заборонено використовувати мережу поза update-перевіркою. Будь-яка спроба додати мережеву залежність (аналітика, телеметрія, зовнішні сервіси) блокується на етапі PR. Amended (owner-approved, ADR-005): android.permission.INTERNET is GRANTED solely for the update check — one GET of update-manifest.json with silent failure; the app must remain fully functional offline and no other feature may require network.
 - [INV-02] **Monotonic Timer Integrity**: Заборонено використовувати системний час `Date.now()` для розрахунку тривалості сесії. Відлік часу тільки через монотонні годинники без стрибків назад.
 - [INV-03] **No Early Termination by Child**: У стані `Running` дитина не може перевести таймер у `Completed` або `Verified` до спливу цільового часу.
 - [INV-04] **Pause Abuse Protection**: Пауза має ліміт (макс. 5 хв на сесію або авто-резюме).

@@ -56,7 +56,7 @@ cat <<EOF > "$NOTES_FILE"
 FocusKid ${TAG} (Offline Debug Build)
 
 - Offline-first child visual timer with parent PIN verification
-- INV-01: zero networking, zero ads/analytics/telemetry, blocked INTERNET permission
+- INV-01: zero networking, zero ads/analytics/telemetry, INTERNET permission only for the silent update check (ADR-005)
 - INV-08: full landscape and portrait parity
 - INV-10: scalable text (16sp body, maxFontScale 3.0) + touch targets >= 48dp + TalkBack
 - Self-contained debug APK with bundled JS
@@ -66,6 +66,12 @@ gh release create "$TAG" "$APK_TARGET" \
   --title "FocusKid ${TAG}" \
   --notes-file "$NOTES_FILE" \
   --prerelease
+
+echo "=== Step 9b: Publishing stable update-channel assets ==="
+if ! bash scripts/publish-release.sh "$TAG" "FocusKid ${TAG} (Offline Debug Build)"; then
+  echo "Error: stable update-channel publishing failed for $TAG." >&2
+  exit 1
+fi
 
 rm -f "$NOTES_FILE"
 

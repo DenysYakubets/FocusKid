@@ -18,9 +18,8 @@
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
       "predictiveBackGestureEnabled": false,
-      "permissions": [],
+      "permissions": ["android.permission.INTERNET"],
       "blockedPermissions": [
-        "android.permission.INTERNET",
         "android.permission.ACCESS_NETWORK_STATE"
       ]
     },
@@ -37,7 +36,6 @@
           }
         }
       ],
-      "./plugins/withNoInternet",
       "./plugins/withBundledDebugJs",
       "expo-audio",
       "expo-sharing"

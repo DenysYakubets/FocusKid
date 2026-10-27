@@ -19,7 +19,7 @@ FocusKid is an **offline-only Android app** (React Native + Expo, TypeScript `st
 
 Non-negotiables taken from VISION.md:
 
-- **Zero network.** No `android.permission.INTERNET`, no analytics or telemetry, no accounts, no cloud (INV-01).
+- **Offline-first (INV-01, amended).** The app remains fully functional offline; `android.permission.INTERNET` is granted solely for one silent GET of `update-manifest.json` (ADR-005). No other feature may require network; no analytics or telemetry, no accounts, no cloud.
 - **Monotonic time** for every duration. `Date.now()` is never used for durations (INV-02).
 - **Timer FSM** `Idle → Running → Paused → Completed → Verified`, with strictly validated transitions (INV-03, INV-04, INV-06).
 - **Parent mode only through a local PIN.** The PIN is hashed with PBKDF2-SHA256 and a local salt, and there is no recovery (INV-05).
@@ -70,7 +70,7 @@ FocusKid/
 ├── jest.config.js               # preset jest-expo, setupFiles, transformIgnorePatterns
 ├── package.json                 # scripts: test, typecheck, check:invariants, release:apk
 ├── plugins/
-│   ├── withNoInternet.js        # strips INTERNET from every manifest source (INV-01)
+│   ├── withNoInternet.js        # plugin removed by ADR-005
 │   └── withBundledDebugJs.js    # embeds JS bundle in debug APK (Stage 4)
 ├── scripts/
 │   ├── check-invariants.sh      # runs all static TSC checks (section D)
@@ -411,9 +411,9 @@ npm install -D jest jest-expo @types/jest @testing-library/react-native better-s
 | `package.json` | `scripts`: `"test": "jest"`, `"typecheck": "tsc --noEmit"`, `"check:invariants": "bash scripts/check-invariants.sh"`; `"jest"` config removed in favour of `jest.config.js`. |
 | `tsconfig.json` | `{ "extends": "expo/tsconfig.base", "compilerOptions": { "strict": true, "noUncheckedIndexedAccess": true, "noImplicitOverride": true }, "include": ["**/*.ts", "**/*.tsx"] }` |
 | `jest.config.js` | `preset: 'jest-expo'`, `setupFilesAfterEnv: ['<rootDir>/test/setup.ts']`, `testPathIgnorePatterns: ['/node_modules/', '/android/']`, `transformIgnorePatterns` per jest-expo docs, extended with `@react-navigation` and `@noble`. |
-| `app.json` | `name` "FocusKid", `slug` "focuskid", `version` "0.1.0", **`orientation: "default"`**, `android.package: "com.focuskid.app"`, **`android.permissions: []`**, **`android.blockedPermissions: ["android.permission.INTERNET", "android.permission.ACCESS_NETWORK_STATE"]`**, `plugins: ["expo-sqlite", ["expo-build-properties", { "android": { "minSdkVersion": 24 } }], "./plugins/withNoInternet"]`. |
+| `app.json` | `name` "FocusKid", `slug` "focuskid", `version` "0.1.0", **`orientation: "default"`**, `android.package: "com.focuskid.app"`, **`android.permissions: ["android.permission.INTERNET"]`**, **`android.blockedPermissions: ["android.permission.ACCESS_NETWORK_STATE"]`**, `plugins: ["expo-sqlite", ["expo-build-properties", { "android": { "minSdkVersion": 24 } }], "./plugins/withBundledDebugJs"]`. |
 | `.gitignore` | Ensure the lines `android/`, `ios/`, `dist/`, `*.apk`, `*.aab`, `*.keystore` and `.expo/` are present. |
-| `plugins/withNoInternet.js` | `withAndroidManifest`: ensures `<uses-permission android:name="android.permission.INTERNET" tools:node="remove"/>` and the `xmlns:tools` namespace in the main manifest. `withDangerousMod('android')`: after prebuild, deletes any `uses-permission` for INTERNET from `android/app/src/debug/AndroidManifest.xml` and `src/debugOptimized/` if present, because build-type manifests outrank `tools:node="remove"` in main. Idempotent. |
+| `plugins/withNoInternet.js` | Removed by ADR-005; no config plugin strips INTERNET. |
 | `scripts/check-invariants.sh` | `set -euo pipefail`. Runs the **static** TSC commands TSC-2, 3, 5, 6, 12 (static half), 14, 15 (static half), 16 (static half) and 17 verbatim from section D, each echoing `PASS TSC-n` or exiting non-zero with `FAIL TSC-n`. Lines for checks whose files don't exist yet print `SKIP TSC-n (stage X)` and are guarded with `test -e`. |
 | `App.tsx` | Placeholder: runs `migrate()` + `seedIfEmpty()` and renders `AppText` "FocusKid". Stage 2 replaces it. Uses no raw `fontSize`. |
 | `src/domain/timer/types.ts`, `constants.ts`, `elapsed.ts`, `fsm.ts` | Exactly as in B.5. `fsm.ts` is a single exported `transition()` built from a `switch (state.kind)` with exhaustive `never` checks. It does not mutate its input. |
@@ -441,7 +441,7 @@ npm install -D jest jest-expo @types/jest @testing-library/react-native better-s
 6. **Hydration:** in `timerService.test.ts`, start, advance 7 s, checkpoint, then create a **new** service instance on the same `Db` with a fresh fake clock starting at 0 and hydrate. The restored state is Running with `runAccumMs = 7000` (±checkpoint granularity), and it completes after exactly `target − 7000` more ms.
 7. **Single active and one-per-day:** a second `start()` while one session is Running is rejected. A second `start()` of the same task on the same `local_date` is rejected unless the first was abandoned.
 8. **Migrations:** `migrate()` is idempotent (run twice → `user_version = 1`, no error). All tables, indexes and triggers exist (checked via `sqlite_master`).
-9. **INV-01:** `appConfig.inv01.test.ts` asserts that `app.json` contains `android.blockedPermissions ⊇ [INTERNET]`, that `permissions` doesn't include it, that `orientation === 'default'`, and that `plugins` contains `./plugins/withNoInternet`. It also unit-tests the plugin's manifest transform on a fixture object containing INTERNET and asserts the `tools:node="remove"` result.
+9. **INV-01:** `appConfig.inv01.test.ts` asserts INTERNET is granted solely for update-check fetch, is not blocked, ACCESS_NETWORK_STATE remains blocked, orientation is default, and the embedded-JS plugin is registered while withNoInternet is absent. It also scans every plugin JavaScript file to assert no plugin strips INTERNET using `tools:node`.
 10. `npx tsc --noEmit` is clean under `strict`.
 
 **Test commands:**
@@ -623,8 +623,8 @@ Run every command from the repository root. Commands are written without `|` cha
 |---|---|---|
 | TSC-1 | Tests | The whole Jest suite (unit, integration, UI) passes with no failures or skipped suites -- verify: `npm test -- --ci` |
 | TSC-2 | TypeScript | The project type-checks cleanly with `strict: true` set in tsconfig.json -- verify: `npx tsc --noEmit && grep -qE '"strict":\s*true' tsconfig.json` |
-| TSC-3 | INV-01 | `app.json` blocks `android.permission.INTERNET` and never requests it -- verify: `node -e "const a=require('./app.json').expo.android;const b=a.blockedPermissions ?? [];const p=a.permissions ?? [];process.exit(b.includes('android.permission.INTERNET') && !p.includes('android.permission.INTERNET') ? 0 : 1)"` |
-| TSC-4 | INV-01 | The merged AndroidManifest that is packaged into the debug APK contains no INTERNET permission -- verify: `test -d android/app/build/intermediates/merged_manifests/debug && ! grep -rq "android.permission.INTERNET" android/app/build/intermediates/merged_manifests/debug` |
+| TSC-3 | INV-01 | Amended INV-01 grants INTERNET for update check and knowledge text is present -- verify: `node -e "const a=require('./app.json').expo.android;const b=a.blockedPermissions ?? [];const p=a.permissions ?? [];process.exit(p.includes('android.permission.INTERNET') && !b.includes('android.permission.INTERNET') ? 0 : 1)" && grep -qF 'update-manifest.json' VISION.md` |
+| TSC-4 | INV-01 | Merged AndroidManifest contains INTERNET for update-check only (ADR-005) -- verify: `if test -d android/app/build/intermediates/merged_manifests/debug; then if grep -rq "android.permission.INTERNET" android/app/build/intermediates/merged_manifests/debug; then echo "PASS TSC-4"; else echo "FAIL TSC-4"; exit 1; fi; else echo "SKIP TSC-4 (requires Gradle build)"; fi` |
 | TSC-5 | INV-01 | No networking, analytics, telemetry, ads or IAP dependency, and no network API usage in source -- verify: `! grep -qF -e '"firebase"' -e '@react-native-firebase/' -e '@sentry/' -e 'sentry-expo' -e '"axios"' -e '"expo-updates"' -e '"expo-notifications"' -e '"expo-network"' -e '@react-native-community/netinfo' -e 'google-mobile-ads' -e 'react-native-iap' -e 'expo-in-app-purchases' -e '@segment/' -e 'mixpanel' -e '@amplitude/' package.json && ! grep -rnE -e "\bfetch\(" -e "XMLHttpRequest" -e "new WebSocket\(" src App.tsx` |
 | TSC-6 | INV-02 | No wall-clock duration math anywhere in app code. `Date` is constructed only in `wallClock.ts`, and the monotonic clock is `performance.now()` -- verify: `! grep -rnE --exclude-dir=__tests__ -e "Date\.now\(" -e "\.getTime\(\)" -e "performance\.timeOrigin" src App.tsx && ! grep -rnF --exclude-dir=__tests__ --exclude=wallClock.ts "new Date(" src App.tsx && grep -qF "performance.now()" src/services/clock/monotonic.ts` |
 | TSC-7 | INV-02 | Behaviour: the timer and lockout ignore wall-clock jumps and never gain time on a backwards step -- verify: `npm test -- --ci src/services/clock src/domain/timer/__tests__/elapsed.test.ts src/services/timer src/services/auth/__tests__/authService.test.ts` |
@@ -638,7 +638,7 @@ Run every command from the repository root. Commands are written without `|` cha
 | TSC-15 | INV-10 | Every typography token is ≥ 48sp, there are no raw `fontSize` literals outside the theme, and contrast is ≥ 4.5:1 -- verify: `! grep -rnE --exclude=theme.ts --exclude-dir=__tests__ "fontSize:\s*[0-9]" src App.tsx && npm test -- --ci src/ui/__tests__/theme.inv10.test.ts src/ui/__tests__/contrast.test.ts` |
 | TSC-16 | INV-10 | Every touch target is ≥ 48×48dp with a TalkBack label and role, and pressables are rendered only through `TapTarget` -- verify: `! grep -rlE --include=*.tsx --exclude=TapTarget.tsx -e "<Pressable\b" -e "<Touchable[A-Za-z]*\b" -e "<Button\b" src && npm test -- --ci src/ui/__tests__/a11y.inv10.test.tsx` |
 | TSC-17 | Distribution | No APK or AAB is tracked in git, and generated native dirs and artifacts are ignored -- verify: `test -z "$(git ls-files '*.apk' '*.aab')" && grep -qxF '*.apk' .gitignore && grep -qxF 'android/' .gitignore && grep -qxF 'dist/' .gitignore` |
-| TSC-18 | INV-01 | The no-INTERNET config plugin and the embedded-JS plugin are registered and their transforms are unit-tested -- verify: `grep -qF './plugins/withNoInternet' app.json && grep -qF './plugins/withBundledDebugJs' app.json && npm test -- --ci test/config` |
+| TSC-18 | INV-01 | INTERNET-stripping plugin is removed; embedded-JS plugin is registered and tested -- verify: `! grep -qF './plugins/withNoInternet' app.json && grep -qF './plugins/withBundledDebugJs' app.json && npm test -- --ci test/config` |
 | TSC-19 | Build | The debug APK is produced by Gradle -- verify: `test -s android/app/build/outputs/apk/debug/app-debug.apk` |
 | TSC-20 | Distribution | The APK is published as an asset of the GitHub Release for the tag -- verify: `gh release download v0.1.0 --pattern 'focuskid-v0.1.0-debug.apk' --dir /tmp/fk-release-verify --clobber` |
 
