@@ -290,7 +290,11 @@ export function CalendarScreen({ navigation, onDayDetailChange }: Props) {
         <View style={styles.analyticsFilterLine}>
           <AppText variant="body" numberOfLines={1} style={styles.analyticsLabel}>{filterSummary}</AppText>
           <TapTarget testID="calendar-analytics-filter-btn" accessibilityRole="button" accessibilityLabel={uk.calendar.analytics.openFilters} onPress={() => { setDraftRange(analyticsRange); setDraftTasks(analyticsTasks); setDraftStart(customStart); setDraftEnd(customEnd); setFilterOpen(true); }} style={styles.filterButton}>
-            <AppText variant="heading" style={styles.filterIcon}>⏷</AppText>
+            <View testID="calendar-analytics-filter-icon" importantForAccessibility="no" accessibilityElementsHidden style={styles.filterIcon}>
+              <View style={styles.filterIconBarWide} />
+              <View style={styles.filterIconBarMedium} />
+              <View style={styles.filterIconBarNarrow} />
+            </View>
           </TapTarget>
         </View>
         <AppText testID="calendar-analytics-summary" variant="caption" style={styles.rangeSummary}>
@@ -478,7 +482,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   analytics: { gap: spacing.xs, backgroundColor: colors.surface, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.border, padding: spacing.sm }, analyticsTitle: { color: colors.text }, analyticsLabel: { color: colors.textSecondary, flex: 1 }, rangeSummary: { color: colors.text, fontVariant: ['tabular-nums'] },
-  analyticsFilterLine: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs }, filterButton: { width: MIN_TOUCH_DP, height: MIN_TOUCH_DP, borderRadius: radius.md, alignItems: 'center', justifyContent: 'center' }, filterIcon: { color: colors.primary, transform: [{ rotate: '180deg' }] },
+  analyticsFilterLine: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs }, filterButton: { width: MIN_TOUCH_DP, height: MIN_TOUCH_DP, borderRadius: radius.md, alignItems: 'center', justifyContent: 'center' }, filterIcon: { width: 20, height: 18, justifyContent: 'center', flexDirection: 'column', alignItems: 'center', gap: 2 }, filterIconBarWide: { width: 18, height: 3, borderRadius: 1, backgroundColor: colors.primary }, filterIconBarMedium: { width: 12, height: 3, borderRadius: 1, backgroundColor: colors.primary }, filterIconBarNarrow: { width: 6, height: 3, borderRadius: 1, backgroundColor: colors.primary },
   chart: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-around', height: 82, gap: spacing.xs }, chartColumn: { flex: 1, alignItems: 'center', justifyContent: 'flex-end', gap: 2 }, chartBar: { width: '65%', minHeight: 3, backgroundColor: colors.primary, borderTopLeftRadius: 4, borderTopRightRadius: 4 }, chartLabel: { color: colors.textSecondary },
   customRange: { gap: spacing.xs }, dateInput: { minHeight: MIN_TOUCH_DP, borderWidth: 1, borderColor: colors.border, borderRadius: radius.md, paddingHorizontal: spacing.sm, color: colors.text, backgroundColor: colors.background },
   filterDialog: { width: '100%', maxWidth: 480, maxHeight: '85%', backgroundColor: colors.cardBg, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.border, padding: spacing.md, gap: spacing.sm }, filterScroll: { flexGrow: 0, maxHeight: 440 }, filterContent: { gap: spacing.xs }, optionRow: { flexDirection: 'row', justifyContent: 'flex-start', minHeight: MIN_TOUCH_DP, paddingHorizontal: spacing.xs }, optionSelected: { color: colors.primary, fontWeight: '700' }, filterActions: { flexDirection: 'row', justifyContent: 'flex-end', gap: spacing.xs },
