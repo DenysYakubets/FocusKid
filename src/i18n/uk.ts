@@ -21,6 +21,7 @@ export const uk = {
     pauseIndefinitely: 'Призупинити без обмеження',
     completeEarly: 'Завершити завдання достроково',
     durationMinutes: 'Тривалість у хвилинах',
+    editTooLong: 'Не більше тривалості завдання',
     saveDuration: 'Зберегти тривалість',
     cancelDuration: 'Назад до налаштувань',
     pauseLeft: 'Пауза: залишилось',

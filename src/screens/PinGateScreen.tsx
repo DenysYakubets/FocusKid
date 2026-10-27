@@ -17,6 +17,7 @@ import { uk } from '../i18n/uk';
 import { colors, radius, shadows, spacing } from '../ui/theme';
 import { mapTimerError } from '../ui/timerErrors';
 import { MAX_TARGET_MS, MIN_TARGET_MS } from '../domain/timer/constants';
+import { remaining } from '../domain/timer/elapsed';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'PinGate'>;
 
@@ -41,6 +42,7 @@ export function PinGateScreen({ route, navigation }: Props) {
   const [showControls, setShowControls] = useState(false);
   const [editingDuration, setEditingDuration] = useState(false);
   const [durationMinutes, setDurationMinutes] = useState('15');
+  const [durationLimitMinutes, setDurationLimitMinutes] = useState(120);
 
   // Monitor lockout countdown via monotonic clock
   useEffect(() => {
@@ -97,8 +99,12 @@ export function PinGateScreen({ route, navigation }: Props) {
           setShowAbandonDialog(true);
         } else if (route.params.intent === 'timerControls') {
           setControlsToken(res.token ?? null);
-          const state = services.timerService.getSnapshot().state;
-          setDurationMinutes(String(Math.round((state.kind === 'Idle' ? 900000 : state.targetMs) / 60000)));
+          const snapshot = services.timerService.getSnapshot();
+          const state = snapshot.state;
+          const limit = state.kind === 'Idle' ? 15 : Math.floor(state.targetMs / 60000);
+          setDurationLimitMinutes(limit);
+          const remainingMinutes = state.kind === 'Idle' ? 15 : Math.max(1, Math.ceil(remaining(state, clock.now()) / 60000));
+          setDurationMinutes(String(Math.min(remainingMinutes, limit)));
           setShowControls(true);
         }
       }
@@ -245,6 +251,7 @@ export function PinGateScreen({ route, navigation }: Props) {
       <AppText variant="title" accessibilityRole="header" style={styles.dialogTitle}>{uk.timer.editDuration}</AppText>
       <AppText variant="body">{uk.timer.durationMinutes}</AppText>
       <TextInput accessibilityLabel={uk.timer.durationMinutes} keyboardType="number-pad" value={durationMinutes} onChangeText={setDurationMinutes} style={styles.durationInput} />
+      {/^\d+$/.test(durationMinutes) && Number(durationMinutes) > durationLimitMinutes && <AppText variant="body">{uk.timer.editTooLong}</AppText>}
       <AppButton label={uk.timer.saveDuration} variant="primary" size="lg" disabled={!/^\d+$/.test(durationMinutes) || Number(durationMinutes) * 60000 < MIN_TARGET_MS || Number(durationMinutes) * 60000 > MAX_TARGET_MS} onPress={() => void applyControl('duration')} />
       <AppButton label={uk.timer.cancelDuration} variant="secondary" size="lg" onPress={() => setEditingDuration(false)} />
     </View></View>

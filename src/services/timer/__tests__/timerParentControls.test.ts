@@ -17,8 +17,9 @@ describe('PIN authorized timer controls', () => {
     const db = createNodeDb(); await migrate(db); await seedIfEmpty(db, wall);
     const clock = createFakeClock(1000); const sessionsRepo = createSessionsRepo(db);
     let valid = true;
-    const service = createTimerService({ db, clock, wall, sessionsRepo, tasksRepo: createTasksRepo(db), consumeToken: token => { if (token !== 'parent-token' || !valid) return false; valid = false; return true; } });
-    return { db, clock, service, sessionsRepo };
+    const tasksRepo = createTasksRepo(db);
+    const service = createTimerService({ db, clock, wall, sessionsRepo, tasksRepo, consumeToken: token => { if (token !== 'parent-token' || !valid) return false; valid = false; return true; } });
+    return { db, clock, service, sessionsRepo, tasksRepo };
   }
 
   it('denies early completion without a fresh parent token and credits target duration in stats', async () => {
@@ -69,11 +70,23 @@ describe('PIN authorized timer controls', () => {
     expect(remaining(resumed, clock.now())).toBe(remainingAtPause - 5_000);
   });
 
-  it('edits the assigned target in persisted session data', async () => {
-    const { service, sessionsRepo } = await setup();
+  it('sets remaining time without changing the assigned target and clamps to task duration', async () => {
+    const { service, clock, sessionsRepo, tasksRepo } = await setup();
+    const task = await tasksRepo.get(1);
+    expect(task).toBeTruthy();
+    await tasksRepo.update(1, { targetMinutes: 20 }, wall.nowIso());
     await service.start(1); const id = service.getSnapshot().sessionId!;
-    expect((await service.parentEditDuration(1200000, 'parent-token')).ok).toBe(true);
-    expect((await sessionsRepo.get(id))?.targetMs).toBe(1200000);
-    expect((await service.parentEditDuration(900000)).ok).toBe(false);
+    clock.advance(15 * 60_000);
+    expect((await service.parentEditDuration(19 * 60_000, 'parent-token')).ok).toBe(true);
+    expect((await sessionsRepo.get(id))?.targetMs).toBe(20 * 60_000);
+    expect((await sessionsRepo.get(id))?.elapsedRunMs).toBe(1 * 60_000);
+    expect(remaining(service.getSnapshot().state, clock.now())).toBe(19 * 60_000);
+
+    const clamped = await setup();
+    await createTasksRepo(clamped.db).update(1, { targetMinutes: 20 }, wall.nowIso());
+    await clamped.service.start(1);
+    expect((await clamped.service.parentEditDuration(25 * 60_000, 'parent-token')).ok).toBe(true);
+    expect(remaining(clamped.service.getSnapshot().state, clamped.clock.now())).toBe(20 * 60_000);
+    expect((await clamped.sessionsRepo.get(clamped.service.getSnapshot().sessionId!))?.targetMs).toBe(20 * 60_000);
   });
 });
