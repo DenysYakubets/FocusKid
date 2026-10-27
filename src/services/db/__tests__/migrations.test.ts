@@ -87,6 +87,13 @@ describe('Database migrations', () => {
     ).rejects.toThrow(/UNIQUE/);
   });
 
+  it('V7 adds category with an other default and rejects invalid values', async () => {
+    const db = createNodeDb(); await migrate(db);
+    await db.run(`INSERT INTO tasks (title,target_minutes,days_mask,created_at,updated_at) VALUES ('New',15,127,'x','x')`);
+    expect((await db.get<{category:string}>(`SELECT category FROM tasks WHERE title='New'`))?.category).toBe('other');
+    await expect(db.run(`UPDATE tasks SET category='bad' WHERE title='New'`)).rejects.toThrow(/CHECK/);
+  });
+
   it('UPGRADE: a V2 database with task rows and sessions migrates to the latest version without data loss', async () => {
     const db = createNodeDb();
 

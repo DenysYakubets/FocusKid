@@ -2,7 +2,8 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/routes';
-import { DaySessionStat, DayStat } from '../services/stats/statsService';
+import { DaySessionStat, DayStat, RangePreset } from '../services/stats/statsService';
+import { CategoryRangeTotals, TASK_CATEGORIES, TaskCategory } from '../domain/stats/categoryTotals';
 import { useServices } from '../state/appServices';
 import {
   MonthGrid,
@@ -45,6 +46,10 @@ export function CalendarScreen({ navigation, onDayDetailChange }: Props) {
   const [grid, setGrid] = useState<MonthGrid | null>(null);
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
   const [daySessions, setDaySessions] = useState<DaySessionStat[]>([]);
+  const [rangePreset,setRangePreset]=useState<RangePreset>('last-2-weeks'); const [categoryFilter,setCategoryFilter]=useState<TaskCategory|'all'>('all');
+  const [customStart,setCustomStart]=useState(wall.todayLocalDate()); const [customEnd,setCustomEnd]=useState(wall.todayLocalDate()); const [categoryTotals,setCategoryTotals]=useState<CategoryRangeTotals|null>(null);
+  const customRange=customStart<=customEnd?{start:customStart,end:customEnd}:{start:customEnd,end:customStart};
+  useEffect(()=>{let active=true; const range=statsService.resolveRange(rangePreset,rangePreset==='custom'?customRange:undefined); void statsService.categoryTotals({startDate:range.start,endDate:range.end,category:categoryFilter}).then(result=>{if(active)setCategoryTotals(result);}).catch(()=>{if(active)setCategoryTotals(null);}); return ()=>{active=false;};},[statsService,rangePreset,customStart,customEnd,categoryFilter]);
 
   const reload = useCallback(async () => {
     try {
@@ -206,6 +211,13 @@ export function CalendarScreen({ navigation, onDayDetailChange }: Props) {
         </View>
       </View>
 
+      <View testID="calendar-analytics" style={styles.analytics}><AppText variant="title" style={styles.analyticsTitle}>{uk.calendar.analytics.title}</AppText><AppText variant="caption" style={styles.analyticsLabel}>{uk.calendar.analytics.ranges}</AppText>
+        <View testID="calendar-range-presets" style={styles.chipRow}>{(['this-week','last-2-weeks','custom'] as const).map(preset=>{const selected=rangePreset===preset;const label=preset==='this-week'?uk.calendar.analytics.rangePresets.thisWeek:preset==='last-2-weeks'?uk.calendar.analytics.rangePresets.last2Weeks:uk.calendar.analytics.rangePresets.custom;return <TapTarget key={preset} testID={`calendar-range-${preset}`} accessibilityRole="button" accessibilityLabel={label} accessibilityState={{selected}} onPress={()=>setRangePreset(preset)} style={[styles.chip,selected&&styles.chipSelected]}><AppText variant="caption" style={selected?styles.chipTextSelected:styles.chipText}>{label}</AppText></TapTarget>;})}</View>
+        {rangePreset==='custom'?<View testID="calendar-custom-range" style={styles.customRange}>{(['start','end'] as const).map(kind=><View key={kind} style={styles.customDateRow}><AppText variant="caption" style={styles.analyticsLabel}>{kind==='start'?uk.calendar.analytics.pickStart:uk.calendar.analytics.pickEnd}</AppText><View style={styles.dateChips}>{Array.from({length:14},(_,i)=>wall.addDays(wall.todayLocalDate(),i-13)).slice(kind==='start'?0:7,kind==='start'?7:14).map(date=>{const selected=(kind==='start'?customStart:customEnd)===date;return <TapTarget key={`${kind}-${date}`} accessibilityRole="button" accessibilityLabel={`${kind==='start'?uk.calendar.analytics.pickStart:uk.calendar.analytics.pickEnd}: ${date}`} accessibilityState={{selected}} onPress={()=>{if(kind==='start'){setCustomStart(date);if(date>customEnd)setCustomEnd(date);}else{setCustomEnd(date);if(date<customStart)setCustomStart(date);}}} style={[styles.dateChip,selected&&styles.chipSelected]}><AppText variant="caption" style={selected?styles.chipTextSelected:styles.chipText}>{date.slice(5)}</AppText></TapTarget>;})}</View></View>)}<AppText variant="caption">{`${customRange.start} — ${customRange.end}`}</AppText></View>:null}
+        <AppText variant="caption" style={styles.analyticsLabel}>{uk.calendar.analytics.categories}</AppText><View testID="calendar-category-filter" style={styles.chipRow}>{(['all',...TASK_CATEGORIES] as const).map(category=>{const selected=categoryFilter===category;const label=uk.calendar.analytics.categoryLabels[category];return <TapTarget key={category} testID={`calendar-category-${category}`} accessibilityRole="button" accessibilityLabel={label} accessibilityState={{selected}} onPress={()=>setCategoryFilter(category)} style={[styles.chip,selected&&styles.chipSelected]}><AppText variant="caption" style={selected?styles.chipTextSelected:styles.chipText}>{label}</AppText></TapTarget>;})}</View>
+        <View testID="calendar-category-totals" style={styles.totalCards}>{(categoryTotals?.totals??(categoryFilter==='all'?TASK_CATEGORIES:[categoryFilter]).map(category=>({category,minutes:0,sessionCount:0}))).map(total=><View key={total.category} testID={`calendar-total-${total.category}`} style={[styles.totalCard,total.minutes===0&&styles.cardEmpty]}><AppText variant="body">{`${categoryIcon(total.category)} ${uk.calendar.analytics.categoryLabels[total.category]}`}</AppText><AppText variant="heading">{`${total.minutes} ${uk.calendar.minutesUnit}`}</AppText><AppText variant="caption">{`${total.sessionCount} ${uk.calendar.analytics.sessionsUnit}`}</AppText></View>)}</View>
+        <AppText testID="calendar-range-summary" variant="caption" style={styles.rangeSummary}>{`${uk.calendar.analytics.grandTotal}: ${categoryTotals?.grandTotalMinutes??0} ${uk.calendar.minutesUnit} · ${categoryTotals?.start??customRange.start} — ${categoryTotals?.end??customRange.end}`}</AppText></View>
+
       {/* The 7-column month grid scrolls horizontally so every day keeps a
           48dp touch target even at 320dp (INV-10). */}
       <ScrollView
@@ -309,6 +321,8 @@ export function CalendarScreen({ navigation, onDayDetailChange }: Props) {
 }
 
 /** Month anchor derived from a local date without touching `Date`. */
+function categoryIcon(category: TaskCategory): string { return category==='homework'?'📝':category==='reading'?'📚':category==='sport'?'⚽':'✨'; }
+
 function buildAnchor(localDate: string): string {
   return `${localDate.slice(0, 7)}-01`;
 }
@@ -372,6 +386,7 @@ const styles = StyleSheet.create({
     fontVariant: ['tabular-nums'],
     textAlign: 'center',
   },
+  analytics: { gap: spacing.xs, backgroundColor: colors.surface, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.border, padding: spacing.sm }, analyticsTitle: { color: colors.text }, analyticsLabel: { color: colors.textSecondary }, chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs }, chip: { minHeight: MIN_TOUCH_DP, paddingHorizontal: spacing.sm, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.background }, chipSelected: { backgroundColor: colors.primary, borderColor: colors.primary }, chipText: { color: colors.text }, chipTextSelected: { color: colors.textOnAccent }, customRange: { gap: spacing.xs }, customDateRow: { gap: spacing.xs }, dateChips: { flexDirection: 'row', gap: spacing.xs }, dateChip: { flex: 1, minWidth: 0, minHeight: MIN_TOUCH_DP, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, alignItems: 'center', justifyContent: 'center' }, totalCards: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs }, totalCard: { flexGrow: 1, flexBasis: '47%', minHeight: MIN_TOUCH_DP, padding: spacing.xs, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, gap: 2 }, cardEmpty: { opacity: 0.45 }, rangeSummary: { color: colors.text, fontVariant: ['tabular-nums'] },
   gridScroll: {
     flexGrow: 0,
   },

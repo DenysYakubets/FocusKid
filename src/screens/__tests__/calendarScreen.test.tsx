@@ -1,7 +1,7 @@
 /** @jest-environment node */
 import React from 'react';
 import { StyleSheet } from 'react-native';
-import { act, fireEvent } from '@testing-library/react-native';
+import { act, fireEvent, within } from '@testing-library/react-native';
 import { renderWithApp } from '../../../test/helpers/renderWithApp';
 import { createFakeClock } from '../../../test/helpers/fakeClock';
 import { createNodeDb } from '../../../test/helpers/nodeDb';
@@ -74,7 +74,7 @@ describe('F6 - Calendar screen (earnings + approved/pending markers)', () => {
     // Header summary: minutes earned this week (35) and this month (35)
     expect(await screen.findByText(uk.calendar.weekEarned, {}, { timeout: 3000 })).toBeTruthy();
     expect(screen.getByText(uk.calendar.monthEarned)).toBeTruthy();
-    expect(screen.getAllByText(`35 ${uk.calendar.minutesUnit}`)).toHaveLength(2);
+    expect(within(screen.getByTestId('calendar-summary')).getAllByText(`35 ${uk.calendar.minutesUnit}`)).toHaveLength(2);
 
     // Month label
     expect(screen.getByText(`${uk.calendar.months[9]} 2026`)).toBeTruthy();

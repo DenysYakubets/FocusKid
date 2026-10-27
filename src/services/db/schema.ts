@@ -143,6 +143,12 @@ INSERT OR IGNORE INTO settings (key, value, updated_at) VALUES
   ('@focuskid/jingle_enabled', 'true', strftime('%Y-%m-%dT%H:%M:%fZ','now'));
 `;
 
+/** V7 adds a validated category with a neutral default for existing tasks. */
+const V7_SQL = `
+ALTER TABLE tasks ADD COLUMN category TEXT NOT NULL DEFAULT 'other'
+  CHECK (category IN ('homework','reading','sport','other'));
+`;
+
 export const MIGRATIONS: readonly string[] = [
   V1_SQL,
   V2_SQL,
@@ -150,4 +156,5 @@ export const MIGRATIONS: readonly string[] = [
   V4_SQL,
   V5_SQL,
   V6_SQL,
+  V7_SQL,
 ];

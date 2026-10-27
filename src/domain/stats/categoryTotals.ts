@@ -1,0 +1,7 @@
+export type TaskCategory='homework'|'reading'|'sport'|'other';
+export const TASK_CATEGORIES:readonly TaskCategory[]=['homework','reading','sport','other'];
+export function resolveCategory(value:unknown):TaskCategory{return TASK_CATEGORIES.includes(value as TaskCategory)?value as TaskCategory:'other';}
+export interface CategorySessionInput{taskId:number;title:string;category:TaskCategory;status?:string;runMs?:number;elapsedRunMs?:number;}
+export interface CategoryTotal{category:TaskCategory;minutes:number;sessionCount:number;}
+export interface CategoryRangeTotals{start:string;end:string;totals:CategoryTotal[];grandTotalMinutes:number;}
+export function byCategory(rows:readonly CategorySessionInput[],opts:{start:string;end:string;filter?:TaskCategory|'all';statuses?:readonly string[]}):CategoryRangeTotals{const filter=opts.filter??'all',statuses=opts.statuses??['verified'],cats=filter==='all'?TASK_CATEGORIES:[filter];const totals=cats.map(category=>{const matched=rows.filter(row=>row.category===category&&statuses.includes(row.status??''));const ms=matched.reduce((sum,row)=>sum+Number(row.elapsedRunMs??row.runMs??0),0);return{category,minutes:Math.floor(ms/60000),sessionCount:matched.length};}).sort((a,b)=>b.minutes-a.minutes||(a.category<b.category?-1:a.category>b.category?1:0));return{start:opts.start,end:opts.end,totals,grandTotalMinutes:totals.reduce((sum,item)=>sum+item.minutes,0)};}
