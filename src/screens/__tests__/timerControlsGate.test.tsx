@@ -28,7 +28,6 @@ describe('timer controls PIN gate', () => {
     expect(gate.queryByTestId('timer-controls-dialog')).toBeNull();
     for (const d of ['1','2','3','4']) await act(async () => { fireEvent.press(gate.getByLabelText(`Цифра ${d}`)); });
     expect(await gate.findByTestId('timer-controls-dialog')).toBeTruthy();
-    expect(gate.getByLabelText(uk.timer.pauseIndefinitely)).toBeTruthy();
     expect(gate.queryByLabelText(uk.timer.stop)).toBeNull();
     await act(async () => { fireEvent.press(gate.getByLabelText(uk.timer.controlsCancel)); });
     expect(gate.queryByTestId('timer-controls-dialog')).toBeNull();

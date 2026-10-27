@@ -173,13 +173,9 @@ export function PinGateScreen({ route, navigation }: Props) {
     return uk.pin.abandonTitle;
   };
 
-  const applyControl = async (action: 'pause' | 'complete' | 'duration') => {
+  const applyControl = async () => {
     if (route.params.intent !== 'timerControls' || !controlsToken) return;
-    const result = action === 'pause'
-      ? await services.timerService.parentPauseIndefinitely(controlsToken)
-      : action === 'complete'
-        ? await services.timerService.parentCompleteEarly(controlsToken)
-        : await services.timerService.parentEditDuration(Number(durationMinutes) * 60000, controlsToken);
+    const result = await services.timerService.parentEditDuration(Number(durationMinutes) * 60000, controlsToken);
     setControlsToken(null);
     if (!result.ok) { setShowControls(false); setError(uk.pin.operationFailed); return; }
     await timerStore.hydrate(services.timerService);
@@ -252,7 +248,7 @@ export function PinGateScreen({ route, navigation }: Props) {
       <AppText variant="body">{uk.timer.durationMinutes}</AppText>
       <TextInput accessibilityLabel={uk.timer.durationMinutes} keyboardType="number-pad" value={durationMinutes} onChangeText={setDurationMinutes} style={styles.durationInput} />
       {/^\d+$/.test(durationMinutes) && Number(durationMinutes) > durationLimitMinutes && <AppText variant="body">{uk.timer.editTooLong}</AppText>}
-      <AppButton label={uk.timer.saveDuration} variant="primary" size="lg" disabled={!/^\d+$/.test(durationMinutes) || Number(durationMinutes) * 60000 < MIN_TARGET_MS || Number(durationMinutes) * 60000 > MAX_TARGET_MS} onPress={() => void applyControl('duration')} />
+      <AppButton label={uk.timer.saveDuration} variant="primary" size="lg" disabled={!/^\d+$/.test(durationMinutes) || Number(durationMinutes) * 60000 < MIN_TARGET_MS || Number(durationMinutes) * 60000 > MAX_TARGET_MS} onPress={() => void applyControl()} />
       <AppButton label={uk.timer.cancelDuration} variant="secondary" size="lg" onPress={() => setEditingDuration(false)} />
     </View></View>
   );
@@ -263,8 +259,6 @@ export function PinGateScreen({ route, navigation }: Props) {
         <AppText variant="title" accessibilityRole="header" style={styles.dialogTitle}>{uk.timer.gear}</AppText>
         <View style={styles.dialogButtons}>
           <AppButton label={uk.timer.editDuration} variant="primary" size="lg" onPress={() => setEditingDuration(true)} />
-          <AppButton label={uk.timer.pauseIndefinitely} variant="secondary" size="lg" onPress={() => void applyControl('pause')} />
-          <AppButton label={uk.timer.completeEarly} variant="danger" size="lg" onPress={() => void applyControl('complete')} />
           <AppButton label={uk.timer.controlsCancel} variant="secondary" size="lg" onPress={() => { setShowControls(false); navigation.goBack(); }} />
         </View>
       </View>
