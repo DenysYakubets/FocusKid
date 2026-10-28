@@ -37,6 +37,7 @@
         }
       ],
       "./plugins/withBundledDebugJs",
+      "./plugins/withApkFileProvider",
       "expo-audio",
       "expo-sharing"
     ]
