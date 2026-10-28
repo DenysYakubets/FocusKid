@@ -1,7 +1,7 @@
 {
-  "versionName": "0.1.15",
-  "versionCode": 8,
-  "sha256": "1c10278fe8effe9903670365d87bc722ec626376ec0157758451ef3da16ef57a",
+  "versionName": "0.1.16",
+  "versionCode": 9,
+  "sha256": "be8eec29e8d3ba329c3d350c2792b2664e4f13b408da7e976b33ee5b51e15e40",
   "url": "https://github.com/DenysYakubets/FocusKid/releases/latest/download/FocusKid-latest.apk",
-  "notes": "Persistent update card, version label, in-app download with sha256 verify + direct install sheet"
+  "notes": "Right-aligned status pills, centered header, rocket-thrust bubble tail, ready for in-app update."
 }
