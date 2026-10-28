@@ -5,6 +5,7 @@ import { RootStackParamList } from '../navigation/routes';
 import { useServices } from '../state/appServices';
 import { parentSessionStore } from '../state/parentSessionStore';
 import { Task } from '../domain/tasks/types';
+import { UpdateChecker } from '../ui/components/UpdateChecker';
 import { AppButton } from '../ui/components/AppButton';
 import { AppText } from '../ui/components/AppText';
 import { AppToolbar } from '../ui/components/AppToolbar';
@@ -72,6 +73,8 @@ export function TaskListEditScreen({ navigation }: Props) {
             />
           }
         />
+
+        <UpdateChecker />
 
         {/* Task list — the list is the scroll container (no outer ScrollView) */}
         <FlatList
