@@ -81,7 +81,7 @@ export function TaskCard({ task, onPress, disabled }: TaskCardProps) {
           </AppText>
         </View>
 
-        <View style={styles.footerRow}>
+        <View testID="task-card-meta-row" style={styles.footerRow}>
           <AppText variant="body" style={styles.duration}>
             {`${task.targetMinutes} хв`}
           </AppText>
@@ -97,14 +97,15 @@ export function TaskCard({ task, onPress, disabled }: TaskCardProps) {
             </AppText>
           ) : null}
 
-          <StatusChip
-            status={isDoneToday ? 'verified' : getStatusThemeKey(task.status)}
-            label={isDoneToday ? uk.taskCrud.doneToday : statusLabel}
-          />
-
-          <AppText variant="heading" style={styles.chevron}>
-            ›
-          </AppText>
+          <View testID="task-card-trailing-meta" style={styles.trailingMeta}>
+            <StatusChip
+              status={isDoneToday ? 'verified' : getStatusThemeKey(task.status)}
+              label={isDoneToday ? uk.taskCrud.doneToday : statusLabel}
+            />
+            <AppText testID="task-card-chevron" variant="heading" style={styles.chevron}>
+              ›
+            </AppText>
+          </View>
         </View>
       </View>
     </TapTarget>
@@ -143,10 +144,15 @@ const styles = StyleSheet.create({
   footerRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    justifyContent: 'space-between',
     alignItems: 'center',
     rowGap: spacing.xs,
     columnGap: spacing.sm,
+  },
+  trailingMeta: {
+    marginLeft: 'auto',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
   },
   duration: {
     flexShrink: 1,
@@ -154,6 +160,7 @@ const styles = StyleSheet.create({
   },
   chevron: {
     color: colors.textSecondary,
+    includeFontPadding: false,
   },
   progress: {
     color: colors.primary,
