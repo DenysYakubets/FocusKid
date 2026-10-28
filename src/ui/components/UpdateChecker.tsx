@@ -15,7 +15,12 @@ import { colors, spacing, typographyWeights } from '../theme';
 
 const FETCH_TIMEOUT_MS = 5000;
 
-export function UpdateChecker() {
+export interface UpdateCheckerProps {
+  /** Bumped by useUpdateRecheck() on screen focus; refetches the manifest. */
+  recheckKey?: number;
+}
+
+export function UpdateChecker({ recheckKey = 0 }: UpdateCheckerProps = {}) {
   const { settingsRepo } = useServices();
   const [update, setUpdate] = useState<UpdateManifest | null>(null);
   const [download, setDownload] = useState<DownloadState>(initialDownloadState);
@@ -71,7 +76,7 @@ export function UpdateChecker() {
       mounted = false;
       if (timeout !== undefined) clearTimeout(timeout);
     };
-  }, [settingsRepo]);
+  }, [settingsRepo, recheckKey]);
 
   const runInstall = async (manifest: UpdateManifest, file: Parameters<typeof installApk>[0]) => {
     try {

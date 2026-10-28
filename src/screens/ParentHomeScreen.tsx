@@ -17,6 +17,8 @@ import { AppButton } from '../ui/components/AppButton';
 import { AppText } from '../ui/components/AppText';
 import { NoticeBox } from '../ui/components/NoticeBox';
 import { PinPad } from '../ui/components/PinPad';
+import { UpdateChecker } from '../ui/components/UpdateChecker';
+import { useUpdateRecheck } from '../ui/hooks/useUpdateRecheck';
 import { ParentGuard } from '../navigation/ParentGuard';
 import { useOrientation } from '../ui/hooks/useOrientation';
 import { uk } from '../i18n/uk';
@@ -34,6 +36,7 @@ export function ParentHomeScreen({ navigation }: Props) {
   const orientation = useOrientation();
   const isLandscape = orientation === 'landscape';
   const appVersion = installedAppVersion();
+  const updateRecheckKey = useUpdateRecheck();
 
   const [awaitingItems, setAwaitingItems] = useState<AwaitingItem[]>([]);
   const [changingPin, setChangingPin] = useState(false);
@@ -314,6 +317,8 @@ export function ParentHomeScreen({ navigation }: Props) {
       <AppText variant="heading" accessibilityRole="header" style={styles.sectionTitle}>
         {uk.parentHome.awaitingTitle}
       </AppText>
+
+      <UpdateChecker recheckKey={updateRecheckKey} />
 
       {awaitingItems.length === 0 ? (
         <View style={styles.emptyContainer}>
