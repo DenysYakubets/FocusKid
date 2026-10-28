@@ -9,7 +9,7 @@ else
   exit 1
 fi
 
-# TSC-3: INV-01 (amended) app.json grants INTERNET for update check + knowledge text present
+# TSC-3: INV-01 (amended) app.json grants INTERNET for update flow + knowledge text present
 if node -e "const a=require('./app.json').expo.android;const b=a.blockedPermissions ?? [];const p=a.permissions ?? [];process.exit(p.includes('android.permission.INTERNET') && !b.includes('android.permission.INTERNET') ? 0 : 1)" && grep -qF 'update-manifest.json' VISION.md; then
   echo "PASS TSC-3"
 else
@@ -17,7 +17,7 @@ else
   exit 1
 fi
 
-# TSC-4: INV-01 (amended) merged AndroidManifest CONTAINS INTERNET (update-check only, ADR-005)
+# TSC-4: INV-01 (amended) merged AndroidManifest CONTAINS INTERNET (update flow, ADR-005/ADR-006)
 if test -d android/app/build/intermediates/merged_manifests/debug; then
   if grep -rq "android.permission.INTERNET" android/app/build/intermediates/merged_manifests/debug; then
     echo "PASS TSC-4"
@@ -29,7 +29,7 @@ else
   echo "SKIP TSC-4 (requires Gradle build)"
 fi
 
-# TSC-5: INV-01 networking/analytics ban with owner-approved update-check allowlist
+# TSC-5: INV-01 networking/analytics ban with owner-approved update-check + user-initiated APK download allowlist (ADR-004/ADR-006)
 if ! grep -qF -e '"firebase"' -e '@react-native-firebase/' -e '@sentry/' -e 'sentry-expo' -e '"axios"' -e '"expo-updates"' -e '"expo-notifications"' -e '"expo-network"' -e '@react-native-community/netinfo' -e 'google-mobile-ads' -e 'react-native-iap' -e 'expo-in-app-purchases' -e '@segment/' -e 'mixpanel' -e '@amplitude/' package.json && ! grep -rnE -e "XMLHttpRequest" -e "new WebSocket\(" src App.tsx && node <<'NODE'
 const fs = require('node:fs');
 const { execFileSync } = require('node:child_process');
@@ -58,12 +58,13 @@ else
   exit 1
 fi
 
-# TSC-12: INV-07 SQLite business data; reviewed file allowlist — diagnostic log + task JSON backup (owner-requested)
+# TSC-12: INV-07 SQLite business data; reviewed file allowlist — diagnostic log + task JSON backup + APK download (ADR-006)
 if grep -qF '"expo-sqlite"' package.json && ! grep -qF -e '@react-native-async-storage/' -e 'react-native-mmkv' -e '"realm"' -e 'watermelondb' -e 'expo-secure-store' package.json && ! grep -rnF -e "AsyncStorage" -e "localStorage" src && node <<'NODE'
 const fs = require('node:fs');
 const path = require('node:path');
 const logger = 'src/services/logging/fileLogger.ts';
 const transfer = 'src/screens/ParentHomeScreen.tsx';
+const download = 'src/services/update/downloadApk.ts';
 function sources(dir) {
   return fs.readdirSync(dir, { withFileTypes: true }).flatMap(entry => {
     const name = path.join(dir, entry.name);
@@ -78,7 +79,7 @@ const installed = Object.keys({
   ...require('./package.json').dependencies,
   ...require('./package.json').devDependencies,
 }).includes('expo-file-system');
-if (consumers.length !== 2 || ![logger, transfer].every(name => consumers.includes(name)) ||
+if (consumers.length !== 3 || ![logger, transfer, download].every(name => consumers.includes(name)) ||
     (installed && !consumers.includes(logger))) {
   process.exit(1);
 }
@@ -102,6 +103,17 @@ if (consumers.includes(transfer)) {
   const remainder = source.replace(imports, '').replace(target, '').replace(pickedFile, '')
     .replace(/file\.write\(/g, '').replace(/file\.uri/g, '').replace(/new\s+File\(/g, '');
   if (/expo-file-system|\bPaths\s*\.|\bDirectory\b/.test(remainder)) process.exit(1);
+}
+if (consumers.includes(download)) {
+  const source = fs.readFileSync(download, 'utf8');
+  const imports = /import\s*\{([^}]+)\}\s*from\s*['"]expo-file-system['"];?/g;
+  const found = [...source.matchAll(imports)];
+  const permitted = new Set(['File', 'Directory', 'Paths', 'DownloadTask']);
+  if (found.length !== 1) process.exit(1);
+  const names = found[0][1].split(',').map(name => name.trim()).filter(Boolean);
+  if (!names.length || names.some(name => !permitted.has(name)) || !source.includes('Paths.cache')) process.exit(1);
+  const remainder = source.replace(imports, '');
+  if (/expo-file-system/.test(remainder)) process.exit(1);
 }
 NODE
 then

@@ -6,6 +6,7 @@ import * as Sharing from 'expo-sharing';
 import * as DocumentPicker from 'expo-document-picker';
 import { File, Paths } from 'expo-file-system';
 import { formatError } from '../services/logging/formatError';
+import { installedAppVersion } from '../services/update/appVersion';
 import { logFileUri, logInfo, logError } from '../services/logging/fileLogger';
 import { useServices } from '../state/appServices';
 import { parentSessionStore } from '../state/parentSessionStore';
@@ -32,6 +33,7 @@ export function ParentHomeScreen({ navigation }: Props) {
   const { sessionsRepo, tasksRepo, authService, db, wall } = useServices();
   const orientation = useOrientation();
   const isLandscape = orientation === 'landscape';
+  const appVersion = installedAppVersion();
 
   const [awaitingItems, setAwaitingItems] = useState<AwaitingItem[]>([]);
   const [changingPin, setChangingPin] = useState(false);
@@ -224,7 +226,8 @@ export function ParentHomeScreen({ navigation }: Props) {
   };
 
   const headerNode = (
-    <View style={styles.header}>
+    <View style={styles.headerBlock}>
+      <View style={styles.header}>
       <AppText
         variant="title"
         accessibilityRole="header"
@@ -239,6 +242,8 @@ export function ParentHomeScreen({ navigation }: Props) {
         size="sm"
         onPress={handleExit}
       />
+      </View>
+      {appVersion && <AppText testID="parent-version-label" variant="caption" style={styles.versionLabel}>{uk.parentHome.versionLabel.replace('{version}', appVersion)}</AppText>}
     </View>
   );
 
@@ -454,6 +459,8 @@ const styles = StyleSheet.create({
     rowGap: spacing.sm,
     columnGap: spacing.sm,
   },
+  headerBlock: { gap: spacing.xs },
+  versionLabel: { color: colors.textSecondary },
   title: {
     flex: 1,
     minWidth: 0,

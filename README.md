@@ -6,7 +6,7 @@ FocusKid is an honest, offline-first child visual timer and task management appl
 
 - **Honest Visual Timer (INV-03, INV-04):** The child cannot stop or complete a timer prematurely. Pauses are strictly bounded to 5 minutes total per session with automatic resumption.
 - **Parent Verification & Protection (INV-05, INV-06):** Completed tasks must be verified by a parent with a local PBKDF2-hashed PIN. Verified sessions are immutable in the SQLite database.
-- **100% Offline & Private (INV-01, amended):** The app is fully functional offline. The `android.permission.INTERNET` permission is granted solely for the silent update check (one GET of `update-manifest.json`, ADR-005, owner-approved). Zero telemetry, zero analytics, zero ads, zero in-app purchases — no other feature uses the network.
+- **100% Offline & Private (INV-01, amended):** `android.permission.INTERNET` is granted solely for the update flow — one silent GET of `update-manifest.json` (silent manifest check) plus a user-initiated APK download from GitHub (ADR-005/ADR-006). The app remains fully functional offline with zero telemetry/analytics/ads.
 - **Monotonic Duration Timing (INV-02):** Timer durations rely solely on monotonic time (`performance.now()`), completely immune to device clock tampering or timezone jumps.
 - **Positive Framing Only (INV-09):** No punishment, no negative badges, and no streak pressures. Missing days or sessions simply show 0 with zero shame copy.
 - **Accessible & Adaptive (INV-08, INV-10):** Full portrait and landscape (Desk-Clock) parity. Typography is ≥ 48sp, and all interactive touch targets are ≥ 48×48dp with comprehensive TalkBack accessibility labels and roles. High-contrast colors meeting WCAG AA (≥ 4.5:1).

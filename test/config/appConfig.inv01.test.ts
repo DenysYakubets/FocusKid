@@ -3,15 +3,17 @@ import path from 'node:path';
 import appJson from '../../app.json';
 
 describe('INV-01: App Configuration and Manifest Transformation', () => {
-  it('asserts INTERNET is granted solely for the update-check fetch (amended INV-01)', () => {
+  it('asserts INTERNET is granted solely for the update flow (amended INV-01)', () => {
     const android = appJson.expo.android;
     expect(android.permissions).toContain('android.permission.INTERNET');
     expect(android.blockedPermissions).not.toContain('android.permission.INTERNET');
     expect(android.blockedPermissions).toContain('android.permission.ACCESS_NETWORK_STATE');
     expect(appJson.expo.orientation).toBe('default');
+    expect(readFileSync(path.resolve(__dirname, '../../VISION.md'), 'utf8')).toContain('update-manifest.json');
 
     const plugins = appJson.expo.plugins;
     expect(plugins).toContain('./plugins/withBundledDebugJs');
+    expect(plugins).toContain('./plugins/withApkFileProvider');
     expect(plugins).not.toContain('./plugins/withNoInternet');
   });
 
