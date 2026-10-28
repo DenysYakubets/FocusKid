@@ -31,7 +31,8 @@ export function nextDownloadState(state: DownloadState, event: DownloadEvent): D
     case 'ready':
       return state.phase === 'verifying' ? { ...state, phase: 'ready' } : state;
     case 'error':
-      return state.phase === 'downloading' ? { ...state, phase: 'error', errorMessage: event.message } : state;
+      return state.phase !== 'idle' && state.phase !== 'error'
+        ? { ...state, phase: 'error', errorMessage: event.message } : state;
     case 'retry':
       return state.phase === 'error' ? initialDownloadState() : state;
   }

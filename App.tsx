@@ -26,6 +26,7 @@ import { colors, spacing } from './src/ui/theme';
 
 import { logInfo, logError } from './src/services/logging/fileLogger';
 import { RootStackParamList } from './src/navigation/routes';
+import { installedAppVersion } from './src/services/update/appVersion';
 
 export function AppBootstrap() {
   const navigationRef = useNavigationContainerRef<RootStackParamList>();
@@ -41,7 +42,7 @@ export function AppBootstrap() {
     let mounted = true;
     async function init() {
       try {
-        await logInfo(`app start: version=${Constants.expoConfig?.version ?? Constants.nativeBuildVersion ?? 'unknown'}, os=${Platform.OS}, platformVersion=${Platform.Version}`);
+        await logInfo(`app start: version=${installedAppVersion() ?? 'unknown'}, os=${Platform.OS}, platformVersion=${Platform.Version}`);
         const db = await openExpoDb();
         await migrate(db);
         await seedIfEmpty(db, systemWallClock);
