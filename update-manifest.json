@@ -3,5 +3,5 @@
   "versionCode": 10,
   "sha256": "40e28b084e78a0a6de19db6a7e0ff52eba7160868f10e952e4f2e2190a726742",
   "url": "https://github.com/DenysYakubets/FocusKid/releases/latest/download/FocusKid-latest.apk",
-  "notes": "Update card visible on ParentHome + app-root fallback + focus re-check, in-app APK install with sha256 verify, install intent resume across PIN re-lock."
+  "notes": "persistent update card now on ParentHome + app-root fallback + focus re-check, in-app update with sha256 verify"
 }
