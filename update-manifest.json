@@ -1,7 +1,7 @@
 {
-  "versionName": "0.1.13",
-  "versionCode": 6,
-  "sha256": "6bfad91b544c16e9f30af077701eb62c77134fddcee7e95d569e1c8bfc58c715",
+  "versionName": "0.1.14",
+  "versionCode": 7,
+  "sha256": "5f9f213aca2f6e24b6167684b936d503502585e11a6a17f546f5277a675652ed",
   "url": "https://github.com/DenysYakubets/FocusKid/releases/latest/download/FocusKid-latest.apk",
-  "notes": "update banner + INTERNET permission for update check + stable update URLs"
+  "notes": "mascot clamp + 0.5s chase lag + drag-only tail, responsive calendar without horizontal scroll, in-app update banner available"
 }
