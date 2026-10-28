@@ -75,6 +75,13 @@
 - **Decision**: Grant `android.permission.INTERNET` in the APK: `app.json` `android.permissions` now includes it, `android.blockedPermissions` no longer blocks it, and the `./plugins/withNoInternet` config plugin is removed, so the in-app UpdateChecker can perform its single GET of `update-manifest.json`. INV-01 is **amended, not deleted**: the app must remain fully functional offline; INTERNET exists solely for the update-check fetch with silent failure; no other feature may require network. Gates TSC-3 / TSC-4 / TSC-18 now assert INTERNET is present and that no plugin strips it.
 - **Rationale**: The owner (Denys) approved both making this repository public and adding the permission; without it the update banner shipped in ADR-004 is inert on device. Scope stays minimal — one unauthenticated GET to `raw.githubusercontent.com` (CORS `*`), and any failure is swallowed so the offline experience is unchanged; no analytics/telemetry/ads dependencies are introduced (TSC-5 untouched).
 - **Status**: Implemented on `feat/update-channel` (PR #17). Evidence: `app.json` `android.permissions`, `scripts/check-invariants.sh` TSC-3/TSC-4/TSC-18, `test/config/appConfig.inv01.test.ts`, root `update-manifest.json`.
+- **Status (scope extension)**: ADR-006 extends this from “update check only” to the update flow.
+
+### ADR-006: In-App APK Download and Direct Install (owner approved; extends INV-01 amendment)
+
+- **Decision**: Replace the browser-first update action with an in-app APK download and direct install flow. A FileProvider config plugin supplies Android cache access, and `expo-intent-launcher` sends an ACTION_VIEW intent with `FLAG_GRANT_READ_URI_PERMISSION`. `expo-sharing` opens a share sheet if the intent fails; `Linking.openURL` is the last resort. The downloaded APK's SHA-256 is verified against `manifest.sha256` before install. INTERNET now serves the whole update flow.
+- **Rationale**: The release APK should download and hand off to Android's package installer without losing the in-app context in a browser. The native file digest avoids loading a 30–80 MB APK into JS memory. Every fallback keeps a path available if a device cannot handle the primary intent.
+- **Status**: Owner-approved implementation; extends ADR-005's update-check scope. It supersedes ADR-004's “installation stays in the browser / app does not install packages” clause; history is retained.
 
 ## Historical / superseded decisions
 

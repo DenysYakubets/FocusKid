@@ -2,7 +2,7 @@
 
 > Audience: developer agents executing the build stage by stage.
 > Authoritative spec: [`VISION.md`](../VISION.md). If this plan conflicts with VISION.md, VISION.md wins. Raise the conflict in the PR description and don't resolve it silently.
-> Do **not** modify `VISION.md`.
+> VISION.md was amended by owner approval (ADR-005/ADR-006); keep this plan aligned with it.
 
 ---
 
@@ -19,7 +19,7 @@ FocusKid is an **offline-only Android app** (React Native + Expo, TypeScript `st
 
 Non-negotiables taken from VISION.md:
 
-- **Offline-first (INV-01, amended).** The app remains fully functional offline; `android.permission.INTERNET` is granted solely for one silent GET of `update-manifest.json` (ADR-005). No other feature may require network; no analytics or telemetry, no accounts, no cloud.
+- **Offline-first (INV-01, amended).** `android.permission.INTERNET` is granted solely for the update flow — one silent GET of `update-manifest.json` (silent manifest check) plus a user-initiated APK download from GitHub (ADR-005/ADR-006); the app remains fully functional offline and there is zero telemetry/analytics/ads.
 - **Monotonic time** for every duration. `Date.now()` is never used for durations (INV-02).
 - **Timer FSM** `Idle → Running → Paused → Completed → Verified`, with strictly validated transitions (INV-03, INV-04, INV-06).
 - **Parent mode only through a local PIN.** The PIN is hashed with PBKDF2-SHA256 and a local salt, and there is no recovery (INV-05).
@@ -623,8 +623,8 @@ Run every command from the repository root. Commands are written without `|` cha
 |---|---|---|
 | TSC-1 | Tests | The whole Jest suite (unit, integration, UI) passes with no failures or skipped suites -- verify: `npm test -- --ci` |
 | TSC-2 | TypeScript | The project type-checks cleanly with `strict: true` set in tsconfig.json -- verify: `npx tsc --noEmit && grep -qE '"strict":\s*true' tsconfig.json` |
-| TSC-3 | INV-01 | Amended INV-01 grants INTERNET for update check and knowledge text is present -- verify: `node -e "const a=require('./app.json').expo.android;const b=a.blockedPermissions ?? [];const p=a.permissions ?? [];process.exit(p.includes('android.permission.INTERNET') && !b.includes('android.permission.INTERNET') ? 0 : 1)" && grep -qF 'update-manifest.json' VISION.md` |
-| TSC-4 | INV-01 | Merged AndroidManifest contains INTERNET for update-check only (ADR-005) -- verify: `if test -d android/app/build/intermediates/merged_manifests/debug; then if grep -rq "android.permission.INTERNET" android/app/build/intermediates/merged_manifests/debug; then echo "PASS TSC-4"; else echo "FAIL TSC-4"; exit 1; fi; else echo "SKIP TSC-4 (requires Gradle build)"; fi` |
+| TSC-3 | INV-01 | Amended INV-01 grants INTERNET for the update flow and knowledge text is present -- verify: `node -e "const a=require('./app.json').expo.android;const b=a.blockedPermissions ?? [];const p=a.permissions ?? [];process.exit(p.includes('android.permission.INTERNET') && !b.includes('android.permission.INTERNET') ? 0 : 1)" && grep -qF 'update-manifest.json' VISION.md` |
+| TSC-4 | INV-01 | Merged AndroidManifest contains INTERNET for update flow (ADR-005/ADR-006) -- verify: `if test -d android/app/build/intermediates/merged_manifests/debug; then if grep -rq "android.permission.INTERNET" android/app/build/intermediates/merged_manifests/debug; then echo "PASS TSC-4"; else echo "FAIL TSC-4"; exit 1; fi; else echo "SKIP TSC-4 (requires Gradle build)"; fi` |
 | TSC-5 | INV-01 | No networking, analytics, telemetry, ads or IAP dependency, and no network API usage in source -- verify: `! grep -qF -e '"firebase"' -e '@react-native-firebase/' -e '@sentry/' -e 'sentry-expo' -e '"axios"' -e '"expo-updates"' -e '"expo-notifications"' -e '"expo-network"' -e '@react-native-community/netinfo' -e 'google-mobile-ads' -e 'react-native-iap' -e 'expo-in-app-purchases' -e '@segment/' -e 'mixpanel' -e '@amplitude/' package.json && ! grep -rnE -e "\bfetch\(" -e "XMLHttpRequest" -e "new WebSocket\(" src App.tsx` |
 | TSC-6 | INV-02 | No wall-clock duration math anywhere in app code. `Date` is constructed only in `wallClock.ts`, and the monotonic clock is `performance.now()` -- verify: `! grep -rnE --exclude-dir=__tests__ -e "Date\.now\(" -e "\.getTime\(\)" -e "performance\.timeOrigin" src App.tsx && ! grep -rnF --exclude-dir=__tests__ --exclude=wallClock.ts "new Date(" src App.tsx && grep -qF "performance.now()" src/services/clock/monotonic.ts` |
 | TSC-7 | INV-02 | Behaviour: the timer and lockout ignore wall-clock jumps and never gain time on a backwards step -- verify: `npm test -- --ci src/services/clock src/domain/timer/__tests__/elapsed.test.ts src/services/timer src/services/auth/__tests__/authService.test.ts` |
