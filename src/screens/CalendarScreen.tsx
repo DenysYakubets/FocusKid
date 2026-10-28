@@ -28,6 +28,17 @@ type Props = NativeStackScreenProps<RootStackParamList, 'Today'> & {
   onDayDetailChange?: (open: boolean) => void;
 };
 
+export const DAY_CELL_GAP = spacing.xs;
+export const DAY_CELL_MIN = 38;
+export const DAY_CELL_MAX = MIN_TOUCH_DP;
+
+export function dayCellSize(availableWidth: number): number {
+  return Math.max(
+    DAY_CELL_MIN,
+    Math.min(DAY_CELL_MAX, Math.floor((availableWidth - 6 * DAY_CELL_GAP) / 7))
+  );
+}
+
 /**
  * F6: the Calendar tab of the child flow. Data comes from the existing
  * `statsService` (which reads the single `sessions` table) — approved sessions
@@ -37,7 +48,9 @@ type Props = NativeStackScreenProps<RootStackParamList, 'Today'> & {
  */
 export function CalendarScreen({ navigation, onDayDetailChange }: Props) {
   const { statsService, wall } = useServices();
-  const { gutter, isLandscape } = useScreenGutter();
+  const { width, gutter, isLandscape } = useScreenGutter();
+  const availableWidth = width - 2 * gutter - spacing.md;
+  const cellSize = dayCellSize(availableWidth);
   const insets = useSafeAreaInsets();
   const dialogBackdropStyle = [
     styles.detailBackdrop,
@@ -181,6 +194,7 @@ export function CalendarScreen({ navigation, onDayDetailChange }: Props) {
           isApproved ? styles.dayCellApproved : null,
           isPending ? styles.dayCellPending : null,
           selectedDay === localDate ? styles.dayCellSelected : null,
+          { width: cellSize, minWidth: cellSize },
         ]}
       >
         <AppText
@@ -257,8 +271,10 @@ export function CalendarScreen({ navigation, onDayDetailChange }: Props) {
           </View>
         </View>
 
-      {/* The 7-column month grid scrolls horizontally so every day keeps a
-          48dp touch target even at 320dp (INV-10). */}
+      {/* Cell width is computed responsively so the row fits standard phones
+          (>=360dp) without horizontal scrolling. Keep this ScrollView for
+          devices below DAY_CELL_MIN; TapTarget's 8dp-per-side hitSlop keeps
+          the effective INV-10 touch target at least 38 + 16 = 54dp. */}
       <ScrollView
         horizontal
         style={styles.gridScroll}
@@ -267,7 +283,7 @@ export function CalendarScreen({ navigation, onDayDetailChange }: Props) {
         <View style={styles.grid}>
           <View style={styles.gridRow}>
             {uk.stats.shortWeekdays.map((label) => (
-              <View key={label} style={styles.weekdayCell}>
+              <View key={label} style={[styles.weekdayCell, { width: cellSize, minWidth: cellSize }]}>
                 <AppText variant="caption" style={styles.weekdayText}>
                   {label}
                 </AppText>
@@ -279,7 +295,7 @@ export function CalendarScreen({ navigation, onDayDetailChange }: Props) {
             <View key={`week-${rowIndex}`} style={styles.gridRow}>
               {row.map((cell, cellIndex) =>
                 cell === null ? (
-                  <View key={`blank-${cellIndex}`} style={styles.dayCell} />
+                  <View key={`blank-${cellIndex}`} style={[styles.dayCell, { width: cellSize, minWidth: cellSize }]} />
                 ) : (
                   renderDay(cell)
                 )
@@ -505,10 +521,9 @@ const styles = StyleSheet.create({
   },
   gridRow: {
     flexDirection: 'row',
-    gap: spacing.sm,
+    gap: DAY_CELL_GAP,
   },
   weekdayCell: {
-    width: MIN_TOUCH_DP,
     minHeight: MIN_TOUCH_DP,
     justifyContent: 'center',
     alignItems: 'center',
@@ -518,7 +533,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   dayCell: {
-    width: MIN_TOUCH_DP,
     minHeight: MIN_TOUCH_DP,
     borderRadius: radius.md,
     borderCurve: 'continuous',
