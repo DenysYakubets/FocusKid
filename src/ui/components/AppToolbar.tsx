@@ -1,5 +1,5 @@
 import React from 'react';
-import { StyleProp, StyleSheet, View, ViewStyle } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { AppText } from './AppText';
 import { TapTarget } from './TapTarget';
 import { colors, radius, spacing } from '../theme';
@@ -10,7 +10,7 @@ export interface AppToolbarProps {
   /** Visible chip text is `← backLabel`; the a11y label stays `backLabel`. */
   backLabel?: string;
   title?: string;
-  /** Row B — always forced onto its own full-width row (flexBasis 100%). */
+  /** Inline actions aligned with the title and back control. */
   actions?: React.ReactNode;
   testID?: string;
   titleTestID?: string;
@@ -30,17 +30,6 @@ export function AppToolbar({
   testID,
   titleTestID,
 }: AppToolbarProps) {
-  const actionNodes = actions
-    ? React.Children.map(actions, (child) => {
-        if (React.isValidElement<{ style?: StyleProp<ViewStyle> }>(child)) {
-          return React.cloneElement(child, {
-            style: [child.props.style, styles.actionRow] as StyleProp<ViewStyle>,
-          });
-        }
-        return child;
-      })
-    : null;
-
   return (
     <View testID={testID} style={styles.container}>
       {onBack ? (
@@ -69,7 +58,7 @@ export function AppToolbar({
         </AppText>
       ) : null}
 
-      {actionNodes}
+      {actions}
     </View>
   );
 }
@@ -105,8 +94,5 @@ const styles = StyleSheet.create({
     minWidth: 0,
     flexShrink: 1,
     color: colors.text,
-  },
-  actionRow: {
-    flexBasis: '100%',
   },
 });
