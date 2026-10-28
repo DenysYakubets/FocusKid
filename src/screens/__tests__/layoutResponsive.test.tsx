@@ -50,7 +50,7 @@ describe('Group A - Responsive Layout Tests', () => {
     return services;
   };
 
-  it('TaskListEdit: add button is full-width, top bar wraps, title has numberOfLines=1', async () => {
+  it('TaskListEdit: add button shares the centered top bar row, title has numberOfLines=1', async () => {
     const db = createNodeDb();
     const clock = createFakeClock(1000);
     const services = await setupParentSessionServices(db, clock);
@@ -63,11 +63,12 @@ describe('Group A - Responsive Layout Tests', () => {
     const addButton = screen.getByLabelText(uk.taskCrud.addTask);
     expect(addButton).toBeTruthy();
     const addStyle = getFlattenedStyle(addButton);
-    expect(addStyle.flexBasis).toBe('100%');
+    expect(addStyle.flexBasis).toBeUndefined();
 
     const topBar = screen.getByTestId('tasklistedit-topbar');
     const topBarStyle = getFlattenedStyle(topBar);
     expect(topBarStyle.flexWrap).toBe('wrap');
+    expect(topBarStyle.alignItems).toBe('center');
 
     const titleNode = screen.getByTestId('tasklistedit-title');
     expect(titleNode.props.numberOfLines).toBe(1);

@@ -9,7 +9,7 @@
  * headers to it."
  */
 import React from 'react';
-import { StyleSheet } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { fireEvent, render } from '@testing-library/react-native';
 import { AppToolbar } from '../components/AppToolbar';
 import { uk } from '../../i18n/uk';
@@ -74,6 +74,14 @@ describe('C2: AppToolbar layout', () => {
     );
     const title = screen.getByText('Дуже довга назва завдання');
     expect(title.props.numberOfLines).toBe(1);
+  });
+
+  it('centers the title and inline actions on the same header row', async () => {
+    const screen = await render(
+      <AppToolbar title="Завдання" testID="toolbar" actions={<View testID="toolbar-action" />} />
+    );
+    expect(flat(screen.getByTestId('toolbar')).alignItems).toBe('center');
+    expect(flat(screen.getByTestId('toolbar-action')).flexBasis).toBeUndefined();
   });
 
   it('back button fires onBack when pressed', async () => {

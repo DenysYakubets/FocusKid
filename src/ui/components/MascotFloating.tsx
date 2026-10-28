@@ -35,6 +35,13 @@ export const MASCOT_CLEARANCE_DP = 48;
 export const DRAG_START_THRESHOLD = 20;
 export const CHASE_TAU_MS = 500;
 const TRAIL_LENGTH = 10;
+const TRAIL_LIFETIME_MS = 420;
+const TRAIL_MIN_SPEED = 12;
+const TRAIL_MAX_SPEED = 600;
+const TRAIL_MIN_INTERVAL_MS = 72;
+const TRAIL_MAX_INTERVAL_MS = 260;
+const TRAIL_MAX_RADIUS_SCALE = 1.7;
+const TRAIL_DRIFT_DP = 30;
 export interface MascotBounds { width: number; height: number; insets: { top: number; bottom: number; left: number; right: number } }
 export function clampMascotPosition(pos: { x: number; y: number }, bounds: MascotBounds, size: number): { x: number; y: number } {
   return { x: Math.max(bounds.insets.left, Math.min(pos.x, bounds.width - bounds.insets.right - size)), y: Math.max(bounds.insets.top, Math.min(pos.y, bounds.height - bounds.insets.bottom - size)) };
@@ -42,6 +49,29 @@ export function clampMascotPosition(pos: { x: number; y: number }, bounds: Masco
 export function chaseStep(pos: { x: number; y: number }, target: { x: number; y: number }, dtMs: number, tauMs: number = CHASE_TAU_MS): { x: number; y: number } {
   const k = 1 - Math.exp(-Math.max(0, dtMs) / tauMs);
   return { x: pos.x + (target.x - pos.x) * k, y: pos.y + (target.y - pos.y) * k };
+}
+
+export function emissionPoint(pos: { x: number; y: number }, velocity: { x: number; y: number }, radius: number): { x: number; y: number } {
+  const magnitude = Math.hypot(velocity.x, velocity.y);
+  if (magnitude < 1e-6) return { ...pos };
+  return { x: pos.x - (velocity.x / magnitude) * radius, y: pos.y - (velocity.y / magnitude) * radius };
+}
+
+export function speedToBubble(speed: number): { radiusScale: number; spawnIntervalMs: number } {
+  const safeSpeed = Number.isFinite(speed) ? Math.max(0, speed) : 0;
+  if (safeSpeed === 0) return { radiusScale: 0, spawnIntervalMs: Number.POSITIVE_INFINITY };
+  const progress = Math.min(1, safeSpeed / TRAIL_MAX_SPEED);
+  return {
+    radiusScale: 0.45 + (TRAIL_MAX_RADIUS_SCALE - 0.45) * progress,
+    spawnIntervalMs: TRAIL_MAX_INTERVAL_MS - (TRAIL_MAX_INTERVAL_MS - TRAIL_MIN_INTERVAL_MS) * progress,
+  };
+}
+
+interface TrailParticle {
+  position: MascotPosition;
+  direction: MascotPosition;
+  ageMs: number;
+  radiusScale: number;
 }
 
 /** Rendered target size: 64dp in the 320dp class, 72dp from 340dp up. */
@@ -140,9 +170,10 @@ export function MascotFloating({
   const visibleRef = useRef<MascotPosition>(initial);
   const raf = useRef<number | null>(null);
   const mounted = useRef(true);
-  const trailDots = useRef(Array.from({ length: TRAIL_LENGTH }, () => ({ position: new Animated.ValueXY({ x: 0, y: 0 }), opacity: new Animated.Value(0) }))).current;
-  const trailHistory = useRef<MascotPosition[]>([]);
-  const frameCount = useRef(0);
+  const trailDots = useRef(Array.from({ length: TRAIL_LENGTH }, () => ({ position: new Animated.ValueXY({ x: 0, y: 0 }), opacity: new Animated.Value(0), scale: new Animated.Value(0) }))).current;
+  const trailParticles = useRef<Array<TrailParticle | null>>(Array.from({ length: TRAIL_LENGTH }, () => null));
+  const lastPosition = useRef<MascotPosition>(initial);
+  const spawnElapsedMs = useRef(0);
   const hasDragged = useRef(Boolean(savedPosition));
 
   const stopLoop = () => {
@@ -159,22 +190,49 @@ export function MascotFloating({
       lastTs = ts;
       const visible = visibleRef.current;
       const next = clamp(chaseStep(visible, target.current, dt));
-      const speed = dt > 0 ? Math.hypot(next.x - visible.x, next.y - visible.y) * 1000 / dt : 0;
+      const delta = { x: next.x - lastPosition.current.x, y: next.y - lastPosition.current.y };
+      const speed = dt > 0 ? Math.hypot(delta.x, delta.y) * 1000 / dt : 0;
+      const bubble = speedToBubble(speed);
+      const velocity = speed >= TRAIL_MIN_SPEED ? delta : { x: 0, y: 0 };
       drag.setValue(next);
       visibleRef.current = next;
-      frameCount.current += 1;
-      if (frameCount.current % 3 === 0) {
-        trailHistory.current.push(next);
-        if (trailHistory.current.length > TRAIL_LENGTH) trailHistory.current.shift();
+      lastPosition.current = next;
+      if (dt > 0 && Number.isFinite(bubble.spawnIntervalMs) && Math.hypot(velocity.x, velocity.y) > 0) {
+        spawnElapsedMs.current += dt;
+        if (spawnElapsedMs.current >= bubble.spawnIntervalMs) {
+          spawnElapsedMs.current %= bubble.spawnIntervalMs;
+          const point = emissionPoint(next, velocity, size / 2);
+          const index = trailParticles.current.findIndex((particle) => !particle || particle.ageMs >= TRAIL_LIFETIME_MS);
+          if (index >= 0) {
+            const magnitude = Math.hypot(velocity.x, velocity.y);
+            trailParticles.current[index] = {
+              position: { x: point.x - next.x, y: point.y - next.y },
+              direction: { x: velocity.x / magnitude, y: velocity.y / magnitude },
+              ageMs: 0,
+              radiusScale: bubble.radiusScale,
+            };
+          }
+        }
+      } else {
+        spawnElapsedMs.current = 0;
       }
-      const speedNorm = Math.max(0, Math.min(1, speed / 600));
       for (let k = 0; k < TRAIL_LENGTH; k += 1) {
-        const sample = trailHistory.current[trailHistory.current.length - 1 - k];
+        const particle = trailParticles.current[k];
         const dot = trailDots[k]!;
-        if (sample) {
-          dot.position.setValue({ x: sample.x - next.x, y: sample.y - next.y });
-          dot.opacity.setValue(((TRAIL_LENGTH - k) / TRAIL_LENGTH) * speedNorm * 0.55);
-        } else dot.opacity.setValue(0);
+        if (particle) {
+          particle.ageMs += dt;
+          const age = Math.min(1, particle.ageMs / TRAIL_LIFETIME_MS);
+          const drift = TRAIL_DRIFT_DP * age;
+          dot.position.setValue({
+            x: particle.position.x - particle.direction.x * drift,
+            y: particle.position.y - particle.direction.y * drift,
+          });
+          dot.opacity.setValue((1 - age) * Math.min(1, particle.radiusScale / TRAIL_MAX_RADIUS_SCALE) * 0.5);
+          dot.scale.setValue(particle.radiusScale);
+        } else {
+          dot.opacity.setValue(0);
+          dot.scale.setValue(0);
+        }
       }
       if (!dragging.current && Math.abs(next.x - target.current.x) < 0.5 && Math.abs(next.y - target.current.y) < 0.5) {
         drag.setValue(target.current);
@@ -182,7 +240,8 @@ export function MascotFloating({
         stopLoop();
         chasingRef.current = false;
         setChasing(false);
-        trailHistory.current = [];
+        trailParticles.current = Array.from({ length: TRAIL_LENGTH }, () => null);
+        spawnElapsedMs.current = 0;
         return;
       }
       raf.current = requestAnimationFrame(tick);
@@ -236,8 +295,9 @@ export function MascotFloating({
         if (!reduceMotion && motionEnabled) {
           chasingRef.current = true;
           setChasing(true);
-          trailHistory.current = [];
-          frameCount.current = 0;
+          trailParticles.current = Array.from({ length: TRAIL_LENGTH }, () => null);
+          spawnElapsedMs.current = 0;
+          lastPosition.current = visibleRef.current;
           startLoop();
         }
       },
@@ -330,6 +390,7 @@ export function MascotFloating({
                 borderRadius: radius.full,
                 backgroundColor: mascotColor(mascot),
                 opacity: dot.opacity,
+                transform: [{ scale: dot.scale }],
               }}
             />
           ))}
