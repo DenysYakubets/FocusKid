@@ -3,10 +3,12 @@ import { Linking, StyleSheet, View } from 'react-native';
 import * as Application from 'expo-application';
 import Constants from 'expo-constants';
 import { parentSessionStore } from '../../state/parentSessionStore';
+import { useServices } from '../../state/appServices';
 import { MANIFEST_URL, isNewerVersion, parseUpdateManifest, UpdateManifest } from '../../services/update/checkForUpdate';
-import { downloadApk, installApk } from '../../services/update/downloadApk';
+import { downloadApk, expectedApkCacheUri, installApk, openCachedApk, PENDING_UPDATE_KEY } from '../../services/update/downloadApk';
 import { DownloadState, initialDownloadState, nextDownloadState } from '../../services/update/downloadState';
 import { uk } from '../../i18n/uk';
+import { logError, logInfo } from '../../services/logging/fileLogger';
 import { AppText } from './AppText';
 import { TapTarget } from './TapTarget';
 import { colors, spacing, typographyWeights } from '../theme';
@@ -14,6 +16,7 @@ import { colors, spacing, typographyWeights } from '../theme';
 const FETCH_TIMEOUT_MS = 5000;
 
 export function UpdateChecker() {
+  const { settingsRepo } = useServices();
   const [update, setUpdate] = useState<UpdateManifest | null>(null);
   const [download, setDownload] = useState<DownloadState>(initialDownloadState);
 
@@ -21,6 +24,7 @@ export function UpdateChecker() {
     let mounted = true;
     let timeout: ReturnType<typeof setTimeout> | undefined;
     async function check() {
+      void logInfo('update check start');
       try {
         // Native build code is used when available; Constants covers Expo Go and other non-native environments.
         const nativeBuildVersion = Application.nativeBuildVersion ?? Constants.nativeBuildVersion;
@@ -33,10 +37,30 @@ export function UpdateChecker() {
           globalThis.fetch(MANIFEST_URL).then((result) => result.ok ? result.text() : null),
           timeoutGuard,
         ]);
-        if (!response || !mounted) return;
+        if (!response || !mounted) {
+          if (!response) void logError('update check fetch error');
+          return;
+        }
         const manifest = parseUpdateManifest(response);
-        if (manifest && isNewerVersion(manifest.versionCode, currentCode)) setUpdate(manifest);
-      } catch {
+        if (manifest && isNewerVersion(manifest.versionCode, currentCode)) {
+          void logInfo(`update check newer versionCode=${manifest.versionCode}`);
+          setUpdate(manifest);
+          const rawPending = await settingsRepo.get(PENDING_UPDATE_KEY);
+          if (!mounted || !rawPending) return;
+          try {
+            const pending = JSON.parse(rawPending) as { versionCode: number; url: string; filePath: string; phase: string };
+            if (pending.phase === 'ready' && pending.versionCode === manifest.versionCode && pending.url === manifest.url) {
+              const file = openCachedApk(pending.filePath);
+              if (file.exists) setDownload({ phase: 'ready', percent: 100, errorMessage: null });
+            } else {
+            }
+          } catch (e) {
+          }
+        } else {
+          void logInfo('update check no update');
+        }
+      } catch (error) {
+        void logError('update check fetch error');
         // Update checks are best-effort and must never interrupt app use.
       } finally {
         if (timeout !== undefined) clearTimeout(timeout);
@@ -47,21 +71,60 @@ export function UpdateChecker() {
       mounted = false;
       if (timeout !== undefined) clearTimeout(timeout);
     };
-  }, []);
+  }, [settingsRepo]);
+
+  const runInstall = async (manifest: UpdateManifest, file: Parameters<typeof installApk>[0]) => {
+    try {
+      await installApk(file, manifest.url);
+      await settingsRepo.set(PENDING_UPDATE_KEY, '');
+    } catch (error) {
+      void logError(`update install failed: ${error instanceof Error ? error.message : 'unknown'}`);
+      // Ladder exhausted (FileProvider -> sharing -> browser all failed): surface the same
+      // user-visible error + retry state as a download failure instead of silently re-showing
+      // the ready status forever.
+      if (mountedRef.current) setDownload((state) => nextDownloadState(state, { type: 'error', message: uk.updateChecker.downloadError }));
+    }
+  };
+
+  const mountedRef = React.useRef(true);
+  useEffect(() => { mountedRef.current = true; return () => { mountedRef.current = false; }; }, []);
 
   const runDownload = async (manifest: UpdateManifest) => {
-    setDownload(nextDownloadState(download, { type: 'start' }));
+    if (!mountedRef.current) return;
+    setDownload({ phase: 'downloading', percent: 0, errorMessage: null });
+    const filePath = expectedApkCacheUri();
+    const pending = { versionCode: manifest.versionCode, url: manifest.url, filePath, phase: 'downloading' };
     try {
       parentSessionStore.touch();
       const file = await downloadApk(manifest, (percent) => {
-        setDownload((state) => nextDownloadState(state, { type: 'progress', percent }));
+        parentSessionStore.touch();
+        if (mountedRef.current) setDownload((state) => nextDownloadState(state, { type: 'progress', percent }));
       });
+      if (!mountedRef.current) return;
       setDownload((state) => nextDownloadState(state, { type: 'verifying' }));
       // downloadApk performs native streaming SHA-256 verification before returning.
-      setDownload((state) => nextDownloadState(state, { type: 'ready' }));
-      await installApk(file, manifest.url);
-    } catch {
-      setDownload((state) => nextDownloadState(state, { type: 'error', message: uk.updateChecker.downloadError }));
+      // Persist only a confirmed, re-installable 'ready' record so a failed attempt can retry from a clean slate.
+      await settingsRepo.set(PENDING_UPDATE_KEY, JSON.stringify({ ...pending, filePath: file.uri, phase: 'ready' }));
+      setDownload({ phase: 'ready', percent: 100, errorMessage: null });
+      await runInstall(manifest, file);
+    } catch (error) {
+      void logError('update download failed');
+      void settingsRepo.set(PENDING_UPDATE_KEY, '');
+      if (mountedRef.current) setDownload((state) => nextDownloadState(state, { type: 'error', message: uk.updateChecker.downloadError }));
+    }
+  };
+
+  const installReady = async () => {
+    try {
+      const raw = await settingsRepo.get(PENDING_UPDATE_KEY);
+      if (!raw || !mountedRef.current || !update) return;
+      const pending = JSON.parse(raw) as { versionCode: number; url: string; filePath: string; phase: string };
+      if (pending.phase !== 'ready' || pending.versionCode !== update?.versionCode || pending.url !== update.url) return;
+      const file = openCachedApk(pending.filePath);
+      if (!file.exists) throw new Error('Cached update file is missing');
+      await runInstall(update, file);
+    } catch (error) {
+      void logError(`update install resume failed: ${error instanceof Error ? error.message : 'unknown'}`);
     }
   };
 
@@ -89,12 +152,14 @@ export function UpdateChecker() {
             }} style={styles.primaryAction}>
               <AppText variant="caption" style={styles.primaryText}>{uk.updateChecker.retry}</AppText>
             </TapTarget>
-            <TapTarget accessibilityRole="link" accessibilityLabel={uk.updateChecker.browserFallbackA11y} accessibilityHint={uk.updateChecker.browserFallbackHint} size="sm" onPress={() => { void Linking.openURL(update.url).catch(() => {}); }} style={styles.quietAction}>
+            <TapTarget accessibilityRole="link" accessibilityLabel={uk.updateChecker.browserFallbackA11y} accessibilityHint={uk.updateChecker.browserFallbackHint} size="sm" onPress={() => {
+              void Linking.openURL(update.url).then(() => settingsRepo.set(PENDING_UPDATE_KEY, '')).catch(() => {});
+            }} style={styles.quietAction}>
               <AppText variant="caption" style={styles.quietText}>{uk.updateChecker.browserFallback}</AppText>
             </TapTarget>
           </>
         ) : (
-          <TapTarget accessibilityRole="button" accessibilityLabel={uk.updateChecker.updateA11y} accessibilityHint={uk.updateChecker.updateHint} size="sm" disabled={busy} onPress={() => { void runDownload(update); }} style={[styles.primaryAction, busy && styles.disabled]}>
+          <TapTarget accessibilityRole="button" accessibilityLabel={uk.updateChecker.updateA11y} accessibilityHint={uk.updateChecker.updateHint} size="sm" disabled={busy} onPress={() => { void (download.phase === 'ready' ? installReady() : runDownload(update)); }} style={[styles.primaryAction, busy && styles.disabled]}>
             <AppText variant="caption" style={styles.primaryText}>{uk.updateChecker.update}</AppText>
           </TapTarget>
         )}

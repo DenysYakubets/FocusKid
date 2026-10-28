@@ -10,7 +10,9 @@ describe('download state machine', () => {
     state = nextDownloadState(state, { type: 'verifying' });
     expect(state.phase).toBe('verifying');
     expect(nextDownloadState(state, { type: 'ready' }).phase).toBe('ready');
-    expect(nextDownloadState(state, { type: 'error', message: 'bad' })).toBe(state);
+    expect(nextDownloadState(state, { type: 'error', message: 'bad' })).toEqual({
+      phase: 'error', percent: 100, errorMessage: 'bad',
+    });
   });
 
   it('clamps progress and ignores non-finite values or progress outside download phase', () => {
