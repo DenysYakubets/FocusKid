@@ -1,5 +1,5 @@
 /** @jest-environment node */
-import { chaseStep, CHASE_TAU_MS, clampMascotPosition, MascotBounds } from '../components/MascotFloating';
+import { chaseStep, CHASE_TAU_MS, clampMascotPosition, emissionPoint, MascotBounds, speedToBubble } from '../components/MascotFloating';
 
 const bounds: MascotBounds = {
   width: 366,
@@ -43,5 +43,23 @@ describe('mascot chase math', () => {
       expect(pos.y).toBeLessThanOrEqual(100);
       previous = pos.x;
     }
+  });
+});
+
+describe('mascot thrust math', () => {
+  it('emits at the edge opposite motion and preserves a stationary point', () => {
+    expect(emissionPoint({ x: 20, y: 20 }, { x: 0, y: -2 }, 8)).toEqual({ x: 20, y: 28 });
+    expect(emissionPoint({ x: 20, y: 20 }, { x: -3, y: 0 }, 8)).toEqual({ x: 28, y: 20 });
+    expect(emissionPoint({ x: 20, y: 20 }, { x: 0, y: 0 }, 8)).toEqual({ x: 20, y: 20 });
+  });
+
+  it('scales bubbles up and spawns faster with speed, while zero speed disables spawning', () => {
+    const idle = speedToBubble(0);
+    const slow = speedToBubble(60);
+    const fast = speedToBubble(600);
+    expect(idle.radiusScale).toBe(0);
+    expect(idle.spawnIntervalMs).toBe(Number.POSITIVE_INFINITY);
+    expect(slow.radiusScale).toBeLessThan(fast.radiusScale);
+    expect(slow.spawnIntervalMs).toBeGreaterThan(fast.spawnIntervalMs);
   });
 });
