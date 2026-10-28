@@ -19,6 +19,7 @@ import { useMascotStore } from './src/state/mascotStore';
 import { RootNavigator } from './src/navigation/RootNavigator';
 import { ErrorBoundary } from './src/ui/components/ErrorBoundary';
 import { AppFrame } from './src/ui/components/AppFrame';
+import { UpdateChecker } from './src/ui/components/UpdateChecker';
 import { AppText } from './src/ui/components/AppText';
 import { TapTarget } from './src/ui/components/TapTarget';
 import { uk } from './src/i18n/uk';
@@ -116,6 +117,10 @@ export function AppBootstrap() {
   return (
     <AppServicesProvider services={services}>
       <AppLifecycle />
+      {/* App-root fallback: the update card can surface from any screen. */}
+      <View style={styles.rootUpdateCard}>
+        <UpdateChecker />
+      </View>
       <SafeAreaProvider>
         <AppFrame>
           <NavigationContainer ref={navigationRef} onReady={logRoute} onStateChange={logRoute}>
@@ -174,5 +179,14 @@ const styles = StyleSheet.create({
   retryText: {
     color: colors.white,
     textAlign: 'center',
+  },
+  rootUpdateCard: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 1000,
+    paddingHorizontal: spacing.md,
+    paddingTop: spacing.md,
   },
 });

@@ -6,6 +6,7 @@ import { useServices } from '../state/appServices';
 import { parentSessionStore } from '../state/parentSessionStore';
 import { Task } from '../domain/tasks/types';
 import { UpdateChecker } from '../ui/components/UpdateChecker';
+import { useUpdateRecheck } from '../ui/hooks/useUpdateRecheck';
 import { AppButton } from '../ui/components/AppButton';
 import { AppText } from '../ui/components/AppText';
 import { AppToolbar } from '../ui/components/AppToolbar';
@@ -21,6 +22,7 @@ export function TaskListEditScreen({ navigation }: Props) {
   const { tasksRepo } = useServices();
   const { gutter, isLandscape } = useScreenGutter();
   const [tasks, setTasks] = useState<Task[]>([]);
+  const updateRecheckKey = useUpdateRecheck();
 
   const loadTasks = async () => {
     const all = await tasksRepo.listAll();
@@ -74,7 +76,7 @@ export function TaskListEditScreen({ navigation }: Props) {
           }
         />
 
-        <UpdateChecker />
+        <UpdateChecker recheckKey={updateRecheckKey} />
 
         {/* Task list — the list is the scroll container (no outer ScrollView) */}
         <FlatList
