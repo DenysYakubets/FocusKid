@@ -19,6 +19,8 @@ jest.mock('../../services/update/downloadApk', () => ({
   PENDING_UPDATE_KEY: '@focuskid/pending_update',
   expectedApkCacheUri: () => 'file:///cache/focuskid-update.apk',
   openCachedApk: (uri: string) => ({ uri, exists: true }),
+  reuseVerifiedApk: () => null,
+  ApkDigestMismatchError: class MockApkDigestMismatchError extends Error {},
 }));
 jest.mock('expo-intent-launcher', () => ({ startActivityAsync: jest.fn() }));
 jest.mock('expo-sharing', () => ({ isAvailableAsync: jest.fn(), shareAsync: jest.fn() }));
