@@ -1,7 +1,7 @@
 {
-  "versionName": "0.1.18",
-  "versionCode": 11,
-  "sha256": "4924b4d2587a514cb14351e1da888d1030f83798e36f12f8de659590da0ebe3c",
+  "versionName": "0.1.19",
+  "versionCode": 12,
+  "sha256": "3163d3da6d7a2e8d14c2dd6241542345034ce3c46a5d647346f8b11d58aa0dcf",
   "url": "https://github.com/DenysYakubets/FocusKid/releases/latest/download/FocusKid-latest.apk",
-  "notes": "Early-completion button in parent timer dialog (confirm session done before timer ends) + update card home screen from 0.1.17"
+  "notes": "Update card now inline in task list (no overlay blocking parent mode) + REQUEST_INSTALL_PACKAGES permission + real install resultCode logging with user-visible Alert + reuses downloaded APK"
 }
