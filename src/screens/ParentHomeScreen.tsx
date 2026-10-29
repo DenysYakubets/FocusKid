@@ -318,54 +318,56 @@ export function ParentHomeScreen({ navigation }: Props) {
         {uk.parentHome.awaitingTitle}
       </AppText>
 
-      <UpdateChecker recheckKey={updateRecheckKey} />
-
-      {awaitingItems.length === 0 ? (
-        <View style={styles.emptyContainer}>
-          <AppText variant="body" style={styles.emptyText}>
-            {uk.parentHome.emptyAwaiting}
-          </AppText>
-        </View>
-      ) : (
-        <FlatList
-          style={styles.list}
-          data={awaitingItems}
-          keyExtractor={(item) => String(item.session.id)}
-          contentContainerStyle={styles.listContent}
-          onScroll={() => parentSessionStore.touch()}
-          scrollEventThrottle={1000}
-          renderItem={({ item }) => (
-            <View style={styles.itemCard}>
-              <View style={styles.itemInfo}>
-                <AppText variant="title" numberOfLines={2} style={styles.itemTitle}>
-                  {item.task?.emoji
-                    ? `${item.task.emoji} ${item.task.title}`
-                    : item.task?.title ?? uk.parentHome.taskFallback}
-                </AppText>
-              </View>
-
-              <View style={styles.itemActions}>
-                <AppButton
-                  label={uk.parentHome.verify}
-                  a11yLabel={`${uk.parentHome.verify}: ${item.task?.title ?? ''}`}
-                  variant="primary"
-                  size="md"
-                  onPress={() => handleVerify(item.session.id)}
-                  style={styles.actionFlex}
-                />
-                <AppButton
-                  label={uk.parentHome.abandon}
-                  a11yLabel={`${uk.parentHome.abandon}: ${item.task?.title ?? ''}`}
-                  variant="danger"
-                  size="md"
-                  onPress={() => handleAbandon(item.session.id)}
-                  style={styles.actionFlex}
-                />
-              </View>
+      {/* BUG A: the update card is the first in-flow row of this list, so it
+          scrolls with the content and can never cover the parent-mode entry
+          or any other control (fully in-flow: no absolute positioning and no
+          stacking-level overlay anywhere in its mount chain). */}
+      <FlatList
+        style={styles.list}
+        data={awaitingItems}
+        keyExtractor={(item) => String(item.session.id)}
+        contentContainerStyle={styles.listContent}
+        onScroll={() => parentSessionStore.touch()}
+        scrollEventThrottle={1000}
+        ListHeaderComponent={<UpdateChecker recheckKey={updateRecheckKey} />}
+        ListEmptyComponent={
+          <View style={styles.emptyContainer}>
+            <AppText variant="body" style={styles.emptyText}>
+              {uk.parentHome.emptyAwaiting}
+            </AppText>
+          </View>
+        }
+        renderItem={({ item }) => (
+          <View style={styles.itemCard}>
+            <View style={styles.itemInfo}>
+              <AppText variant="title" numberOfLines={2} style={styles.itemTitle}>
+                {item.task?.emoji
+                  ? `${item.task.emoji} ${item.task.title}`
+                  : item.task?.title ?? uk.parentHome.taskFallback}
+              </AppText>
             </View>
-          )}
-        />
-      )}
+
+            <View style={styles.itemActions}>
+              <AppButton
+                label={uk.parentHome.verify}
+                a11yLabel={`${uk.parentHome.verify}: ${item.task?.title ?? ''}`}
+                variant="primary"
+                size="md"
+                onPress={() => handleVerify(item.session.id)}
+                style={styles.actionFlex}
+              />
+              <AppButton
+                label={uk.parentHome.abandon}
+                a11yLabel={`${uk.parentHome.abandon}: ${item.task?.title ?? ''}`}
+                variant="danger"
+                size="md"
+                onPress={() => handleAbandon(item.session.id)}
+                style={styles.actionFlex}
+              />
+            </View>
+          </View>
+        )}
+      />
     </View>
   );
 

@@ -5,7 +5,7 @@ import Constants from 'expo-constants';
 import { parentSessionStore } from '../../state/parentSessionStore';
 import { useServices } from '../../state/appServices';
 import { MANIFEST_URL, isNewerVersion, parseUpdateManifest, UpdateManifest } from '../../services/update/checkForUpdate';
-import { downloadApk, expectedApkCacheUri, installApk, openCachedApk, PENDING_UPDATE_KEY } from '../../services/update/downloadApk';
+import { downloadApk, expectedApkCacheUri, installApk, openCachedApk, reuseVerifiedApk, ApkDigestMismatchError, PENDING_UPDATE_KEY } from '../../services/update/downloadApk';
 import { DownloadState, initialDownloadState, nextDownloadState } from '../../services/update/downloadState';
 import { uk } from '../../i18n/uk';
 import { logError, logInfo } from '../../services/logging/fileLogger';
@@ -96,6 +96,17 @@ export function UpdateChecker({ recheckKey = 0 }: UpdateCheckerProps = {}) {
 
   const runDownload = async (manifest: UpdateManifest) => {
     if (!mountedRef.current) return;
+    const cached = reuseVerifiedApk(manifest);
+    if (cached) {
+      // Already downloaded AND SHA-256 verified in this session: install it
+      // directly instead of re-downloading the whole APK from zero.
+      void logInfo('update download reuse verified apk');
+      if (!mountedRef.current) return;
+      setDownload({ phase: 'ready', percent: 100, errorMessage: null });
+      await settingsRepo.set(PENDING_UPDATE_KEY, JSON.stringify({ versionCode: manifest.versionCode, url: manifest.url, filePath: cached.uri, phase: 'ready' }));
+      await runInstall(manifest, cached);
+      return;
+    }
     setDownload({ phase: 'downloading', percent: 0, errorMessage: null });
     const filePath = expectedApkCacheUri();
     const pending = { versionCode: manifest.versionCode, url: manifest.url, filePath, phase: 'downloading' };
@@ -115,7 +126,8 @@ export function UpdateChecker({ recheckKey = 0 }: UpdateCheckerProps = {}) {
     } catch (error) {
       void logError('update download failed');
       void settingsRepo.set(PENDING_UPDATE_KEY, '');
-      if (mountedRef.current) setDownload((state) => nextDownloadState(state, { type: 'error', message: uk.updateChecker.downloadError }));
+      const message = error instanceof ApkDigestMismatchError ? uk.updateChecker.checksumError : uk.updateChecker.downloadError;
+      if (mountedRef.current) setDownload((state) => nextDownloadState(state, { type: 'error', message }));
     }
   };
 
