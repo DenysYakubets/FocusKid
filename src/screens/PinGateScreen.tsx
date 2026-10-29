@@ -41,6 +41,7 @@ export function PinGateScreen({ route, navigation }: Props) {
   const [controlsToken, setControlsToken] = useState<ParentToken | null>(null);
   const [showControls, setShowControls] = useState(false);
   const [editingDuration, setEditingDuration] = useState(false);
+  const [showConfirmComplete, setShowConfirmComplete] = useState(false);
   const [durationMinutes, setDurationMinutes] = useState('15');
   const [durationLimitMinutes, setDurationLimitMinutes] = useState(120);
 
@@ -183,6 +184,35 @@ export function PinGateScreen({ route, navigation }: Props) {
     navigation.goBack();
   };
 
+  // Parent-only early completion: mark the CURRENT session 'completed' through
+  // the same completion path a naturally finished timer uses (setStatus
+  // 'completed' + appendEvent 'COMPLETE' in timerService.parentCompleteEarly),
+  // then refresh today's data and release the child screen — same end-state as
+  // a natural finish (stats/day cards recompute from session status in SQL).
+  // Never reachable from the child path: only this PIN-verified dialog calls it.
+  const handleConfirmComplete = async () => {
+    if (route.params.intent !== 'timerControls' || !controlsToken) return;
+    try {
+      const result = await services.timerService.parentCompleteEarly(controlsToken);
+      setControlsToken(null);
+      setShowConfirmComplete(false);
+      if (!result.ok) {
+        setShowControls(false);
+        setError(uk.pin.operationFailed);
+        return;
+      }
+      await tasksStore.refreshToday(services);
+      await timerStore.hydrate(services.timerService);
+      setShowControls(false);
+      navigation.goBack();
+    } catch {
+      setControlsToken(null);
+      setShowConfirmComplete(false);
+      setShowControls(false);
+      setError(uk.pin.operationFailed);
+    }
+  };
+
   if (showAbandonDialog) {
     return (
       <View style={styles.dialogContainer}>
@@ -253,12 +283,41 @@ export function PinGateScreen({ route, navigation }: Props) {
     </View></View>
   );
 
+  if (showConfirmComplete) return (
+    <View testID="confirm-complete-dialog" style={styles.dialogContainer}>
+      <View style={styles.dialogCard}>
+        <AppText variant="title" accessibilityRole="header" style={styles.dialogTitle}>
+          {uk.timer.confirmComplete}
+        </AppText>
+        <AppText variant="body" style={styles.dialogMessage}>
+          {uk.timer.confirmCompleteMessage}
+        </AppText>
+        <View style={styles.dialogButtons}>
+          <AppButton
+            label={uk.timer.confirmComplete}
+            testID="confirm-complete-accept"
+            variant="primary"
+            size="lg"
+            onPress={() => void handleConfirmComplete()}
+          />
+          <AppButton
+            label={uk.timer.controlsCancel}
+            variant="secondary"
+            size="lg"
+            onPress={() => setShowConfirmComplete(false)}
+          />
+        </View>
+      </View>
+    </View>
+  );
+
   if (showControls) return (
     <View testID="timer-controls-dialog" style={styles.dialogContainer}>
       <View style={styles.dialogCard}>
         <AppText variant="title" accessibilityRole="header" style={styles.dialogTitle}>{uk.timer.gear}</AppText>
         <View style={styles.dialogButtons}>
           <AppButton label={uk.timer.editDuration} variant="primary" size="lg" onPress={() => setEditingDuration(true)} />
+          <AppButton label={uk.timer.confirmComplete} variant="secondary" size="lg" onPress={() => setShowConfirmComplete(true)} />
           <AppButton label={uk.timer.controlsCancel} variant="secondary" size="lg" onPress={() => { setShowControls(false); navigation.goBack(); }} />
         </View>
       </View>
