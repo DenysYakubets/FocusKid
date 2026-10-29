@@ -1,7 +1,7 @@
 {
-  "versionName": "0.1.17",
-  "versionCode": 10,
-  "sha256": "40e28b084e78a0a6de19db6a7e0ff52eba7160868f10e952e4f2e2190a726742",
+  "versionName": "0.1.18",
+  "versionCode": 11,
+  "sha256": "4924b4d2587a514cb14351e1da888d1030f83798e36f12f8de659590da0ebe3c",
   "url": "https://github.com/DenysYakubets/FocusKid/releases/latest/download/FocusKid-latest.apk",
-  "notes": "persistent update card now on ParentHome + app-root fallback + focus re-check, in-app update with sha256 verify"
+  "notes": "Early-completion button in parent timer dialog (confirm session done before timer ends) + update card home screen from 0.1.17"
 }
